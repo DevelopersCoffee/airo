@@ -189,6 +189,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   # 3.1.8 is the first riverpod_lint that accepts riverpod 3.4.2
   riverpod_lint: 3.1.8
+  flutter_native_splash: ^2.4.8
 
 dependency_overrides:
   video_player_avfoundation:

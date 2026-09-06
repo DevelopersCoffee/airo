@@ -267,6 +267,14 @@ jobs:
         with:
           ref: ${{ needs.prepare-release-branch.outputs.release_ref || github.ref }}
 
+      - name: Verify build_name/build_number match pubspec_tv.yaml
+        run: |
+          eval "$(scripts/aika_stream_version.sh)"
+          if [ "$BUILD_NAME" != "$AIKA_STREAM_BUILD_NAME" ] || [ "$BUILD_NUMBER" != "$AIKA_STREAM_BUILD_NUMBER" ]; then
+            echo "::error::build_name/build_number ($BUILD_NAME+$BUILD_NUMBER) do not match app/pubspec_tv.yaml ($AIKA_STREAM_BUILD_NAME+$AIKA_STREAM_BUILD_NUMBER). pubspec_tv.yaml is the single source of truth for this version -- bump it (and re-run scripts/aika_stream_version.sh --sync-stub) instead of passing a divergent build_name/build_number."
+            exit 1
+          fi
+
       - name: Normalize release artifact label
         run: |
           release_version="$(printf '%s' "$RELEASE_VERSION" | sed 's/[^A-Za-z0-9._-]/-/g')"

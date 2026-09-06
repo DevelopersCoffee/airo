@@ -35,25 +35,60 @@ class IptvNavigationDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryDestinations = iptvNavigationDestinations.where(
+      (destination) =>
+          destination.id != IptvDestinationId.settings &&
+          _isVisible(destination.id),
+    );
+    final showSettings = _isVisible(IptvDestinationId.settings);
+    final showPlayOnTv = onPlayLocalFileOnTv != null;
+
     return Drawer(
       child: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Text('Menu', style: TextStyle(fontSize: 20)),
+            DrawerHeader(
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/aika_stream_mark.png',
+                      package: 'feature_iptv',
+                      width: 40,
+                      height: 40,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Aika Stream',
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            for (final destination in iptvNavigationDestinations)
-              if (_isVisible(destination.id))
-                ListTile(
-                  key: ValueKey('iptv-drawer-${_keySuffix(destination.id)}'),
-                  leading: Icon(destination.icon),
-                  title: Text(destination.labelFor(ShellId.mobile)),
-                  onTap: () => _select(context, _actionFor(destination.id)!),
-                ),
+            for (final destination in primaryDestinations)
+              ListTile(
+                key: ValueKey('iptv-drawer-${_keySuffix(destination.id)}'),
+                leading: Icon(destination.icon),
+                title: Text(destination.labelFor(ShellId.mobile)),
+                onTap: () => _select(context, _actionFor(destination.id)!),
+              ),
+            if (showSettings || showPlayOnTv) const Divider(height: 1),
+            if (showSettings)
+              ListTile(
+                key: const ValueKey('iptv-drawer-settings'),
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () => _select(context, onSettings!),
+              ),
             if (onPlayLocalFileOnTv case final onPlayLocalFileOnTv?)
               ListTile(
                 key: const ValueKey('iptv-drawer-play-on-tv'),

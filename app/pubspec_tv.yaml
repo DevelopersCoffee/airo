@@ -154,6 +154,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 6.0.0
+  flutter_native_splash: ^2.4.8
 
 # Dependency overrides - point heavy packages to lightweight stubs
 # This allows code that imports these packages to compile while

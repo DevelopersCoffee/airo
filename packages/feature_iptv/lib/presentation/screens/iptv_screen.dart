@@ -1589,127 +1589,147 @@ class _BringYourOwnPlaylistView extends ConsumerWidget {
         .asData
         ?.value;
 
-    final scrollView = SingleChildScrollView(
-      padding: tenFootMode ? EdgeInsets.zero : const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Add your playlist',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+    final content = Column(
+      crossAxisAlignment: tenFootMode
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: [
+        Image.asset(
+          'assets/aika_stream_mark.png',
+          package: 'feature_iptv',
+          width: tenFootMode ? 56 : 72,
+          height: tenFootMode ? 56 : 72,
+        ),
+        SizedBox(height: tenFootMode ? 12 : 20),
+        Text(
+          'Add your playlist',
+          textAlign: tenFootMode ? TextAlign.start : TextAlign.center,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Aika Stream is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                Semantics(
-                  button: true,
-                  label: 'Add a playlist URL',
-                  hint: 'Opens playlist source setup.',
-                  child: tenFootMode
-                      ? TvFocusable(
-                          key: const ValueKey('iptv-empty-add-playlist'),
-                          autofocus: true,
-                          semanticLabel: 'Add a playlist URL',
-                          onSelect: onPlaylistSourceTap,
-                          borderRadius: 20,
-                          child: Material(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(20),
-                            child: InkWell(
-                              onTap: onPlaylistSourceTap,
-                              canRequestFocus: false,
-                              borderRadius: BorderRadius.circular(20),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Aika Stream is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
+          textAlign: tenFootMode ? TextAlign.start : TextAlign.center,
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          alignment: tenFootMode ? WrapAlignment.start : WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            Semantics(
+              button: true,
+              label: 'Add a playlist URL',
+              hint: 'Opens playlist source setup.',
+              child: tenFootMode
+                  ? TvFocusable(
+                      key: const ValueKey('iptv-empty-add-playlist'),
+                      autofocus: true,
+                      semanticLabel: 'Add a playlist URL',
+                      onSelect: onPlaylistSourceTap,
+                      borderRadius: 20,
+                      child: Material(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: onPlaylistSourceTap,
+                          canRequestFocus: false,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.link,
+                                  color: theme.colorScheme.onPrimary,
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.link,
-                                      color: theme.colorScheme.onPrimary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Add playlist URL',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.onPrimary,
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Add playlist URL',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
-                        )
-                      : FilledButton.icon(
-                          onPressed: onPlaylistSourceTap,
-                          icon: const Icon(Icons.link),
-                          label: const Text('Add playlist URL'),
                         ),
-                ),
-                if (tenFootMode)
-                  TvFocusable(
-                    key: const ValueKey('iptv-empty-scan-phone'),
-                    semanticLabel: 'Scan with phone',
-                    onSelect: onScanWithPhoneTap,
-                    borderRadius: 20,
-                    child: ExcludeFocus(
-                      child: OutlinedButton.icon(
-                        onPressed: onScanWithPhoneTap,
-                        icon: const Icon(Icons.qr_code_2),
-                        label: const Text('Scan with phone'),
                       ),
+                    )
+                  : FilledButton.icon(
+                      onPressed: onPlaylistSourceTap,
+                      icon: const Icon(Icons.link),
+                      label: const Text('Add playlist URL'),
                     ),
-                  ),
-                if (tenFootMode && capabilities?.removableStorage == true)
-                  TvFocusable(
-                    key: const ValueKey('iptv-empty-browse-usb'),
-                    semanticLabel: 'Browse USB',
-                    onSelect: () => _browseRemovableMedia(context, ref),
-                    borderRadius: 20,
-                    child: ExcludeFocus(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _browseRemovableMedia(context, ref),
-                        icon: const Icon(Icons.usb),
-                        label: const Text('Browse USB'),
-                      ),
-                    ),
-                  ),
-                if (tenFootMode && capabilities?.dlnaUpnp == true)
-                  TvFocusable(
-                    key: const ValueKey('iptv-empty-browse-network'),
-                    semanticLabel: 'Browse network media',
-                    onSelect: () => _browseDlnaMedia(context, ref),
-                    borderRadius: 20,
-                    child: ExcludeFocus(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _browseDlnaMedia(context, ref),
-                        icon: const Icon(Icons.devices_other),
-                        label: const Text('Browse network'),
-                      ),
-                    ),
-                  ),
-              ],
             ),
-          ),
-        ],
-      ),
+            if (tenFootMode)
+              TvFocusable(
+                key: const ValueKey('iptv-empty-scan-phone'),
+                semanticLabel: 'Scan with phone',
+                onSelect: onScanWithPhoneTap,
+                borderRadius: 20,
+                child: ExcludeFocus(
+                  child: OutlinedButton.icon(
+                    onPressed: onScanWithPhoneTap,
+                    icon: const Icon(Icons.qr_code_2),
+                    label: const Text('Scan with phone'),
+                  ),
+                ),
+              ),
+            if (tenFootMode && capabilities?.removableStorage == true)
+              TvFocusable(
+                key: const ValueKey('iptv-empty-browse-usb'),
+                semanticLabel: 'Browse USB',
+                onSelect: () => _browseRemovableMedia(context, ref),
+                borderRadius: 20,
+                child: ExcludeFocus(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _browseRemovableMedia(context, ref),
+                    icon: const Icon(Icons.usb),
+                    label: const Text('Browse USB'),
+                  ),
+                ),
+              ),
+            if (tenFootMode && capabilities?.dlnaUpnp == true)
+              TvFocusable(
+                key: const ValueKey('iptv-empty-browse-network'),
+                semanticLabel: 'Browse network media',
+                onSelect: () => _browseDlnaMedia(context, ref),
+                borderRadius: 20,
+                child: ExcludeFocus(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _browseDlnaMedia(context, ref),
+                    icon: const Icon(Icons.devices_other),
+                    label: const Text('Browse network'),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+
+    // No extra Center/ConstrainedBox wrapper here: content's own
+    // crossAxisAlignment already centers everything within the full-width
+    // scroll view. An earlier version wrapped this conditionally on
+    // tenFootMode (bare `content` vs. `Center(ConstrainedBox(...))`), which
+    // let Flutter's element reconciliation duplicate the "Add playlist URL"
+    // button's internal Material _InkFeatures GlobalKey on a rebuild
+    // (reproduced by an Android system theme change) -- "GlobalKey was used
+    // multiple times". Keeping this a single, unwrapped child avoids that
+    // class of bug entirely.
+    final scrollView = SingleChildScrollView(
+      padding: tenFootMode
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 16, vertical: 48),
+      child: content,
     );
 
     return Semantics(

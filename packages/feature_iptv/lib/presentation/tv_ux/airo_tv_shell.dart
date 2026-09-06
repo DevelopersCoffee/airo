@@ -114,6 +114,23 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       ...widget.availabilityByChannelId,
       ...autoScanState.availabilityByChannelId,
     };
+    final showChannel = rowVisibility.isVisible(AiroTvControlRow.channel);
+    final showStats =
+        rowVisibility.isVisible(AiroTvControlRow.stats) &&
+        widget.currentChannel != null &&
+        playbackStats != null &&
+        playbackStats.hasValues;
+    final showHotbar =
+        rowVisibility.isVisible(AiroTvControlRow.hotbar) && hasHotbar;
+    final showFilter = rowVisibility.isVisible(AiroTvControlRow.filter);
+    final showPlaylist = rowVisibility.isVisible(AiroTvControlRow.playlist);
+    // The first visible ten-foot chrome row seeds D-pad focus (stats is a
+    // read-only bar, never a focus target). Without this, cold-launch and
+    // filter/EPG round trips left focus nowhere, and the LIVE bar / filter
+    // chip row were a D-pad journey away with no reliable path back up from
+    // the grid (#reported: "unreachable strips of options").
+    final infoBarAutofocus = showChannel;
+    final filterRowAutofocus = !showChannel && !showHotbar && showFilter;
     final snapshot = _snapshotCache.resolve(
       channels: widget.channels,
       metadataByChannelId: metadata,
@@ -169,12 +186,16 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       onScreenshotTap: widget.onShareVideoFrame == null
           ? null
           : () => _captureVideoFrame(context),
+      autofocus: infoBarAutofocus,
     );
     final hotbar = Hotbar(
       channels: widget.channels,
       onChannelSelected: widget.onChannelSelected,
     );
-    final filterRow = FilterRow(dimensions: snapshot.dimensions);
+    final filterRow = FilterRow(
+      dimensions: snapshot.dimensions,
+      autofocus: filterRowAutofocus,
+    );
     final videoStage = _VideoStageWithActions(
       child: KeyedSubtree(
         key: const ValueKey('airo-tv-video-capture-scope'),
@@ -196,16 +217,6 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       onSettings: () => showAiroTvShellSettingsDialog(context),
       onHelp: () => showAiroTvShellHelpDialog(context),
     );
-    final showChannel = rowVisibility.isVisible(AiroTvControlRow.channel);
-    final showStats =
-        rowVisibility.isVisible(AiroTvControlRow.stats) &&
-        widget.currentChannel != null &&
-        playbackStats != null &&
-        playbackStats.hasValues;
-    final showHotbar =
-        rowVisibility.isVisible(AiroTvControlRow.hotbar) && hasHotbar;
-    final showFilter = rowVisibility.isVisible(AiroTvControlRow.filter);
-    final showPlaylist = rowVisibility.isVisible(AiroTvControlRow.playlist);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -233,12 +244,14 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           if (showFilter) filterRow,
         ];
         if (constraints.maxWidth < 600) {
-          return Column(
-            children: [
-              if (widget.showVideoStage) Flexible(flex: 3, child: videoStage),
-              ...compactChrome,
-              if (showPlaylist) Expanded(flex: 4, child: table),
-            ],
+          return FocusTraversalGroup(
+            child: Column(
+              children: [
+                if (widget.showVideoStage) Flexible(flex: 3, child: videoStage),
+                ...compactChrome,
+                if (showPlaylist) Expanded(flex: 4, child: table),
+              ],
+            ),
           );
         }
         final previewWidth = (constraints.maxWidth * 0.34)
@@ -290,11 +303,19 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                         color: const Color(0xFF020419),
                         border: Border.all(color: Colors.white12),
                       ),
-                      child: Column(
-                        children: [
-                          ...chrome,
-                          if (showPlaylist) Expanded(child: table),
-                        ],
+                      // One traversal group across LIVE bar / stats / hotbar
+                      // / filter chips / grid: Flutter's directional focus
+                      // search is unreliable across separately-scoped
+                      // siblings (see tv_shell.dart's LEFT-edge bridge for
+                      // the sidebar case), and these rows previously had no
+                      // shared scope at all.
+                      child: FocusTraversalGroup(
+                        child: Column(
+                          children: [
+                            ...chrome,
+                            if (showPlaylist) Expanded(child: table),
+                          ],
+                        ),
                       ),
                     ),
                   ),

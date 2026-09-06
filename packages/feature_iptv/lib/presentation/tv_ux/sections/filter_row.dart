@@ -8,9 +8,17 @@ import 'filter_dialogs.dart';
 import 'search_overlay.dart';
 
 class FilterRow extends ConsumerWidget {
-  const FilterRow({super.key, required this.dimensions});
+  const FilterRow({
+    super.key,
+    required this.dimensions,
+    this.autofocus = false,
+  });
 
   final ChannelFilterDimensions dimensions;
+
+  /// Seeds D-pad focus on the first (Search) chip when this is the topmost
+  /// visible ten-foot chrome row.
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,6 +53,7 @@ class FilterRow extends ConsumerWidget {
         onSelected: () =>
             _showSearchOverlay(context, dimensions, notifier, filters.search),
         onClear: filters.search.isEmpty ? null : () => notifier.setSearch(''),
+        autofocus: autofocus,
       ),
       if (dimensions.categories.isNotEmpty)
         _FilterChip(
@@ -181,6 +190,7 @@ class _FilterChip extends StatelessWidget {
     required this.onSelected,
     this.onClear,
     this.expanded = false,
+    this.autofocus = false,
   });
 
   final String label;
@@ -189,6 +199,7 @@ class _FilterChip extends StatelessWidget {
   final VoidCallback onSelected;
   final VoidCallback? onClear;
   final bool expanded;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +215,7 @@ class _FilterChip extends StatelessWidget {
     final filterButton = TvFocusable(
       semanticLabel: label,
       onSelect: onSelected,
+      autofocus: autofocus,
       borderRadius: 12,
       child: Material(
         color: background,

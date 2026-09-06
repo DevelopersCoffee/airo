@@ -19,6 +19,7 @@ class ChannelInfoBar extends ConsumerWidget {
     this.onWaysToWatchTap,
     this.onScreenshotTap,
     this.showShareAction = true,
+    this.autofocus = false,
   });
 
   final IPTVChannel? channel;
@@ -46,6 +47,13 @@ class ChannelInfoBar extends ConsumerWidget {
   /// image delivery.
   final VoidCallback? onScreenshotTap;
 
+  /// Seeds D-pad focus here when this is the topmost visible ten-foot chrome
+  /// row. Every [TvFocusable] below gets the same value: only the first one
+  /// actually mounted claims it (Flutter's autofocus is a no-op once a scope
+  /// already has a focused descendant), so this stays correct regardless of
+  /// which optional icons are present.
+  final bool autofocus;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final name = channel?.name ?? 'Choose a channel';
@@ -67,6 +75,7 @@ class ChannelInfoBar extends ConsumerWidget {
           const Chip(label: Text('LIVE')),
           if (onHelpTap != null)
             TvFocusable(
+              autofocus: autofocus,
               key: const ValueKey('airo-tv-shell-help-action'),
               semanticLabel: 'Aika Stream Help',
               onSelect: onHelpTap,
@@ -78,6 +87,7 @@ class ChannelInfoBar extends ConsumerWidget {
             ),
           if (onPlaylistSourceTap != null)
             TvFocusable(
+              autofocus: autofocus,
               semanticLabel: 'Playlist source',
               onSelect: onPlaylistSourceTap,
               child: IconButton(
@@ -87,6 +97,7 @@ class ChannelInfoBar extends ConsumerWidget {
               ),
             ),
           TvFocusable(
+            autofocus: autofocus,
             semanticLabel: isFavorite ? 'Remove from favorites' : 'Favorite',
             enabled: channel != null,
             onSelect: channel == null
@@ -102,6 +113,7 @@ class ChannelInfoBar extends ConsumerWidget {
           ),
           if (showShareAction)
             TvFocusable(
+              autofocus: autofocus,
               semanticLabel: 'Share',
               enabled: channel != null,
               onSelect: channel == null
@@ -117,6 +129,7 @@ class ChannelInfoBar extends ConsumerWidget {
             ),
           if (onScreenshotTap != null)
             TvFocusable(
+              autofocus: autofocus,
               key: const ValueKey('channel-info-screenshot'),
               semanticLabel: 'Share video frame',
               enabled: channel != null,
@@ -128,6 +141,7 @@ class ChannelInfoBar extends ConsumerWidget {
               ),
             ),
           TvFocusable(
+            autofocus: autofocus,
             key: const ValueKey('channel-info-ways-to-watch'),
             semanticLabel: 'Ways to Watch',
             enabled: channel != null && onWaysToWatchTap != null,
