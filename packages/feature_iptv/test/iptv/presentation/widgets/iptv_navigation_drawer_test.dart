@@ -51,6 +51,30 @@ void main() {
     expect(find.text('Settings'), findsOneWidget);
   });
 
+  testWidgets(
+    'orders primary destinations first, then Play file on TV, then Settings last',
+    (tester) async {
+      await pumpDrawer(tester, onPlayLocalFileOnTv: () {});
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+
+      final titles = tester
+          .widgetList<ListTile>(find.byType(ListTile))
+          .map((tile) => (tile.title! as Text).data)
+          .toList();
+
+      expect(titles, [
+        'Home',
+        'Guide',
+        'Movies & Shows',
+        'Favorites',
+        'Play file on TV',
+        'Settings',
+      ]);
+    },
+  );
+
   testWidgets('tapping Home closes the drawer and invokes onHome', (
     tester,
   ) async {

@@ -271,7 +271,13 @@ Future<TvAudioHandler> initTvAudioService() async {
       // controls. androidNotificationOngoing stays false: audio_service
       // asserts it can't be true while stopForegroundOnPause is false.
       androidStopForegroundOnPause: false,
-      androidNotificationIcon: 'mipmap/ic_launcher',
+      // Must NOT be 'mipmap/ic_launcher': that name resolves to the
+      // Adaptive Icon XML (mipmap-anydpi-v26/ic_launcher.xml) on API 26+,
+      // which NotificationManager rejects as "no valid small icon",
+      // crashing the app the moment this service posts its transport
+      // notification. ic_notification is a plain bitmap under its own
+      // resource name, untouched by the adaptive-icon alias.
+      androidNotificationIcon: 'mipmap/ic_notification',
       // fastForwardInterval/rewindInterval keep audio_service's defaults
       // (must be > Duration.zero per its asserts); the intervals are
       // inert because live TV exposes no fast-forward/rewind controls.

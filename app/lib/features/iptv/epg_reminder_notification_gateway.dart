@@ -37,7 +37,10 @@ class FlutterLocalNotificationsEpgReminderGateway
     if (_initialized || !isAvailable) return;
 
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      // Must NOT be '@mipmap/ic_launcher' -- see the identical comment in
+      // core/audio/tv_audio_service.dart for why the Adaptive Icon shadows
+      // that name on API 26+ and crashes the notification post.
+      android: AndroidInitializationSettings('@mipmap/ic_notification'),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestSoundPermission: false,
