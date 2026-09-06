@@ -10,6 +10,8 @@ import '../../application/iptv_deep_link.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/multiview_provider.dart'
+    show multiviewDecoderBudgetProvider;
 import '../../application/wakelock_playback_coordinator.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_media/platform_media.dart";
@@ -97,6 +99,17 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   );
   DateTime? _lastFullscreenBackAt;
   Timer? _macosFullscreenSyncTimer;
+
+  /// True while local playback is paused because [_syncLocalPlaybackWithCast]
+  /// paused it for a device that can't sustain a second concurrent decoder.
+  /// Only set true by that guard, so ending the cast session resumes local
+  /// playback solely when this guard was the one that paused it.
+  bool _localPausedForCast = false;
+
+  /// True once the cast-session default mute (see [_playChannel]) has been
+  /// applied for the current cast session, so switching local channels
+  /// mid-session doesn't re-mute a stream the user explicitly unmuted.
+  bool _mutedDefaultAppliedForCast = false;
 
   /// Guards the postFrameCallback below to fire once per fullscreen entry,
   /// not on every rebuild. Live playback rebuilds constantly (buffering,
@@ -423,23 +436,51 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     _playChannel(channel);
   }
 
+  /// A plain channel tap always targets the local player, whether or not a
+  /// Cast session is active — casting a channel is now a separate, explicit
+  /// action ([_showCastSheet]/[_showWaysToWatch]), not a side effect of
+  /// tapping while connected. See #1047.
   void _playChannel(IPTVChannel channel) {
     final castState = ref.read(iptvCastProvider);
-    if (castState.activeDevice != null) {
-      ref
-          .read(iptvCastProvider.notifier)
-          .castChannelToActiveDevice(
-            channel: channel,
-            selectedQuality: ref
-                .read(iptvStreamingServiceProvider)
-                .currentState
-                .selectedQuality,
-          );
-      ref.read(addToRecentlyWatchedProvider(channel));
+    if (castState.isCasting && !_canRunLocalWhileCasting()) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              "This device can't play a second stream while casting.",
+            ),
+          ),
+        );
       return;
     }
 
-    ref.read(iptvStreamingServiceProvider).playChannel(channel);
+    final streaming = ref.read(iptvStreamingServiceProvider);
+    streaming.playChannel(channel);
+    ref.read(addToRecentlyWatchedProvider(channel));
+    _applyCastDefaultMuteIfNeeded(castState, streaming);
+  }
+
+  /// #829 has no admission-control API yet (deferred). Conservative static
+  /// bound in the meantime: reuse the same per-platform decoder budget
+  /// signal MultiView already sizes itself against — a second concurrent
+  /// local decoder (this local stream, on top of the normal single-stream
+  /// budget of 1) is only allowed on devices with headroom for at least 2.
+  bool _canRunLocalWhileCasting() =>
+      ref.read(multiviewDecoderBudgetProvider) >= 2;
+
+  /// Default local playback to muted the first time it starts during a cast
+  /// session, so the user isn't hearing two audio sources at once; the
+  /// existing mute/unmute control is the explicit opt-out.
+  void _applyCastDefaultMuteIfNeeded(
+    IptvCastState castState,
+    VideoPlayerStreamingService streaming,
+  ) {
+    if (!castState.isCasting || _mutedDefaultAppliedForCast) return;
+    _mutedDefaultAppliedForCast = true;
+    if (!streaming.currentState.isMuted) {
+      streaming.toggleMute();
+    }
   }
 
   Future<bool> _playNaturalLanguageQuery(String query) async {
@@ -757,12 +798,27 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     );
   }
 
+  /// Casting no longer unconditionally pauses local playback (#1047) — it
+  /// only pauses when [_canRunLocalWhileCasting] says this device can't
+  /// sustain the second decoder, and only resumes what it paused.
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
-      streaming.pause();
-    } else if (wasCasting == true) {
-      streaming.resume();
+      if (_canRunLocalWhileCasting()) {
+        _mutedDefaultAppliedForCast = true;
+        if (!streaming.currentState.isMuted) {
+          streaming.toggleMute();
+        }
+      } else {
+        streaming.pause();
+        _localPausedForCast = true;
+      }
+    } else {
+      if (_localPausedForCast) {
+        streaming.resume();
+      }
+      _localPausedForCast = false;
+      _mutedDefaultAppliedForCast = false;
     }
   }
 
@@ -1115,6 +1171,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
   DateTime? _lastFullscreenBackAt;
   Timer? _macosFullscreenSyncTimer;
 
+  /// See _IPTVScreenState's identical fields.
+  bool _localPausedForCast = false;
+  bool _mutedDefaultAppliedForCast = false;
+
   /// See _IPTVScreenState's identical field: guards the postFrameCallback
   /// below to fire once per fullscreen entry, not on every rebuild.
   bool _fullscreenFocusClaimed = false;
@@ -1260,22 +1320,40 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     _toggleFullscreen();
   }
 
+  /// See _IPTVScreenState's identical method: a plain tap always targets the
+  /// local player now, casting a channel is a separate explicit action.
   void _playChannel(IPTVChannel channel) {
     final castState = ref.read(iptvCastProvider);
-    if (castState.activeDevice != null) {
-      ref
-          .read(iptvCastProvider.notifier)
-          .castChannelToActiveDevice(
-            channel: channel,
-            selectedQuality: ref
-                .read(iptvStreamingServiceProvider)
-                .currentState
-                .selectedQuality,
-          );
+    if (castState.isCasting && !_canRunLocalWhileCasting()) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              "This device can't play a second stream while casting.",
+            ),
+          ),
+        );
       return;
     }
 
-    ref.read(iptvStreamingServiceProvider).playChannel(channel);
+    final streaming = ref.read(iptvStreamingServiceProvider);
+    streaming.playChannel(channel);
+    _applyCastDefaultMuteIfNeeded(castState, streaming);
+  }
+
+  bool _canRunLocalWhileCasting() =>
+      ref.read(multiviewDecoderBudgetProvider) >= 2;
+
+  void _applyCastDefaultMuteIfNeeded(
+    IptvCastState castState,
+    VideoPlayerStreamingService streaming,
+  ) {
+    if (!castState.isCasting || _mutedDefaultAppliedForCast) return;
+    _mutedDefaultAppliedForCast = true;
+    if (!streaming.currentState.isMuted) {
+      streaming.toggleMute();
+    }
   }
 
   Future<void> _showPlaylistSheet() async {
@@ -1331,12 +1409,25 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     );
   }
 
+  /// See _IPTVScreenState's identical method.
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
-      streaming.pause();
-    } else if (wasCasting == true) {
-      streaming.resume();
+      if (_canRunLocalWhileCasting()) {
+        _mutedDefaultAppliedForCast = true;
+        if (!streaming.currentState.isMuted) {
+          streaming.toggleMute();
+        }
+      } else {
+        streaming.pause();
+        _localPausedForCast = true;
+      }
+    } else {
+      if (_localPausedForCast) {
+        streaming.resume();
+      }
+      _localPausedForCast = false;
+      _mutedDefaultAppliedForCast = false;
     }
   }
 

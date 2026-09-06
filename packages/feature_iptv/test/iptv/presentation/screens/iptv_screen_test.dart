@@ -1,5 +1,7 @@
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import "package:feature_iptv/application/channel_metadata_enrichment.dart";
+import "package:feature_iptv/application/providers/multiview_provider.dart"
+    show multiviewDecoderBudgetProvider;
 import "package:feature_iptv/feature_iptv.dart";
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -1071,6 +1073,155 @@ void main() {
     expect(playedChannels, hasLength(1));
     expect(playedChannels.single.id, 'news-1');
   });
+
+  group('split view — cast one channel, watch another locally (#1047)', () {
+    const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
+
+    testWidgets('a plain channel tap while casting plays it locally instead of '
+        'redirecting to the cast target', (tester) async {
+      final playedChannels = <IPTVChannel>[];
+      final fakeService = _RecordingStreamingService(played: playedChannels);
+      final castNotifier = _MutableCastNotifier();
+
+      await tester.pumpWidget(
+        createWidget(
+          extraOverrides: [
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              ref.onDispose(() => fakeService.dispose());
+              return fakeService;
+            }),
+            multiviewDecoderBudgetProvider.overrideWithValue(2),
+            iptvCastProvider.overrideWith((ref) => castNotifier),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      castNotifier.setCasting(true, device: tv);
+      await tester.pump();
+
+      await activateAppBarAction(tester, 'Search channels');
+      await tester.enterText(find.byType(TextField).last, 'City News');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'City News Live'));
+      await tester.pumpAndSettle();
+
+      expect(playedChannels, hasLength(1));
+      expect(playedChannels.single.id, 'news-1');
+      expect(fakeService.calls, isNot(contains('pause')));
+    });
+
+    testWidgets(
+      'a channel tap while casting on a device without decoder headroom '
+      'shows a capacity message and does not start a second local stream',
+      (tester) async {
+        final playedChannels = <IPTVChannel>[];
+        final fakeService = _RecordingStreamingService(played: playedChannels);
+        final castNotifier = _MutableCastNotifier();
+
+        await tester.pumpWidget(
+          createWidget(
+            extraOverrides: [
+              iptvStreamingServiceProvider.overrideWith((ref) {
+                ref.onDispose(() => fakeService.dispose());
+                return fakeService;
+              }),
+              multiviewDecoderBudgetProvider.overrideWithValue(1),
+              iptvCastProvider.overrideWith((ref) => castNotifier),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        castNotifier.setCasting(true, device: tv);
+        await tester.pump();
+
+        await activateAppBarAction(tester, 'Search channels');
+        await tester.enterText(find.byType(TextField).last, 'City News');
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(ListTile, 'City News Live'));
+        await tester.pumpAndSettle();
+
+        expect(playedChannels, isEmpty);
+        expect(
+          find.text("This device can't play a second stream while casting."),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'starting a cast session no longer pauses local playback when the '
+      'device has decoder headroom for both',
+      (tester) async {
+        final playedChannels = <IPTVChannel>[];
+        final fakeService = _RecordingStreamingService(played: playedChannels);
+        final castNotifier = _MutableCastNotifier();
+
+        await tester.pumpWidget(
+          createWidget(
+            extraOverrides: [
+              iptvStreamingServiceProvider.overrideWith((ref) {
+                ref.onDispose(() => fakeService.dispose());
+                return fakeService;
+              }),
+              multiviewDecoderBudgetProvider.overrideWithValue(2),
+              iptvCastProvider.overrideWith((ref) => castNotifier),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        castNotifier.setCasting(true, device: tv);
+        await tester.pump();
+
+        expect(fakeService.calls, isNot(contains('pause')));
+        // Default-muted while casting, with a real mute toggle applied.
+        expect(fakeService.calls, contains('toggleMute'));
+        expect(fakeService.currentState.isMuted, isTrue);
+
+        castNotifier.setCasting(false);
+        await tester.pump();
+
+        // Never paused for cast, so ending the session must not resume it.
+        expect(fakeService.calls, isNot(contains('resume')));
+      },
+    );
+
+    testWidgets(
+      'starting a cast session still pauses local playback when the device '
+      'cannot sustain a second decoder, and resumes it when casting ends',
+      (tester) async {
+        final playedChannels = <IPTVChannel>[];
+        final fakeService = _RecordingStreamingService(played: playedChannels);
+        final castNotifier = _MutableCastNotifier();
+
+        await tester.pumpWidget(
+          createWidget(
+            extraOverrides: [
+              iptvStreamingServiceProvider.overrideWith((ref) {
+                ref.onDispose(() => fakeService.dispose());
+                return fakeService;
+              }),
+              multiviewDecoderBudgetProvider.overrideWithValue(1),
+              iptvCastProvider.overrideWith((ref) => castNotifier),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        castNotifier.setCasting(true, device: tv);
+        await tester.pump();
+
+        expect(fakeService.calls, contains('pause'));
+
+        castNotifier.setCasting(false);
+        await tester.pump();
+
+        expect(fakeService.calls, contains('resume'));
+      },
+    );
+  });
 }
 
 FocusNode _focusTvFocusable(WidgetTester tester, Finder root) {
@@ -1094,10 +1245,53 @@ class _RecordingStreamingService extends VideoPlayerStreamingService {
     : super(engine: FakeAiroPlaybackEngine());
 
   final List<IPTVChannel> played;
+  final List<String> calls = [];
+  StreamingState _state = StreamingState();
 
   @override
   Future<void> playChannel(IPTVChannel channel) async {
     played.add(channel);
+  }
+
+  @override
+  StreamingState get currentState => _state;
+
+  @override
+  Future<void> pause() async {
+    calls.add('pause');
+    _state = _state.copyWith(playbackState: PlaybackState.paused);
+  }
+
+  @override
+  Future<void> resume() async {
+    calls.add('resume');
+    _state = _state.copyWith(playbackState: PlaybackState.playing);
+  }
+
+  @override
+  Future<void> toggleMute() async {
+    calls.add('toggleMute');
+    _state = _state.copyWith(isMuted: !_state.isMuted);
+  }
+}
+
+/// Cast notifier a test can drive directly, without a real [AiroCastController]
+/// session, to simulate a cast session starting/ending.
+class _MutableCastNotifier extends IptvCastNotifier {
+  _MutableCastNotifier()
+    : super(
+        controller: FakeAiroCastController(),
+        adapter: const IptvCastMediaAdapter(),
+      );
+
+  void setCasting(bool casting, {AiroCastDevice? device}) {
+    state = state.copyWith(
+      session: casting
+          ? AiroCastSessionSnapshot.connected(
+              device ?? const AiroCastDevice(id: 'tv-1', name: 'Sony Bravia'),
+            )
+          : AiroCastSessionSnapshot.idle(),
+    );
   }
 }
 
