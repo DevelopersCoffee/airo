@@ -644,6 +644,18 @@ jobs:
           path: app/build/debug-info-tv/
           retention-days: 90
 
+      - name: Upload native debug symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-tv-native-debug-symbols-${{ env.RELEASE_VERSION }}
+          # Written by the AAB's bundleRelease task (ndk.debugSymbolLevel =
+          # FULL in app/android/app/build.gradle.kts). Attach this zip in
+          # Play Console under App bundle explorer > Downloads > Upload
+          # native debug symbols so NDK crashes symbolicate and the
+          # optimization score stops flagging the gap.
+          path: app/android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
+          retention-days: 90
+
   play-upload:
     name: Upload Airo TV to Play testing track
     runs-on: ubuntu-latest

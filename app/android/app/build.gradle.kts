@@ -203,6 +203,17 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            // Full native (C/C++) debug symbols so Play Console can
+            // symbolicate NDK crashes (ExoPlayer/media3, sqlite3, litertlm,
+            // stockfish JNI) instead of showing raw addresses, and so the
+            // App Bundle Explorer's optimization score stops flagging
+            // "missing debug symbols". Bundled into
+            // build/outputs/native-debug-symbols/release/native-debug-symbols.zip
+            // by AGP; uploaded alongside the AAB in the release workflow.
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
 

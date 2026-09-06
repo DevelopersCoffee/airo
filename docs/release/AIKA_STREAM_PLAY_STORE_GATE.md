@@ -121,3 +121,32 @@ Do not upload the AAB until all of these are true:
    not Midas Stream).
 2. Public product pages show Aika Stream in the header and download CTA.
 3. The draft release contains one file: `Aika-Stream-0.0.1-14.aab` (`0.0.1+14`).
+4. `scripts/check-aab-size-budget.sh` passes locally against that exact AAB,
+   and `scripts/check-proguard-keep-budget.sh` passes against
+   `app/android/app/proguard-rules.pro` — see "Pre-upload optimization check"
+   below.
+
+## Pre-upload optimization check (shift-left)
+
+Play Console's App Bundle Explorer scores an upload on shrinking,
+obfuscation, and native debug symbols *after* it's already live in a testing
+track. Catch regressions before that upload instead:
+
+1. **Size budget** — `scripts/check-aab-size-budget.sh <path-to-app-release.aab>`.
+   Uses `bundletool` (`brew install bundletool`, or set `BUNDLETOOL_JAR`) to
+   compute the real universal-device install size the same way Play does;
+   falls back to raw `.aab` file size (an overstatement) if bundletool isn't
+   installed. Budget is 80 MB, matching the CI universal-APK gate.
+2. **ProGuard keep budget** — `scripts/check-proguard-keep-budget.sh`. Fails
+   if `proguard-rules.pro` has grown a new blanket `-keep class <pkg>.**
+   { *; }` outside the reviewed allowlist. This is the exact regression class
+   that caused the original low optimization score (65b0b2d5 dropped a
+   blanket `androidx.**` keep); CI runs this too (`ci.yml`, `pr-checks.yml`),
+   but run it locally before a manual upload as well.
+3. **Native debug symbols** — `app/android/app/build.gradle.kts` sets
+   `ndk.debugSymbolLevel = "FULL"` on the release build type, so `bundleRelease`
+   writes `app/android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip`.
+   CI uploads this as the `airo-tv-native-debug-symbols-<version>` artifact —
+   attach it in Play Console under App bundle explorer → Downloads → Upload
+   native debug symbols so NDK crashes (media3, sqlite3, litertlm, stockfish
+   JNI) symbolicate instead of showing raw addresses.
