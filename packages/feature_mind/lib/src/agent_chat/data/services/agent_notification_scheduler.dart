@@ -396,8 +396,12 @@ class LocalAgentNotificationScheduler
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
     _configureLocalTimeZone();
+    // Must NOT be '@mipmap/ic_launcher' -- the host app's Adaptive Icon
+    // (mipmap-anydpi-v26/ic_launcher.xml) shadows that name on API 26+,
+    // which NotificationManager rejects as "no valid small icon", crashing
+    // the app the moment a scheduled notification fires.
     const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+      '@mipmap/ic_notification',
     );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false,

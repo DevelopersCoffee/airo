@@ -70,8 +70,10 @@ registrant_looks_like_tv() {
 }
 
 [[ -f "$RESOURCE_KEEP_FILE" ]] || fail "Android resource keep file not found: $RESOURCE_KEEP_FILE"
-grep -q 'tools:keep="@drawable/audio_service_\*"' "$RESOURCE_KEEP_FILE" ||
+grep -q '@drawable/audio_service_\*' "$RESOURCE_KEEP_FILE" ||
   fail "Android resource shrinker must retain audio_service media-control icons"
+grep -q '@mipmap/ic_notification' "$RESOURCE_KEEP_FILE" ||
+  fail "Android resource shrinker must retain ic_notification (audio_service/flutter_local_notifications small icon -- only referenced by runtime string, invisible to static shrinking, see tv_audio_service.dart)"
 
 check_plugin_registrant() {
   [[ -f "$PLUGIN_REGISTRANT" ]] || fail "Generated plugin registrant not found: $PLUGIN_REGISTRANT"
