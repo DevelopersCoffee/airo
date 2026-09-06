@@ -248,7 +248,12 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     if (_usesCompactPhoneLayout(context)) {
       return IPTVScreen(
-        onSettings: () => context.go(TvRouteNames.settings),
+        // push (not go): settings needs a real Navigator entry so
+        // PopScope's canPop is true and the system back gesture
+        // (edge-swipe / predictive back) can pop it directly instead of
+        // relying on the onRootBack fallback, which only the hardware/
+        // AppBar back path exercised.
+        onSettings: () => context.push(TvRouteNames.settings),
         onPickLocalMediaForTv: isGoogleCastSenderPlatform
             ? pickPhoneLocalMediaForTv
             : null,
