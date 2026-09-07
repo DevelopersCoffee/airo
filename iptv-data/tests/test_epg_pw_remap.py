@@ -7,6 +7,7 @@ from src.epg_pw_remap import (
     normalize_name,
     remap_epg_pw_xmltv,
     write_gzip_guides,
+    write_plain_guides,
 )
 
 
@@ -160,3 +161,40 @@ def test_write_gzip_guides_skips_all_and_filters_countries(tmp_path: Path) -> No
     assert not (tmp_path / "guide_US.xml.gz").exists()
     assert not (tmp_path / "guide_ALL.xml.gz").exists()
     assert gzip.decompress((tmp_path / "guide_IN.xml.gz").read_bytes()) == b"<tv/>"
+
+
+def test_write_plain_guides_writes_every_country_when_no_filter_given(
+    tmp_path: Path,
+) -> None:
+    remapped = {"IN": b"<tv/>", "QA": b"<tv/>", "ALL": b"<tv/>"}
+
+    write_plain_guides(remapped, tmp_path)
+
+    assert (tmp_path / "IN.xml").read_bytes() == b"<tv/>"
+    assert (tmp_path / "QA.xml").read_bytes() == b"<tv/>"
+    assert (tmp_path / "ALL.xml").read_bytes() == b"<tv/>"
+
+
+def test_write_plain_guides_respects_countries_filter(tmp_path: Path) -> None:
+    catalog = _catalog(
+        {"id": "MTV.in", "name": "MTV", "country": "IN"},
+        {"id": "AlJazeera.qa", "name": "Al Jazeera", "country": "QA"},
+    )
+    source = b"""<tv>
+<channel id="543480"><display-name>MTV</display-name></channel>
+<channel id="1"><display-name>Al Jazeera</display-name></channel>
+<programme channel="543480" start="20260902090000 +0000" stop="20260902100000 +0000">
+  <title>Hustle</title>
+</programme>
+<programme channel="1" start="20260902090000 +0000" stop="20260902100000 +0000">
+  <title>NEWSHOUR</title>
+</programme>
+</tv>"""
+    remapped = remap_epg_pw_xmltv(source, catalog)
+    assert set(remapped) == {"IN", "QA", "ALL"}
+
+    write_plain_guides(remapped, tmp_path, countries={"IN"})
+
+    assert (tmp_path / "IN.xml").is_file()
+    assert not (tmp_path / "QA.xml").exists()
+    assert not (tmp_path / "ALL.xml").exists()

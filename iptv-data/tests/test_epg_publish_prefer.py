@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 
 from src.epg_publish_prefer import (
+    channel_count,
     programme_count_in_file,
     programme_count_in_gzip,
     publish_all_guide,
+    select_best_sources,
     select_countries_to_publish,
 )
 
@@ -126,3 +128,110 @@ def test_publish_all_guide_writes_gzip_and_manifest_checksum(tmp_path: Path) -> 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["files"]["guide_ALL"] == "guide_ALL.xml.gz"
     assert manifest["fileChecksums"]["guide_ALL"] == checksum
+
+
+def test_channel_count() -> None:
+    assert channel_count(_xml("in", 3)) == 1  # _XML_TEMPLATE emits one <channel>
+
+
+def test_select_best_sources_picks_highest_programme_count(tmp_path: Path) -> None:
+    epg_pw = tmp_path / "epg_pw"
+    epg_pw.mkdir()
+    (epg_pw / "IN.xml").write_bytes(_xml("in", 2))
+    other = tmp_path / "other_source"
+    other.mkdir()
+    (other / "IN.xml").write_bytes(_xml("in", 5))
+    output_dir = tmp_path / "best"
+
+    catalog = select_best_sources(
+        source_dirs={"epg_pw": epg_pw, "other_source": other},
+        output_dir=output_dir,
+        generated_at="2026-09-07T00:00:00Z",
+    )
+
+    assert catalog == [
+        {
+            "countryCode": "IN",
+            "sourceId": "other_source",
+            "programmeCount": 5,
+            "channelCount": 1,
+            "updatedAt": "2026-09-07T00:00:00Z",
+        }
+    ]
+    assert (output_dir / "IN.xml").read_bytes() == _xml("in", 5)
+
+
+def test_select_best_sources_country_present_in_only_one_source(
+    tmp_path: Path,
+) -> None:
+    epg_pw = tmp_path / "epg_pw"
+    epg_pw.mkdir()
+    (epg_pw / "GB.xml").write_bytes(_xml("gb", 1))
+    other = tmp_path / "other_source"
+    other.mkdir()
+    output_dir = tmp_path / "best"
+
+    catalog = select_best_sources(
+        source_dirs={"epg_pw": epg_pw, "other_source": other},
+        output_dir=output_dir,
+        generated_at="2026-09-07T00:00:00Z",
+    )
+
+    assert [entry["countryCode"] for entry in catalog] == ["GB"]
+    assert catalog[0]["sourceId"] == "epg_pw"
+
+
+def test_select_best_sources_skips_empty_and_missing_directories(
+    tmp_path: Path,
+) -> None:
+    epg_pw = tmp_path / "epg_pw"
+    epg_pw.mkdir()
+    (epg_pw / "QA.xml").write_bytes(_xml("qa", 0))  # zero programmes
+    missing = tmp_path / "does_not_exist"  # never created -- fetch was skipped
+    output_dir = tmp_path / "best"
+
+    catalog = select_best_sources(
+        source_dirs={"epg_pw": epg_pw, "missing_source": missing},
+        output_dir=output_dir,
+        generated_at="2026-09-07T00:00:00Z",
+    )
+
+    assert catalog == []
+    assert not (output_dir / "QA.xml").exists()
+
+
+def test_select_best_sources_ignores_all_xml(tmp_path: Path) -> None:
+    epg_pw = tmp_path / "epg_pw"
+    epg_pw.mkdir()
+    (epg_pw / "IN.xml").write_bytes(_xml("in", 1))
+    (epg_pw / "ALL.xml").write_bytes(_xml("in", 1))
+    output_dir = tmp_path / "best"
+
+    catalog = select_best_sources(
+        source_dirs={"epg_pw": epg_pw},
+        output_dir=output_dir,
+        generated_at="2026-09-07T00:00:00Z",
+    )
+
+    assert [entry["countryCode"] for entry in catalog] == ["IN"]
+    assert not (output_dir / "ALL.xml").exists()
+
+
+def test_select_best_sources_ignores_zz_xml(tmp_path: Path) -> None:
+    epg_pw = tmp_path / "epg_pw"
+    epg_pw.mkdir()
+    (epg_pw / "IN.xml").write_bytes(_xml("in", 1))
+    # A ZZ shard can leak in if an upstream fetch/remap step ever bypasses
+    # the --countries filter (see epg_pw_remap.py); select_best_sources must
+    # never publish it as a catalog "country" regardless of how it got here.
+    (epg_pw / "ZZ.xml").write_bytes(_xml("zz", 1))
+    output_dir = tmp_path / "best"
+
+    catalog = select_best_sources(
+        source_dirs={"epg_pw": epg_pw},
+        output_dir=output_dir,
+        generated_at="2026-09-07T00:00:00Z",
+    )
+
+    assert [entry["countryCode"] for entry in catalog] == ["IN"]
+    assert not (output_dir / "ZZ.xml").exists()

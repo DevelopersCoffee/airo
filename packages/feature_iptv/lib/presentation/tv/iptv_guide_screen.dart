@@ -85,6 +85,11 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
                             value,
                   ),
                 ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: _GuideFilterChips(),
+                ),
+                const SizedBox(height: 8),
                 Expanded(
                   child: widget.overrideFormFactor == AiroFormFactor.tv
                       ? EpgTimelineGrid(
@@ -344,6 +349,48 @@ class _GuideAvailabilityBanner extends ConsumerWidget {
       child: Text(
         message,
         style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+      ),
+    );
+  }
+}
+
+class _GuideFilterChips extends ConsumerWidget {
+  const _GuideFilterChips();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categories = ref.watch(guideAvailableCategoriesProvider);
+    final selectedCategory = ref.watch(guideCategoryFilterProvider);
+    final favoritesOnly = ref.watch(guideFavoritesOnlyProvider);
+
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: const Text('Favorites'),
+              avatar: const Icon(Icons.star, size: 18),
+              selected: favoritesOnly,
+              onSelected: (value) =>
+                  ref.read(guideFavoritesOnlyProvider.notifier).state = value,
+            ),
+          ),
+          for (final category in categories)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(category),
+                selected: selectedCategory == category,
+                onSelected: (selected) => ref
+                        .read(guideCategoryFilterProvider.notifier)
+                        .state =
+                    selected ? category : null,
+              ),
+            ),
+        ],
       ),
     );
   }
