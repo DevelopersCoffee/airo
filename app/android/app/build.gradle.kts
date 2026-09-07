@@ -433,6 +433,15 @@ dependencies {
         // on the Android Gradle Plugin's unit-test classpath (confirmed by
         // compile errors, not assumed).
         testImplementation("com.squareup.okhttp3:mockwebserver3:5.5.0")
+
+        // Cast Connect receiver, gated to manual dev/test only (see
+        // AiroCastReceiverOptionsProvider) — Cast MultiView's receiver app
+        // (F353F9C7) is unpublished/testing-only, not part of any shipped
+        // build. Version matches Google's official CastAndroidTvReceiver
+        // sample (github.com/googlecast/CastAndroidTvReceiver), paired with
+        // the play-services-cast-framework version flutter_chrome_cast
+        // already brings in transitively for the sender side.
+        implementation("com.google.android.gms:play-services-cast-tv:20.0.0")
     }
 
 }

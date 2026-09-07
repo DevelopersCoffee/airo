@@ -16,3 +16,20 @@ class UnavailableMultiviewCastSenderTransport
   @override
   Stream<MultiviewCastState> get stateUpdates => const Stream.empty();
 }
+
+/// Default [MultiviewCastReceiverTransport] on every platform that isn't
+/// Airo TV's own Cast Connect receiver — see
+/// [AiroCastReceiverMultiviewTransport] and the Cast MultiView
+/// remote-control spec's Dependencies section. Nothing ever arrives and
+/// published state is silently dropped, the same shape as
+/// [UnavailableMultiviewCastSenderTransport] on the sender side.
+class UnavailableMultiviewCastReceiverTransport
+    implements MultiviewCastReceiverTransport {
+  const UnavailableMultiviewCastReceiverTransport();
+
+  @override
+  Stream<MultiviewCastCommand> get commands => const Stream.empty();
+
+  @override
+  Future<void> publishState(MultiviewCastState state) async {}
+}

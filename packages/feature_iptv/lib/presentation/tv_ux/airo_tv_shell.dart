@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
+import '../../application/providers/cast_multiview_receiver_provider.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/connectivity_provider.dart';
@@ -104,6 +105,10 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
     final rowVisibility = ref.watch(controlRowVisibilityProvider);
     final multiview = ref.watch(multiviewProvider);
+    // Keeps the Cast MultiView receiver bridge alive for as long as this
+    // shell is mounted — see cast_multiview_receiver_provider.dart. A plain
+    // watch (not read) so a hot-reload/rebuild doesn't tear it down.
+    ref.watch(castMultiviewReceiverBridgeProvider);
     final favoriteChannelIds =
         ref.watch(favoriteChannelIdsProvider).value ?? const <String>{};
     final favoriteToggler = ref.read(channelFavoriteTogglerProvider);

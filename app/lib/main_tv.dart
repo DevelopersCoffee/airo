@@ -39,6 +39,7 @@ import 'core/providers/streaming_telemetry_consent_provider.dart';
 import 'core/startup/app_startup_tasks.dart';
 import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'features/iptv/cast_multiview_receiver_provider_override.dart';
 import 'features/iptv/cast_multiview_sender_provider_override.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
@@ -224,6 +225,7 @@ List<Override> buildTvProviderOverrides({
     // controller — without this override casting silently no-ops.
     realIptvCastControllerOverride(),
     realCastMultiviewSenderOverride(),
+    realCastMultiviewReceiverOverride(),
     if (debugPlaylistUrl.isNotEmpty)
       iptvChannelsProvider.overrideWith((ref) {
         return (debugPlaylistLoader ?? loadTvDebugPlaylistForWeb)(

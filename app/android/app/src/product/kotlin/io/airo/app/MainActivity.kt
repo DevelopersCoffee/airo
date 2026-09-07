@@ -54,6 +54,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private lateinit var phoneMediaPickerPlugin: PhoneMediaPickerPlugin
     private lateinit var mediaAssetAnalyzerPlugin: AiroMediaAssetAnalyzerPlugin
     private lateinit var localMediaPlugin: AiroLocalMediaPlugin
+    private lateinit var castReceiverMultiviewPlugin: AiroCastReceiverMultiviewPlugin
 
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
@@ -151,6 +152,9 @@ class MainActivity : AudioServiceFragmentActivity() {
 
         localMediaPlugin = AiroLocalMediaPlugin(this)
         localMediaPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
+
+        castReceiverMultiviewPlugin = AiroCastReceiverMultiviewPlugin()
+        castReceiverMultiviewPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onUserLeaveHint() {
