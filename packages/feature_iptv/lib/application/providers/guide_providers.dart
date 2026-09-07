@@ -319,11 +319,13 @@ final guideFavoritesOnlyProvider = StateProvider<bool>((ref) => false);
 /// narrowed itself out of its own source list.
 final guideAvailableCategoriesProvider = Provider<List<String>>((ref) {
   final channels = ref.watch(iptvChannelsProvider).value ?? const [];
-  final labels = <String>{};
+  final categoriesByKey = <String, String>{};
   for (final channel in channels) {
-    labels.addAll(channelCategoryLabels(channel.group));
+    for (final category in channelCategoryLabels(channel.group)) {
+      categoriesByKey.putIfAbsent(categoryFilterKey(category), () => category);
+    }
   }
-  return labels.toList()..sort();
+  return categoriesByKey.values.toList()..sort();
 });
 
 /// Reuses [channelSearchIndexProvider]/[AiroChannelSearchIndex] — the same

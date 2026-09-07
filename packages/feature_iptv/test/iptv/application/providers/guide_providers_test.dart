@@ -156,6 +156,26 @@ void main() {
   );
 
   test(
+    'guideAvailableCategoriesProvider dedupes differently-cased equivalent categories',
+    () async {
+      const upperNews = IPTVChannel(
+        id: 'channel-news-upper',
+        name: 'Upper News Channel',
+        streamUrl: 'https://example.com/upper-news.m3u8',
+        group: 'NEWS',
+      );
+      final container = buildContainer(channels: const [channel, upperNews]);
+      addTearDown(container.dispose);
+      await container.read(iptvChannelsProvider.future);
+
+      // `channel` is grouped under "News" and `upperNews` under "NEWS" --
+      // these must collapse into a single chip, keeping the first-seen
+      // display label.
+      expect(container.read(guideAvailableCategoriesProvider), ['News']);
+    },
+  );
+
+  test(
     'guideFavoritesOnlyProvider narrows guideFilteredChannelsProvider to favorites',
     () async {
       const other = IPTVChannel(

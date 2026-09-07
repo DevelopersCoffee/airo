@@ -127,6 +127,15 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
             ),
             error: (_, _) => const Text('Could not load the guide catalog.'),
             data: (entries) {
+              if (entries.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    'No published guides available yet — use Advanced '
+                    'below to add one manually.',
+                  ),
+                );
+              }
               final filtered = query.isEmpty
                   ? entries
                   : entries
@@ -142,10 +151,14 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
                   child: Text('No guides match your search.'),
                 );
               }
-              return Column(
-                children: [
-                  for (final entry in filtered)
-                    ListTile(
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final entry = filtered[index];
+                    return ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(countryDisplayLabel(entry.countryCode)),
                       subtitle: Text(
@@ -173,8 +186,9 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
                               : const Text('Use'),
                         ),
                       ),
-                    ),
-                ],
+                    );
+                  },
+                ),
               );
             },
           ),
