@@ -61,19 +61,24 @@ jobs:
             https://iptv-org.github.io/api/channels.json \
             --output /tmp/guide-r2/channels.json
 
-      - name: Fetch and remap epg.pw guide
+      - name: Fetch and remap epg.pw guide (best-effort)
+        id: fetch_epg_pw
         env:
           COUNTRY: ${{ steps.country.outputs.code }}
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --max-time 120 \
-            "https://epg.pw/xmltv/epg_${COUNTRY}.xml.gz" \
-            --output "/tmp/guide-r2/epg_pw_${COUNTRY}.xml.gz"
-          gunzip -c "/tmp/guide-r2/epg_pw_${COUNTRY}.xml.gz" > "/tmp/guide-r2/epg_pw_${COUNTRY}.xml"
-          python -m src.epg_pw_remap \
-            --input "/tmp/guide-r2/epg_pw_${COUNTRY}.xml" \
-            --iptv-org-channels /tmp/guide-r2/channels.json \
-            --output-dir output/remap_epg_pw
+          if curl --fail --location --retry 3 --max-time 120 \
+               "https://epg.pw/xmltv/epg_${COUNTRY}.xml.gz" \
+               --output "/tmp/guide-r2/epg_pw_${COUNTRY}.xml.gz" && \
+             gunzip -c "/tmp/guide-r2/epg_pw_${COUNTRY}.xml.gz" > "/tmp/guide-r2/epg_pw_${COUNTRY}.xml" && \
+             python -m src.epg_pw_remap \
+               --input "/tmp/guide-r2/epg_pw_${COUNTRY}.xml" \
+               --iptv-org-channels /tmp/guide-r2/channels.json \
+               --output-dir output/remap_epg_pw; then
+            :
+          else
+            echo "epg.pw has no usable guide for ${COUNTRY} -- skipping this source."
+          fi
 
       - name: Fetch and remap iptv-epg.org guide (best-effort)
         id: fetch_iptv_epg_org
@@ -84,13 +89,14 @@ jobs:
           LOWER="$(printf '%s' "$COUNTRY" | tr '[:upper:]' '[:lower:]')"
           if curl --fail --location --retry 2 --max-time 60 \
                "https://iptv-epg.org/files/epg-${LOWER}.xml" \
-               --output "/tmp/guide-r2/iptv_epg_org_${COUNTRY}.xml"; then
-            python -m src.epg_pw_remap \
-              --input "/tmp/guide-r2/iptv_epg_org_${COUNTRY}.xml" \
-              --iptv-org-channels /tmp/guide-r2/channels.json \
-              --output-dir output/remap_iptv_epg_org
+               --output "/tmp/guide-r2/iptv_epg_org_${COUNTRY}.xml" && \
+             python -m src.epg_pw_remap \
+               --input "/tmp/guide-r2/iptv_epg_org_${COUNTRY}.xml" \
+               --iptv-org-channels /tmp/guide-r2/channels.json \
+               --output-dir output/remap_iptv_epg_org; then
+            :
           else
-            echo "iptv-epg.org has no guide for ${COUNTRY} -- skipping this source."
+            echo "iptv-epg.org has no usable guide for ${COUNTRY} -- skipping this source."
           fi
 
       - name: Fetch and remap epgshare01 guide (best-effort)
@@ -101,14 +107,15 @@ jobs:
           set -euo pipefail
           if curl --fail --location --retry 2 --max-time 60 \
                "https://epgshare01.online/epgshare01/epg_ripper_${COUNTRY}1.xml.gz" \
-               --output "/tmp/guide-r2/epgshare01_${COUNTRY}.xml.gz"; then
-            gunzip -c "/tmp/guide-r2/epgshare01_${COUNTRY}.xml.gz" > "/tmp/guide-r2/epgshare01_${COUNTRY}.xml"
-            python -m src.epg_pw_remap \
-              --input "/tmp/guide-r2/epgshare01_${COUNTRY}.xml" \
-              --iptv-org-channels /tmp/guide-r2/channels.json \
-              --output-dir output/remap_epgshare01
+               --output "/tmp/guide-r2/epgshare01_${COUNTRY}.xml.gz" && \
+             gunzip -c "/tmp/guide-r2/epgshare01_${COUNTRY}.xml.gz" > "/tmp/guide-r2/epgshare01_${COUNTRY}.xml" && \
+             python -m src.epg_pw_remap \
+               --input "/tmp/guide-r2/epgshare01_${COUNTRY}.xml" \
+               --iptv-org-channels /tmp/guide-r2/channels.json \
+               --output-dir output/remap_epgshare01; then
+            :
           else
-            echo "epgshare01 has no guide for ${COUNTRY} -- skipping this source."
+            echo "epgshare01 has no usable guide for ${COUNTRY} -- skipping this source."
           fi
 
       - name: Pick best source per country and build catalog
