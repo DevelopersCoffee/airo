@@ -24,8 +24,21 @@ class FlutterChromeCastController implements AiroCastController {
 
   final bool useProxy;
 
-  static const defaultReceiverApplicationId =
-      GoogleCastDiscoveryCriteria.kDefaultApplicationId;
+  /// The Cast receiver app this sender targets. Defaults to Google's
+  /// Default Media Receiver — the shipped behavior for single-channel
+  /// "Cast to TV", unchanged. `CAST_MULTIVIEW_RECEIVER_APP_ID` is a manual
+  /// dev/test-only override: the Cast SDK only supports one `CastContext`
+  /// (and therefore one receiver app id) per process, so exercising the
+  /// Cast MultiView receiver (app id F353F9C7, unpublished/testing-only —
+  /// see docs/superpowers/specs/2026-09-07-cast-multiview-remote-control-spec.md)
+  /// means temporarily replacing this one, not adding a second session.
+  /// Never set in a real build; pass
+  /// `--dart-define=CAST_MULTIVIEW_RECEIVER_APP_ID=F353F9C7` only when
+  /// manually testing against the registered test device.
+  static const defaultReceiverApplicationId = String.fromEnvironment(
+    'CAST_MULTIVIEW_RECEIVER_APP_ID',
+    defaultValue: GoogleCastDiscoveryCriteria.kDefaultApplicationId,
+  );
 
   final _discoveryController =
       StreamController<AiroCastDiscoveryState>.broadcast();
