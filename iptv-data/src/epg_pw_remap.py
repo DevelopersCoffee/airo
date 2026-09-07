@@ -240,6 +240,29 @@ def write_gzip_guides(
     return checksums
 
 
+def write_plain_guides(
+    remapped: dict[str, bytes],
+    output_directory: Path,
+    *,
+    countries: set[str] | None = None,
+) -> None:
+    """Write one ``<CC>.xml`` (uncompressed) file per entry in ``remapped``.
+
+    With ``countries=None`` (the default), every country present in
+    ``remapped`` is written -- including ``ALL`` -- which is the original
+    non-gzip CLI behavior and must stay unchanged for callers (e.g.
+    ``iptv_sanity.yml``, which remaps epg.pw's global export and wants every
+    country back). When ``countries`` is given, only those (upper-cased)
+    country codes are written, mirroring the filtering ``write_gzip_guides``
+    already does for the gzip path.
+    """
+    output_directory.mkdir(parents=True, exist_ok=True)
+    for country, xml_bytes in remapped.items():
+        if countries is not None and country not in countries:
+            continue
+        (output_directory / f"{country}.xml").write_bytes(xml_bytes)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
@@ -254,7 +277,11 @@ def main() -> None:
     parser.add_argument(
         "--countries",
         nargs="*",
-        help="When --gzip-guides is set, only write these country shards.",
+        help=(
+            "Only write these country shards, in either --gzip-guides or "
+            "plain mode. Omit to write every country present in the source "
+            "(the default in both modes)."
+        ),
     )
     args = parser.parse_args()
     if bool(args.channels) == bool(args.iptv_org_channels):
@@ -292,8 +319,8 @@ def main() -> None:
         )
         return
 
-    for country, xml_bytes in remapped.items():
-        (args.output_dir / f"{country}.xml").write_bytes(xml_bytes)
+    wanted = {code.upper() for code in args.countries} if args.countries else None
+    write_plain_guides(remapped, args.output_dir, countries=wanted)
 
 
 if __name__ == "__main__":
