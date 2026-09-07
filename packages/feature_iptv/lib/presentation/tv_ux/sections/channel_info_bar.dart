@@ -20,6 +20,7 @@ class ChannelInfoBar extends ConsumerWidget {
     this.onScreenshotTap,
     this.showShareAction = true,
     this.autofocus = false,
+    this.compact = false,
   });
 
   final IPTVChannel? channel;
@@ -54,9 +55,16 @@ class ChannelInfoBar extends ConsumerWidget {
   /// which optional icons are present.
   final bool autofocus;
 
+  /// Renders the dense two-line editorial header (name, then category ·
+  /// LIVE pill) used on the phone-width touch/cursor layout. False keeps
+  /// the original single-line, larger-text treatment this row has always
+  /// had on the ten-foot D-pad layout — shrinking that text to fit a
+  /// second line would cut against 10ft legibility at TV viewing distance,
+  /// and the D-pad flavor was never part of the editorial redesign request.
+  final bool compact;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final name = channel?.name ?? 'Choose a channel';
     final isFavorite = channel != null
         ? ref.watch(isChannelFavoriteProvider(channel!.id))
@@ -71,67 +79,20 @@ class ChannelInfoBar extends ConsumerWidget {
           ChannelLogo(
             logoUrl: channel?.effectiveLogoUrl,
             channelName: name,
-            size: 36,
+            size: compact ? 36 : 32,
             isAudioOnly: channel?.isAudioOnly ?? false,
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontSize: 15,
-                    height: 1.1,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (channel != null) ...[
-                  const SizedBox(height: 1),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (category != null && category.isNotEmpty) ...[
-                        Flexible(
-                          child: Text(
-                            category,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                              height: 1.1,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '·',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 11,
-                            height: 1.1,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                      const AiroBadge(
-                        label: 'LIVE',
-                        variant: AiroBadgeVariant.live,
-                        size: AiroBadgeSize.sm,
-                        pulse: false,
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
+            child: compact
+                ? _CompactHeader(
+                    name: name,
+                    category: category,
+                    showMeta: channel != null,
+                  )
+                : Text(name, overflow: TextOverflow.ellipsis),
           ),
+          if (!compact) const Chip(label: Text('LIVE')),
           if (onHelpTap != null)
             TvFocusable(
               autofocus: autofocus,
@@ -300,5 +261,79 @@ class ChannelInfoBar extends ConsumerWidget {
           const SnackBar(content: Text('Could not copy channel details.')),
         );
     }
+  }
+}
+
+/// Two-line editorial header (name, then category · LIVE pill) used only
+/// on the compact touch/cursor layout — see [ChannelInfoBar.compact].
+class _CompactHeader extends StatelessWidget {
+  const _CompactHeader({
+    required this.name,
+    required this.category,
+    required this.showMeta,
+  });
+
+  final String name;
+  final String? category;
+  final bool showMeta;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontSize: 15,
+            height: 1.1,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (showMeta) ...[
+          const SizedBox(height: 1),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (category != null && category!.isNotEmpty) ...[
+                Flexible(
+                  child: Text(
+                    category!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      height: 1.1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '·',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    height: 1.1,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              const AiroBadge(
+                label: 'LIVE',
+                variant: AiroBadgeVariant.live,
+                size: AiroBadgeSize.sm,
+                pulse: false,
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
   }
 }

@@ -177,7 +177,13 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       onFavoriteToggle: (channel) => favoriteToggler(channel.id),
       onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
     );
-    final infoBar = ChannelInfoBar(
+    // Built per-branch (compact vs ten-foot) below, not once here: the
+    // phone-width touch/cursor layout gets the dense editorial treatment
+    // (`compact: true`), the ten-foot D-pad layout keeps its original,
+    // larger-text presentation — shrinking text to fit a second line would
+    // cut against 10ft legibility, and that flavor was never in scope of
+    // the editorial redesign feedback this parameter was added for.
+    ChannelInfoBar infoBarFor(bool compact) => ChannelInfoBar(
       channel: widget.currentChannel,
       // Same grid-first signal `onHelpTap` keys off: no video stage means
       // the ten-foot layout, where `share_plus` is stubbed and the share
@@ -192,14 +198,16 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           ? null
           : () => _captureVideoFrame(context),
       autofocus: infoBarAutofocus,
+      compact: compact,
     );
     final hotbar = Hotbar(
       channels: widget.channels,
       onChannelSelected: widget.onChannelSelected,
     );
-    final filterRow = FilterRow(
+    FilterRow filterRowFor(bool compact) => FilterRow(
       dimensions: snapshot.dimensions,
       autofocus: filterRowAutofocus,
+      compact: compact,
     );
     final videoStage = _VideoStageWithActions(
       child: KeyedSubtree(
@@ -228,7 +236,11 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         final chrome = [
           const _OfflineBanner(),
           if (showChannel)
-            _ExplorerSection(label: 'LIVE', height: 60, child: infoBar),
+            _ExplorerSection(
+              label: 'LIVE',
+              height: 60,
+              child: infoBarFor(false),
+            ),
           if (showStats)
             _ExplorerSection(
               label: 'STATS',
@@ -238,15 +250,19 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           if (showHotbar)
             _ExplorerSection(label: 'HOTBAR', height: 56, child: hotbar),
           if (showFilter)
-            _ExplorerSection(label: 'FILTER', height: 48, child: filterRow),
+            _ExplorerSection(
+              label: 'FILTER',
+              height: 48,
+              child: filterRowFor(false),
+            ),
         ];
         final compactChrome = [
           const _OfflineBanner(),
-          if (showChannel) infoBar,
+          if (showChannel) infoBarFor(true),
           if (showStats)
             SizedBox(height: 48, child: PlaybackStatsBar(stats: playbackStats)),
           if (showHotbar) hotbar,
-          if (showFilter) filterRow,
+          if (showFilter) filterRowFor(true),
         ];
         if (constraints.maxWidth < 600) {
           return FocusTraversalGroup(
