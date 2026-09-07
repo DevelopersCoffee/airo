@@ -41,6 +41,68 @@ def programme_count_in_gzip(path: Path) -> int:
     return programme_count(gzip.decompress(path.read_bytes()))
 
 
+def channel_count(xml_bytes: bytes) -> int:
+    """Number of `<channel>` elements in an (uncompressed) XMLTV payload."""
+    return len(ET.fromstring(xml_bytes).findall("channel"))
+
+
+def select_best_sources(
+    *,
+    source_dirs: dict[str, Path],
+    output_dir: Path,
+    generated_at: str,
+) -> list[dict[str, object]]:
+    """For every country present in at least one of `source_dirs` (each a
+    directory of already-catalog-id-remapped `<CC>.xml` files -- run
+    through `epg_pw_remap.remap_epg_pw_xmltv` first, one directory per
+    source, `ALL.xml` ignored), copy the file from whichever source has
+    the most `<programme>` elements into `output_dir/<CC>.xml`, and return
+    one catalog entry per selected country, sorted by country code. A
+    directory that doesn't exist (that source's fetch step was skipped, or
+    it 404'd) contributes no candidates, never an error.
+
+    A country present in only one source directory always wins once it has
+    at least one programme -- there is no other candidate to lose to.
+    `iptv_guide_r2.yml` (the caller) has never guarded against regressing a
+    previously-published guide (unlike `select_countries_to_publish`, which
+    does, for the unrelated `iptv_sanity.yml` pipeline), so this function
+    doesn't either: every run republishes unconditionally.
+    """
+    countries: set[str] = set()
+    for directory in source_dirs.values():
+        if not directory.is_dir():
+            continue
+        countries.update(
+            path.stem for path in directory.glob("*.xml") if path.stem != "ALL"
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    catalog: list[dict[str, object]] = []
+    for country in sorted(countries):
+        scored: list[tuple[int, str, Path]] = []
+        for source_id, directory in source_dirs.items():
+            candidate = directory / f"{country}.xml"
+            count = programme_count_in_file(candidate)
+            if count > 0:
+                scored.append((count, source_id, candidate))
+        if not scored:
+            continue
+        scored.sort(key=lambda item: (item[0], item[1]))
+        programme_count, source_id, winning_path = scored[-1]
+        xml_bytes = winning_path.read_bytes()
+        (output_dir / f"{country}.xml").write_bytes(xml_bytes)
+        catalog.append(
+            {
+                "countryCode": country,
+                "sourceId": source_id,
+                "programmeCount": programme_count,
+                "channelCount": channel_count(xml_bytes),
+                "updatedAt": generated_at,
+            }
+        )
+    return catalog
+
+
 def select_countries_to_publish(
     *,
     remap_dir: Path,
@@ -138,6 +200,25 @@ def main() -> None:
     publish_all.add_argument("--output-directory", type=Path, required=True)
     publish_all.add_argument("--manifest", type=Path, required=True)
 
+    select_best = subparsers.add_parser(
+        "select-best-source",
+        help=(
+            "Pick the best-covered source per country across --source "
+            "directories, write the winners as plain <CC>.xml files into "
+            "--output-dir, and write --catalog-path as JSON."
+        ),
+    )
+    select_best.add_argument(
+        "--source",
+        action="append",
+        required=True,
+        metavar="NAME=DIR",
+        help="Repeatable. A source id and its remapped-xml directory.",
+    )
+    select_best.add_argument("--output-dir", type=Path, required=True)
+    select_best.add_argument("--catalog-path", type=Path, required=True)
+    select_best.add_argument("--generated-at", required=True)
+
     args = parser.parse_args()
     if args.command == "select-countries":
         selected = select_countries_to_publish(
@@ -147,6 +228,24 @@ def main() -> None:
         )
         for country in selected:
             print(country)
+    elif args.command == "select-best-source":
+        source_dirs: dict[str, Path] = {}
+        for item in args.source:
+            name, _, directory = item.partition("=")
+            if not name or not directory:
+                parser.error(f"--source must be NAME=DIR, got: {item}")
+            source_dirs[name] = Path(directory)
+        catalog = select_best_sources(
+            source_dirs=source_dirs,
+            output_dir=args.output_dir,
+            generated_at=args.generated_at,
+        )
+        args.catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        args.catalog_path.write_text(
+            json.dumps(catalog, indent=2) + "\n", encoding="utf-8"
+        )
+        for entry in catalog:
+            print(entry["countryCode"])
     else:
         checksum = publish_all_guide(
             all_xml_bytes=args.all_xml.read_bytes(),
