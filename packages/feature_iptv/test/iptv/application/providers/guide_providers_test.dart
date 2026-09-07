@@ -114,65 +114,72 @@ void main() {
     expect(start.second, 0);
   });
 
-  test('guideCategoryFilterProvider narrows guideFilteredChannelsProvider', () async {
-    const movies = IPTVChannel(
-      id: 'channel-movies',
-      name: 'Movie Channel',
-      streamUrl: 'https://example.com/movies.m3u8',
-      group: 'Movies',
-    );
-    final container = buildContainer(channels: const [channel, movies]);
-    addTearDown(container.dispose);
-    await container.read(iptvChannelsProvider.future);
+  test(
+    'guideCategoryFilterProvider narrows guideFilteredChannelsProvider',
+    () async {
+      const movies = IPTVChannel(
+        id: 'channel-movies',
+        name: 'Movie Channel',
+        streamUrl: 'https://example.com/movies.m3u8',
+        group: 'Movies',
+      );
+      final container = buildContainer(channels: const [channel, movies]);
+      addTearDown(container.dispose);
+      await container.read(iptvChannelsProvider.future);
 
-    container.read(guideCategoryFilterProvider.notifier).state = 'Movies';
+      container.read(guideCategoryFilterProvider.notifier).state = 'Movies';
 
-    expect(
-      container.read(guideFilteredChannelsProvider).map((c) => c.id),
-      ['channel-movies'],
-    );
-  });
+      expect(container.read(guideFilteredChannelsProvider).map((c) => c.id), [
+        'channel-movies',
+      ]);
+    },
+  );
 
-  test('guideAvailableCategoriesProvider lists every loaded category, sorted', () async {
-    const movies = IPTVChannel(
-      id: 'channel-movies',
-      name: 'Movie Channel',
-      streamUrl: 'https://example.com/movies.m3u8',
-      group: 'Movies',
-    );
-    final container = buildContainer(channels: const [channel, movies]);
-    addTearDown(container.dispose);
-    await container.read(iptvChannelsProvider.future);
+  test(
+    'guideAvailableCategoriesProvider lists every loaded category, sorted',
+    () async {
+      const movies = IPTVChannel(
+        id: 'channel-movies',
+        name: 'Movie Channel',
+        streamUrl: 'https://example.com/movies.m3u8',
+        group: 'Movies',
+      );
+      final container = buildContainer(channels: const [channel, movies]);
+      addTearDown(container.dispose);
+      await container.read(iptvChannelsProvider.future);
 
-    expect(container.read(guideAvailableCategoriesProvider), [
-      'Movies',
-      'News',
-    ]);
-  });
+      expect(container.read(guideAvailableCategoriesProvider), [
+        'Movies',
+        'News',
+      ]);
+    },
+  );
 
-  test('guideFavoritesOnlyProvider narrows guideFilteredChannelsProvider to favorites', () async {
-    const other = IPTVChannel(
-      id: 'channel-2',
-      name: 'Second Channel',
-      streamUrl: 'https://example.com/2.m3u8',
-      group: 'Sports',
-    );
-    final container = ProviderContainer(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        iptvChannelsProvider.overrideWith((ref) async => [channel, other]),
-        favoriteChannelIdsProvider.overrideWith((ref) async => {'channel-2'}),
-      ],
-    );
-    addTearDown(container.dispose);
-    await container.read(iptvChannelsProvider.future);
-    await container.read(favoriteChannelIdsProvider.future);
+  test(
+    'guideFavoritesOnlyProvider narrows guideFilteredChannelsProvider to favorites',
+    () async {
+      const other = IPTVChannel(
+        id: 'channel-2',
+        name: 'Second Channel',
+        streamUrl: 'https://example.com/2.m3u8',
+        group: 'Sports',
+      );
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => [channel, other]),
+          favoriteChannelIdsProvider.overrideWith((ref) async => {'channel-2'}),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(iptvChannelsProvider.future);
+      await container.read(favoriteChannelIdsProvider.future);
 
-    container.read(guideFavoritesOnlyProvider.notifier).state = true;
+      container.read(guideFavoritesOnlyProvider.notifier).state = true;
 
-    expect(
-      container.read(guideFilteredChannelsProvider).map((c) => c.id),
-      ['channel-2'],
-    );
-  });
+      expect(container.read(guideFilteredChannelsProvider).map((c) => c.id), [
+        'channel-2',
+      ]);
+    },
+  );
 }
