@@ -12,6 +12,7 @@ class FilterRow extends ConsumerWidget {
     super.key,
     required this.dimensions,
     this.autofocus = false,
+    this.compact = false,
   });
 
   final ChannelFilterDimensions dimensions;
@@ -19,6 +20,14 @@ class FilterRow extends ConsumerWidget {
   /// Seeds D-pad focus on the first (Search) chip when this is the topmost
   /// visible ten-foot chrome row.
   final bool autofocus;
+
+  /// Lighter inactive-chip weight for the phone-width touch/cursor layout,
+  /// so the active filter reads as the only prominent one. False keeps the
+  /// original, higher-contrast chip background this row has always had on
+  /// the ten-foot D-pad layout — legibility at TV viewing distance matters
+  /// more there than the phone-only "too many equal-weight pills" feedback
+  /// this flag was added for.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,6 +63,7 @@ class FilterRow extends ConsumerWidget {
             _showSearchOverlay(context, dimensions, notifier, filters.search),
         onClear: filters.search.isEmpty ? null : () => notifier.setSearch(''),
         autofocus: autofocus,
+        compact: compact,
       ),
       if (dimensions.categories.isNotEmpty)
         _FilterChip(
@@ -61,6 +71,7 @@ class FilterRow extends ConsumerWidget {
           label: filters.category ?? 'Category',
           active: filters.category != null,
           icon: Icons.category_outlined,
+          compact: compact,
           onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Category',
@@ -80,6 +91,7 @@ class FilterRow extends ConsumerWidget {
           label: countryLabel(filters.country),
           active: filters.country != null,
           icon: Icons.flag,
+          compact: compact,
           onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Country',
@@ -100,6 +112,7 @@ class FilterRow extends ConsumerWidget {
           label: languageLabel(filters.language),
           active: filters.language != null,
           icon: Icons.translate,
+          compact: compact,
           onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Language',
@@ -158,6 +171,7 @@ class FilterRow extends ConsumerWidget {
         onSelected: chip.onSelected,
         onClear: chip.onClear,
         expanded: true,
+        compact: chip.compact,
       );
     }
     return chip;
@@ -191,6 +205,7 @@ class _FilterChip extends StatelessWidget {
     this.onClear,
     this.expanded = false,
     this.autofocus = false,
+    this.compact = false,
   });
 
   final String label;
@@ -200,6 +215,7 @@ class _FilterChip extends StatelessWidget {
   final VoidCallback? onClear;
   final bool expanded;
   final bool autofocus;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +223,7 @@ class _FilterChip extends StatelessWidget {
     final scheme = theme.colorScheme;
     final background = active
         ? scheme.primaryContainer
-        : scheme.surfaceContainerHighest.withValues(alpha: 0.46);
+        : scheme.surfaceContainerHighest.withValues(alpha: compact ? 0.46 : 0.72);
     final foreground = active
         ? scheme.onPrimaryContainer
         : scheme.onSurfaceVariant;
