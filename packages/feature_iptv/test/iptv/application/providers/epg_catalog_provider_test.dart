@@ -69,6 +69,38 @@ void main() {
 
     expect(await container.read(epgCatalogProvider.future), isEmpty);
   });
+
+  test('degrades to an empty list on malformed JSON response', () async {
+    final container = ProviderContainer(
+      overrides: [
+        dioProvider.overrideWithValue(
+          Dio()..httpClientAdapter = _CatalogAdapter('not json', statusCode: 200),
+        ),
+        epgCatalogManifestUrlProvider.overrideWithValue(
+          'https://example.com/iptv-data/manifest.json',
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(await container.read(epgCatalogProvider.future), isEmpty);
+  });
+
+  test('degrades to an empty list on transport failure', () async {
+    final container = ProviderContainer(
+      overrides: [
+        dioProvider.overrideWithValue(
+          Dio()..httpClientAdapter = _ThrowingCatalogAdapter(),
+        ),
+        epgCatalogManifestUrlProvider.overrideWithValue(
+          'https://example.com/iptv-data/manifest.json',
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(await container.read(epgCatalogProvider.future), isEmpty);
+  });
 }
 
 class _CatalogAdapter implements HttpClientAdapter {
@@ -92,6 +124,20 @@ class _CatalogAdapter implements HttpClientAdapter {
         Headers.contentTypeHeader: ['application/json'],
       },
     );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _ThrowingCatalogAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    throw Exception('Connection failed');
   }
 
   @override
