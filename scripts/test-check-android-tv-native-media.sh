@@ -59,7 +59,7 @@ good_resource_keep="$TMP_DIR/good-resource-keep.xml"
 cat >"$good_resource_keep" <<'EOF'
 <resources
     xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/audio_service_*" />
+    tools:keep="@drawable/audio_service_*,@mipmap/ic_notification" />
 EOF
 
 bad_resource_keep="$TMP_DIR/bad-resource-keep.xml"
