@@ -30,6 +30,7 @@ import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
 import '../tv_ux/sections/ways_to_watch_dialog.dart';
+import 'cast_multiview_screen.dart';
 import '../tv_ux/tv_loading_screen.dart';
 import 'mobile_favorites_screen.dart';
 import 'shared_channel_import_screen.dart';
@@ -758,6 +759,13 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         if (!ref.read(isFullscreenModeProvider)) _toggleFullscreen();
       },
       onShowCast: _showCastSheet,
+      onShowCastMultiview: _showCastMultiviewScreen,
+    );
+  }
+
+  void _showCastMultiviewScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const CastMultiviewScreen()),
     );
   }
 
@@ -1114,6 +1122,7 @@ Future<void> _showWaysToWatchDialog({
   required VoidCallback onExitFullscreen,
   required VoidCallback onEnterFullscreen,
   required VoidCallback onShowCast,
+  required VoidCallback onShowCastMultiview,
 }) {
   return showDialog<void>(
     context: context,
@@ -1148,6 +1157,10 @@ Future<void> _showWaysToWatchDialog({
           onCast: () {
             Navigator.of(dialogContext).pop();
             onShowCast();
+          },
+          onCastMultiview: () {
+            Navigator.of(dialogContext).pop();
+            onShowCastMultiview();
           },
         );
       },
@@ -1406,6 +1419,13 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
         if (!ref.read(isFullscreenModeProvider)) _toggleFullscreen();
       },
       onShowCast: _showCastSheet,
+      onShowCastMultiview: _showCastMultiviewScreen,
+    );
+  }
+
+  void _showCastMultiviewScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const CastMultiviewScreen()),
     );
   }
 

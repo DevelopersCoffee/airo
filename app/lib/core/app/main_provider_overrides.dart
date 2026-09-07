@@ -4,6 +4,7 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/iptv/cast_multiview_sender_provider_override.dart';
 import '../../features/iptv/iptv_cast_provider_override.dart';
 import '../../features/settings/application/ai_model_management.dart';
 import '../providers/navigation_provider.dart';
@@ -29,6 +30,7 @@ List<Override> buildMainProviderOverrides({
       epgReminderGateway,
     ),
     realIptvCastControllerOverride(),
+    realCastMultiviewSenderOverride(),
     // Navigation chrome follows composition. R05 composes Mind out of
     // shared-surface builds (web), and the router then mounts a placeholder in
     // that branch — showing the Assistant destination anyway would advertise a

@@ -178,7 +178,7 @@ void main() {
   );
 
   testWidgets(
-    'LEFT from Search, Name, and the first channel enters the TV rail',
+    'LEFT from Search, Sort, and the first channel enters the TV rail',
     (tester) async {
       DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
       addTearDown(DeviceFormFactorDetector.clearCache);
@@ -199,7 +199,7 @@ void main() {
       final railRect = tester.getRect(find.byKey(const Key('tv-sidebar-nav')));
       final leadingControls = <String, Finder>{
         'Search': find.byKey(const ValueKey('filter-chip-search')),
-        'Name': find.byKey(const ValueKey('channel-sort-name')),
+        'Sort': find.byKey(const ValueKey('channel-sort-trigger')),
         'first channel': find.byKey(const ValueKey('channel-tile-news')),
       };
 

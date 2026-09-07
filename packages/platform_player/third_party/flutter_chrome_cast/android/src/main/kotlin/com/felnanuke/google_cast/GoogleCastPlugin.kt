@@ -66,7 +66,13 @@ class GoogleCastPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Applic
      * It's automatically initialized and managed by this main plugin class.
      */
     private val castContextMethodChannel = CastContextMethodChannel()
-    
+
+    /**
+     * Custom message channel for app-defined Cast namespaces (e.g. Cast
+     * MultiView remote control) — see [CastCustomMessageMethodChannel].
+     */
+    private val castCustomMessageMethodChannel = CastCustomMessageMethodChannel()
+
     /**
      * Reference to the current activity for lifecycle management
      */
@@ -97,6 +103,7 @@ class GoogleCastPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Applic
         channel.setMethodCallHandler(this)
         applicationContext = flutterPluginBinding.applicationContext
         castContextMethodChannel.onAttachedToEngine(flutterPluginBinding)
+        castCustomMessageMethodChannel.onAttachedToEngine(flutterPluginBinding)
     }
 
     /**
@@ -139,6 +146,7 @@ class GoogleCastPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Applic
      */
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+        castCustomMessageMethodChannel.onDetachedFromEngine(binding)
     }
     
     // MARK: - ActivityAware Implementation
