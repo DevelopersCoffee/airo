@@ -76,6 +76,11 @@ class MultiviewController extends StateNotifier<MultiviewState> {
   bool _primaryPausedByMultiview = false;
   bool _disposed = false;
 
+  /// `StateNotifier.state` is protected — this is the public read a
+  /// non-widget listener (e.g. `CastMultiviewReceiverBridge`) needs for an
+  /// eager snapshot instead of waiting for the next [stream] event.
+  MultiviewState get currentState => state;
+
   Future<MultiviewToggleResult> toggle(IPTVChannel channel) async {
     if (_pool.state.contains(channel.id)) {
       await _pool.remove(channel.id);
