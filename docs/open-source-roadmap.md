@@ -63,5 +63,21 @@
 * Execute the technical content strategy (GitHub releases, technical articles, YouTube deep dives, community discussions).
 * Engage open-source contributors and ingest community PRs.
 
-### Phase 8 — Continuous Iteration
-* Repeat lifecycle for Pilot #2 (`run_off_main`), Pilot #3 (`iptv_org_api`), and Pilot #4 (`airo_core` Rust crate).
+### Phase 8 — Completed Pilots & Expansion Matrix
+
+| Candidate Package | Tech Stack | GitHub Repository | Migration Record | Status |
+|---|---|---|---|---|
+| **`dpad_qualification`** | Flutter / TV | [DevelopersCoffee/dpad_qualification](https://github.com/DevelopersCoffee/dpad_qualification) | [`dpad_qualification-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/dpad_qualification-migration.md) | ✅ Monorepo Migrated |
+| **`run_off_main`** | Dart / Isolate | [DevelopersCoffee/run_off_main](https://github.com/DevelopersCoffee/run_off_main) | [`run_off_main-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/run_off_main-migration.md) | ✅ Monorepo Migrated |
+| **`iptv_org_api`** | Dart / API | [DevelopersCoffee/iptv_org_api](https://github.com/DevelopersCoffee/iptv_org_api) | [`iptv_org_api-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/iptv_org_api-migration.md) | ✅ Monorepo Migrated |
+| **`airo_core`** | Rust / C-FFI | [DevelopersCoffee/airo_core](https://github.com/DevelopersCoffee/airo_core) | [`airo_core-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/airo_core-migration.md) | ✅ Extracted & Released |
+
+---
+
+## Next Steps
+
+1. **Tag Official v1.0.0 Releases**:
+   - Push git release tags (`v1.0.0`) on `DevelopersCoffee/dpad_qualification`, `DevelopersCoffee/run_off_main`, `DevelopersCoffee/iptv_org_api`, and `DevelopersCoffee/airo_core`.
+2. **Execute Developer Content & Distribution Strategy**:
+   - Produce YouTube tutorials, dev.to/Medium articles, and Twitter/X technical threads demonstrating how to use `dpad_qualification`, `run_off_main`, `iptv_org_api`, and `airo_core`.
+
