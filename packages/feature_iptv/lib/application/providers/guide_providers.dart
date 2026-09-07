@@ -304,6 +304,28 @@ final nowTickerProvider = StreamProvider<DateTime>((ref) async* {
 /// search state) — navigating to the guide must not perturb that screen.
 final guideSearchQueryProvider = StateProvider<String>((ref) => '');
 
+/// Guide-local category filter, independent of the main browse screen's
+/// `channelFiltersProvider.category` — same isolation rule as
+/// [guideSearchQueryProvider] (see [applyChannelScope]'s doc comment: search
+/// and category are each surface's own concern).
+final guideCategoryFilterProvider = StateProvider<String?>((ref) => null);
+
+/// Guide-local favorites-only toggle.
+final guideFavoritesOnlyProvider = StateProvider<bool>((ref) => false);
+
+/// Category labels present across every currently-loaded channel, sorted
+/// for a stable chip order. Computed from the full channel list (not the
+/// already-filtered one) so a selected chip never disappears because it
+/// narrowed itself out of its own source list.
+final guideAvailableCategoriesProvider = Provider<List<String>>((ref) {
+  final channels = ref.watch(iptvChannelsProvider).value ?? const [];
+  final labels = <String>{};
+  for (final channel in channels) {
+    labels.addAll(channelCategoryLabels(channel.group));
+  }
+  return labels.toList()..sort();
+});
+
 /// Reuses [channelSearchIndexProvider]/[AiroChannelSearchIndex] — the same
 /// index/algorithm the main channel list uses (CV-006), per this issue's
 /// "do not build a second search stack" constraint.
@@ -315,13 +337,36 @@ final guideFilteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
       ref.watch(hiddenGroupIdsProvider).value ?? const <String>{};
   if (index == null) return const [];
 
-  final channels = applyChannelScope(
+  var channels = applyChannelScope(
     channels: index.filterAndSort(query: query),
     filters: filters,
     metadataByChannelId: const {},
   );
-  if (hiddenGroupIds.isEmpty) return channels;
-  return channels
-      .where((channel) => !hiddenGroupIds.contains(channel.group))
-      .toList(growable: false);
+  if (hiddenGroupIds.isNotEmpty) {
+    channels = channels
+        .where((channel) => !hiddenGroupIds.contains(channel.group))
+        .toList(growable: false);
+  }
+
+  final category = ref.watch(guideCategoryFilterProvider);
+  if (category != null) {
+    final key = categoryFilterKey(category);
+    channels = channels
+        .where(
+          (channel) => channelCategoryLabels(
+            channel.group,
+          ).map(categoryFilterKey).contains(key),
+        )
+        .toList(growable: false);
+  }
+
+  if (ref.watch(guideFavoritesOnlyProvider)) {
+    final favoriteIds =
+        ref.watch(favoriteChannelIdsProvider).value ?? const <String>{};
+    channels = channels
+        .where((channel) => favoriteIds.contains(channel.id))
+        .toList(growable: false);
+  }
+
+  return channels;
 });
