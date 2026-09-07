@@ -35,3 +35,4 @@ export "src/services/playback_session_tracker.dart";
 export "src/services/streaming_session_metrics_collector.dart";
 export "src/services/unavailable_playback_engine.dart";
 export "src/services/unavailable_cast_controller.dart";
+export "src/services/unavailable_multiview_cast_transport.dart";
