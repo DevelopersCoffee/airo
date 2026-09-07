@@ -46,6 +46,7 @@ void main() {
     CompactEpgProgram? guideProgram,
     RicherContextProvider? richerContextProvider,
     bool remindersAvailable = false,
+    Set<String>? favoriteChannelIds,
   }) async {
     if (richerContextProvider != null) {
       SharedPreferences.setMockInitialValues({
@@ -75,6 +76,10 @@ void main() {
             ),
           ],
           iptvChannelsProvider.overrideWith((ref) async => channels),
+          if (favoriteChannelIds != null)
+            favoriteChannelIdsProvider.overrideWith(
+              (ref) async => favoriteChannelIds,
+            ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -318,6 +323,40 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'sports');
       await tester.pump();
+
+      expect(find.text('Stadium Sports'), findsOneWidget);
+      expect(find.text('City News Live'), findsNothing);
+    },
+    experimentalLeakTesting: LeakTesting.settings,
+  );
+
+  testWidgets(
+    'category chip narrows the visible channels',
+    (tester) async {
+      await pumpScreen(tester);
+
+      expect(find.text('City News Live'), findsOneWidget);
+      expect(find.text('Stadium Sports'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Sports'));
+      await tester.pump();
+
+      expect(find.text('Stadium Sports'), findsOneWidget);
+      expect(find.text('City News Live'), findsNothing);
+    },
+    experimentalLeakTesting: LeakTesting.settings,
+  );
+
+  testWidgets(
+    'favorites chip narrows the visible channels to favorites',
+    (tester) async {
+      await pumpScreen(tester, favoriteChannelIds: {sportsChannel.id});
+
+      expect(find.text('City News Live'), findsOneWidget);
+      expect(find.text('Stadium Sports'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Favorites'));
+      await tester.pumpAndSettle();
 
       expect(find.text('Stadium Sports'), findsOneWidget);
       expect(find.text('City News Live'), findsNothing);
