@@ -56,23 +56,82 @@ class ChannelInfoBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final name = channel?.name ?? 'Choose a channel';
     final isFavorite = channel != null
         ? ref.watch(isChannelFavoriteProvider(channel!.id))
         : false;
+    final category = channel != null
+        ? (categoryDisplayLabel(channel!.group) ?? channel!.group)
+        : null;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
           ChannelLogo(
             logoUrl: channel?.effectiveLogoUrl,
             channelName: name,
-            size: 32,
+            size: 36,
             isAudioOnly: channel?.isAudioOnly ?? false,
           ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(name, overflow: TextOverflow.ellipsis)),
-          const Chip(label: Text('LIVE')),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontSize: 15,
+                    height: 1.1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (channel != null) ...[
+                  const SizedBox(height: 1),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (category != null && category.isNotEmpty) ...[
+                        Flexible(
+                          child: Text(
+                            category,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              height: 1.1,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '·',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            height: 1.1,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      const AiroBadge(
+                        label: 'LIVE',
+                        variant: AiroBadgeVariant.live,
+                        size: AiroBadgeSize.sm,
+                        pulse: false,
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
           if (onHelpTap != null)
             TvFocusable(
               autofocus: autofocus,

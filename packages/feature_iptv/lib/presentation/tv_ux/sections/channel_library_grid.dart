@@ -13,6 +13,14 @@ const _gridSpacing = 14.0;
 const _preloadRowsBeforeViewport = 2;
 const _preloadRowsAfterViewport = 6;
 
+/// Below this width the multi-column tile grid (built for D-pad/TV browsing)
+/// gives way to a single-column horizontal card list — the premium
+/// editorial layout touch users expect from an OTT app, and the same
+/// breakpoint [AiroTvShell] already uses to switch into phone chrome.
+const _phoneBreakpoint = 600.0;
+const _horizontalCardHeight = 84.0;
+const _horizontalRowSpacing = 10.0;
+
 /// Card-grid channel browser — replaces the spreadsheet-style
 /// [ChannelTable]. Matches the "LIBRARY" screen of the AiroTV D-pad design
 /// (Claude Design project 02b0b312): tiles instead of rows, sort collapsed
@@ -60,6 +68,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
   late final ScrollController _scrollController;
   String _lastVisibleSignature = '';
   int _lastColumnCount = 1;
+  double _lastRowExtent = _cardHeight;
 
   @override
   void initState() {
@@ -101,7 +110,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
     final columns = _lastColumnCount;
     final viewportHeight = _scrollController.position.viewportDimension;
     final offset = _scrollController.offset;
-    final rowExtent = _cardHeight + _gridSpacing;
+    final rowExtent = _lastRowExtent + _gridSpacing;
     final firstRow = (offset / rowExtent).floor().clamp(0, 1 << 30);
     final visibleRows = (viewportHeight / rowExtent).ceil() + 1;
     final firstIndex = ((firstRow - _preloadRowsBeforeViewport) * columns)
@@ -123,9 +132,13 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = _columnCountFor(constraints.maxWidth);
-        if (columns != _lastColumnCount) {
+        final isPhone = constraints.maxWidth < _phoneBreakpoint;
+        final columns = isPhone ? 1 : _columnCountFor(constraints.maxWidth);
+        final rowExtent = isPhone ? _horizontalCardHeight : _cardHeight;
+        final rowSpacing = isPhone ? _horizontalRowSpacing : _gridSpacing;
+        if (columns != _lastColumnCount || rowExtent != _lastRowExtent) {
           _lastColumnCount = columns;
+          _lastRowExtent = rowExtent;
           WidgetsBinding.instance.addPostFrameCallback(
             (_) => _reportVisibleChannels(force: true),
           );
@@ -151,13 +164,13 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, _gridSpacing),
+                padding: EdgeInsets.fromLTRB(12, 4, 12, rowSpacing),
                 sliver: SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: columns,
-                    mainAxisExtent: _cardHeight,
+                    mainAxisExtent: rowExtent,
                     crossAxisSpacing: _gridSpacing,
-                    mainAxisSpacing: _gridSpacing,
+                    mainAxisSpacing: rowSpacing,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
@@ -179,6 +192,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                             channel.id,
                           ),
                           onFavoriteToggle: widget.onFavoriteToggle,
+                          horizontal: isPhone,
                         ),
                       );
                     },
@@ -377,6 +391,7 @@ class _ChannelTile extends StatefulWidget {
     this.onMultiviewToggle,
     required this.isFavorite,
     this.onFavoriteToggle,
+    this.horizontal = false,
   });
 
   final IPTVChannel channel;
@@ -388,6 +403,11 @@ class _ChannelTile extends StatefulWidget {
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
   final bool isFavorite;
   final ValueChanged<IPTVChannel>? onFavoriteToggle;
+
+  /// Renders the premium horizontal media card (logo left, name/metadata
+  /// right, LIVE trailing) used below the phone breakpoint, instead of the
+  /// vertical poster tile the D-pad/TV grid uses.
+  final bool horizontal;
 
   @override
   State<_ChannelTile> createState() => _ChannelTileState();
@@ -467,24 +487,43 @@ class _ChannelTileState extends State<_ChannelTile> {
     );
     final subtitle = _subtitleFor(country, languages);
 
+    final card = widget.horizontal
+        ? _HorizontalMediaCard(
+            name: widget.channel.name,
+            subtitle: subtitle,
+            logoUrl: widget.channel.effectiveLogoUrl,
+            initials: _initialsFor(widget.channel.name),
+            isLive: !widget.channel.isAudioOnly,
+            onTap: widget.onSelected == null ? null : _selectNow,
+            onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
+            onFocus: _scheduleFocusPlay,
+            onUnfocus: _cancelFocusPlay,
+          )
+        : MediaCard(
+            name: widget.channel.name,
+            subtitle: subtitle,
+            logoUrl: widget.channel.effectiveLogoUrl,
+            initials: _initialsFor(widget.channel.name),
+            onTap: widget.onSelected == null ? null : _selectNow,
+            onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
+            onFocus: _scheduleFocusPlay,
+            onUnfocus: _cancelFocusPlay,
+          );
+
     return Stack(
       children: [
-        MediaCard(
-          name: widget.channel.name,
-          subtitle: subtitle,
-          logoUrl: widget.channel.effectiveLogoUrl,
-          initials: _initialsFor(widget.channel.name),
-          onTap: widget.onSelected == null ? null : _selectNow,
-          onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
-          onFocus: _scheduleFocusPlay,
-          onUnfocus: _cancelFocusPlay,
-        ),
+        card,
         Positioned(
           top: 7,
           left: 7,
           child: _AvailabilityDot(availability: widget.availability),
         ),
-        if (widget.onMultiviewToggle != null)
+        // Hidden on the horizontal phone card: its LIVE badge already sits
+        // in this corner, and stacking a second icon on top of it read as
+        // visual clutter (design feedback: reduce elements competing for
+        // attention). Still reachable there via the long-press actions
+        // sheet built above.
+        if (widget.onMultiviewToggle != null && !widget.horizontal)
           Positioned(
             top: 4,
             right: 4,
@@ -545,6 +584,133 @@ class _ChannelTileState extends State<_ChannelTile> {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return '?';
     return trimmed.substring(0, 1).toUpperCase();
+  }
+}
+
+/// Full-width editorial card for the phone channel list: a square logo,
+/// name + metadata, and a trailing LIVE badge — replacing the vertical
+/// poster tile below the phone breakpoint (design feedback: the grid tile
+/// read as "a lot of unused dark space" around a small centered logo).
+class _HorizontalMediaCard extends StatelessWidget {
+  const _HorizontalMediaCard({
+    required this.name,
+    required this.initials,
+    this.subtitle,
+    this.logoUrl,
+    this.isLive = false,
+    this.onTap,
+    this.onLongPress,
+    this.onFocus,
+    this.onUnfocus,
+  });
+
+  final String name;
+  final String initials;
+  final String? subtitle;
+  final String? logoUrl;
+  final bool isLive;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onFocus;
+  final VoidCallback? onUnfocus;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return TvFocusable(
+      onSelect: onTap,
+      onSecondaryAction: onLongPress,
+      onFocus: onFocus,
+      onUnfocus: onUnfocus,
+      borderRadius: 16,
+      semanticLabel: isLive ? '$name, live' : name,
+      semanticHint: 'Press OK to play channel',
+      semanticButton: true,
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: Container(
+                    color: colorScheme.surfaceContainerHighest,
+                    child: logoUrl != null && logoUrl!.isNotEmpty
+                        ? Image.network(
+                            logoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                _initialsBox(colorScheme),
+                          )
+                        : _initialsBox(colorScheme),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (isLive) ...[
+                const SizedBox(width: 8),
+                const AiroBadge.live(pulse: false),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _initialsBox(ColorScheme colorScheme) {
+    return Center(
+      child: Text(
+        initials,
+        style: TextStyle(
+          fontSize: 19,
+          fontWeight: FontWeight.w800,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
   }
 }
 

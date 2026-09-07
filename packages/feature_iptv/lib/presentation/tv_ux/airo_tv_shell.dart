@@ -252,7 +252,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           return FocusTraversalGroup(
             child: Column(
               children: [
-                if (widget.showVideoStage) Flexible(flex: 3, child: videoStage),
+                if (widget.showVideoStage)
+                  Flexible(flex: 3, child: _HeroVideoFrame(child: videoStage)),
                 ...compactChrome,
                 if (showPlaylist) Expanded(flex: 4, child: table),
               ],
@@ -582,6 +583,32 @@ class _StageAction extends StatelessWidget {
 
 bool? _countryPromptCompleted(AsyncValue<bool> prompt) {
   return prompt.maybeWhen(data: (value) => value, orElse: () => null);
+}
+
+/// Frames the phone-layout video stage as a rounded, elevated card instead of
+/// bare full-bleed content: without this the player read as a rectangle
+/// floating in empty page space, with no visual relationship to the chrome
+/// around it (design feedback: "make the video player the hero").
+class _HeroVideoFrame extends StatelessWidget {
+  const _HeroVideoFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white12),
+          borderRadius: BorderRadius.circular(AiroSpacing.radiusLg),
+        ),
+        child: child,
+      ),
+    );
+  }
 }
 
 class _ExplorerSection extends StatelessWidget {
