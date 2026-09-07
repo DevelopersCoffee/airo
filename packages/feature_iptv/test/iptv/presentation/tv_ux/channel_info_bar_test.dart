@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/application/channel_share.dart';
 import 'package:feature_iptv/application/iptv_deep_link.dart';
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
@@ -53,6 +54,62 @@ void main() {
 
       expect(preferences.getStringList('iptv_favorite_channel_ids'), isEmpty);
       expect(find.byTooltip('Favorite'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'compact defaults to false, keeping the original single-line ten-foot header',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(body: ChannelInfoBar(channel: channel)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Original ten-foot presentation: a plain Chip carries the LIVE
+      // label, not the compact editorial AiroBadge pill.
+      expect(find.byType(Chip), findsOneWidget);
+      expect(find.widgetWithText(Chip, 'LIVE'), findsOneWidget);
+      expect(find.byType(AiroBadge), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'compact: true renders the two-line editorial header instead of the Chip',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: ChannelInfoBar(channel: channel, compact: true),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Chip), findsNothing);
+      expect(find.byType(AiroBadge), findsOneWidget);
+      expect(find.text('Example Channel'), findsOneWidget);
     },
   );
 

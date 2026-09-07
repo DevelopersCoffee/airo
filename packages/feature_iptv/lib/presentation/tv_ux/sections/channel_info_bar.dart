@@ -329,6 +329,7 @@ class _CompactHeader extends StatelessWidget {
                 variant: AiroBadgeVariant.live,
                 size: AiroBadgeSize.sm,
                 pulse: false,
+                borderRadius: AiroSpacing.radiusSm,
               ),
             ],
           ),

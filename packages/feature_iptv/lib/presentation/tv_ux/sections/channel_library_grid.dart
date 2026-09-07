@@ -691,7 +691,10 @@ class _HorizontalMediaCard extends StatelessWidget {
               ),
               if (isLive) ...[
                 const SizedBox(width: 8),
-                const AiroBadge.live(pulse: false),
+                const AiroBadge.live(
+                  pulse: false,
+                  borderRadius: AiroSpacing.radiusSm,
+                ),
               ],
             ],
           ),
