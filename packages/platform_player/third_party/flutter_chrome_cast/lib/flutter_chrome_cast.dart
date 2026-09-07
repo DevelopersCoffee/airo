@@ -31,6 +31,7 @@ library flutter_chrome_cast;
 
 // Core functionality
 export 'cast_context.dart';
+export 'custom_message.dart';
 export 'discovery.dart';
 export 'session.dart';
 export 'media.dart';

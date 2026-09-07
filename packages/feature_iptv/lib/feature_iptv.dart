@@ -13,6 +13,7 @@ export "application/providers/iptv_org_api_providers.dart";
 export "application/providers/last_channel_provider.dart";
 export "application/providers/rails_provider.dart";
 export "application/providers/iptv_cast_providers.dart";
+export "application/providers/cast_multiview_sender_provider.dart";
 export "application/providers/iptv_cast_prompt_providers.dart";
 export "application/iptv_deep_link.dart";
 export "application/channel_share.dart";
