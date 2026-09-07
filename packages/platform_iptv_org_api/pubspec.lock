@@ -65,13 +65,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
-  core_workers:
-    dependency: "direct main"
-    description:
-      path: "../core_workers"
-      relative: true
-    source: path
-    version: "0.1.0"
   coverage:
     dependency: transitive
     description:
@@ -136,6 +129,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
+  iptv_org_api:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: main
+      resolved-ref: "3886771e84b9b624e015acd30d7dfeef3467105e"
+      url: "https://github.com/DevelopersCoffee/iptv_org_api.git"
+    source: git
+    version: "1.0.0"
   lints:
     dependency: "direct dev"
     description:
@@ -216,6 +218,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  run_off_main:
+    dependency: transitive
+    description:
+      path: "."
+      ref: main
+      resolved-ref: "5231c1b9cf44b2f1f129840cd2fa0b29a7e44f2e"
+      url: "https://github.com/DevelopersCoffee/run_off_main.git"
+    source: git
+    version: "1.0.0"
   shelf:
     dependency: transitive
     description:
