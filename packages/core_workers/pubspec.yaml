@@ -6,6 +6,12 @@ publish_to: none
 environment:
   sdk: ^3.12.2
 
+dependencies:
+  run_off_main:
+    git:
+      url: https://github.com/DevelopersCoffee/run_off_main.git
+      ref: main
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
