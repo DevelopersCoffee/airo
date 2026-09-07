@@ -21,6 +21,12 @@ import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+#: Matches `epg_pw_remap._UNKNOWN_COUNTRY` -- the bucket a remap directory's
+#: `ZZ.xml` uses for a catalog channel with no (or an unrecognized) country.
+#: `select_best_sources` must never publish a `ZZ` catalog row: it isn't a
+#: real country and the workflow never gzips/uploads a `guide_ZZ.xml.gz`.
+_UNKNOWN_COUNTRY = "ZZ"
+
 
 def programme_count(xml_bytes: bytes) -> int:
     """Number of `<programme>` elements in an (uncompressed) XMLTV payload."""
@@ -55,7 +61,9 @@ def select_best_sources(
     """For every country present in at least one of `source_dirs` (each a
     directory of already-catalog-id-remapped `<CC>.xml` files -- run
     through `epg_pw_remap.remap_epg_pw_xmltv` first, one directory per
-    source, `ALL.xml` ignored), copy the file from whichever source has
+    source, `ALL.xml` and `ZZ.xml` ignored -- `ZZ` is the no-country
+    bucket, never a real publishable country), copy the file from whichever
+    source has
     the most `<programme>` elements into `output_dir/<CC>.xml`, and return
     one catalog entry per selected country, sorted by country code. A
     directory that doesn't exist (that source's fetch step was skipped, or
@@ -73,7 +81,9 @@ def select_best_sources(
         if not directory.is_dir():
             continue
         countries.update(
-            path.stem for path in directory.glob("*.xml") if path.stem != "ALL"
+            path.stem
+            for path in directory.glob("*.xml")
+            if path.stem not in ("ALL", _UNKNOWN_COUNTRY)
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -88,14 +98,14 @@ def select_best_sources(
         if not scored:
             continue
         scored.sort(key=lambda item: (item[0], item[1]))
-        programme_count, source_id, winning_path = scored[-1]
+        winning_programme_count, source_id, winning_path = scored[-1]
         xml_bytes = winning_path.read_bytes()
         (output_dir / f"{country}.xml").write_bytes(xml_bytes)
         catalog.append(
             {
                 "countryCode": country,
                 "sourceId": source_id,
-                "programmeCount": programme_count,
+                "programmeCount": winning_programme_count,
                 "channelCount": channel_count(xml_bytes),
                 "updatedAt": generated_at,
             }

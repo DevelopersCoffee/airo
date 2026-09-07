@@ -74,7 +74,8 @@ jobs:
              python -m src.epg_pw_remap \
                --input "/tmp/guide-r2/epg_pw_${COUNTRY}.xml" \
                --iptv-org-channels /tmp/guide-r2/channels.json \
-               --output-dir output/remap_epg_pw; then
+               --output-dir output/remap_epg_pw \
+               --countries "$COUNTRY"; then
             :
           else
             echo "epg.pw has no usable guide for ${COUNTRY} -- skipping this source."
@@ -93,7 +94,8 @@ jobs:
              python -m src.epg_pw_remap \
                --input "/tmp/guide-r2/iptv_epg_org_${COUNTRY}.xml" \
                --iptv-org-channels /tmp/guide-r2/channels.json \
-               --output-dir output/remap_iptv_epg_org; then
+               --output-dir output/remap_iptv_epg_org \
+               --countries "$COUNTRY"; then
             :
           else
             echo "iptv-epg.org has no usable guide for ${COUNTRY} -- skipping this source."
@@ -112,7 +114,8 @@ jobs:
              python -m src.epg_pw_remap \
                --input "/tmp/guide-r2/epgshare01_${COUNTRY}.xml" \
                --iptv-org-channels /tmp/guide-r2/channels.json \
-               --output-dir output/remap_epgshare01; then
+               --output-dir output/remap_epgshare01 \
+               --countries "$COUNTRY"; then
             :
           else
             echo "epgshare01 has no usable guide for ${COUNTRY} -- skipping this source."

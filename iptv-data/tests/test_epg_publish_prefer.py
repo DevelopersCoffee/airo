@@ -215,3 +215,23 @@ def test_select_best_sources_ignores_all_xml(tmp_path: Path) -> None:
 
     assert [entry["countryCode"] for entry in catalog] == ["IN"]
     assert not (output_dir / "ALL.xml").exists()
+
+
+def test_select_best_sources_ignores_zz_xml(tmp_path: Path) -> None:
+    epg_pw = tmp_path / "epg_pw"
+    epg_pw.mkdir()
+    (epg_pw / "IN.xml").write_bytes(_xml("in", 1))
+    # A ZZ shard can leak in if an upstream fetch/remap step ever bypasses
+    # the --countries filter (see epg_pw_remap.py); select_best_sources must
+    # never publish it as a catalog "country" regardless of how it got here.
+    (epg_pw / "ZZ.xml").write_bytes(_xml("zz", 1))
+    output_dir = tmp_path / "best"
+
+    catalog = select_best_sources(
+        source_dirs={"epg_pw": epg_pw},
+        output_dir=output_dir,
+        generated_at="2026-09-07T00:00:00Z",
+    )
+
+    assert [entry["countryCode"] for entry in catalog] == ["IN"]
+    assert not (output_dir / "ZZ.xml").exists()
