@@ -207,7 +207,7 @@ class _FilterChip extends StatelessWidget {
     final scheme = theme.colorScheme;
     final background = active
         ? scheme.primaryContainer
-        : scheme.surfaceContainerHighest.withValues(alpha: 0.72);
+        : scheme.surfaceContainerHighest.withValues(alpha: 0.46);
     final foreground = active
         ? scheme.onPrimaryContainer
         : scheme.onSurfaceVariant;
