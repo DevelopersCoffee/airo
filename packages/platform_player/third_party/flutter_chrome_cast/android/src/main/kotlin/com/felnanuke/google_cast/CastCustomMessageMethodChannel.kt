@@ -74,11 +74,11 @@ class CastCustomMessageMethodChannel : FlutterPlugin, MethodChannel.MethodCallHa
             return
         }
         try {
+            // CastSession.sendMessage is synchronous — it either returns
+            // having handed the message to the SDK's outgoing queue, or
+            // throws. It does not report whether the receiver acted on it.
             session.sendMessage(namespace, message)
-                .addOnSuccessListener { result.success(true) }
-                .addOnFailureListener { e ->
-                    result.error("SEND_FAILED", e.message, null)
-                }
+            result.success(true)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to send custom Cast message", e)
             result.error("SEND_FAILED", e.message, null)
