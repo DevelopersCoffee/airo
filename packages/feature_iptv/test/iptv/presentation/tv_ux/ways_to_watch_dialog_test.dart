@@ -12,6 +12,7 @@ void main() {
     VoidCallback? onFullScreen,
     VoidCallback? onPictureInPicture,
     VoidCallback? onCast,
+    VoidCallback? onCastMultiview,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -23,6 +24,7 @@ void main() {
             onFullScreen: onFullScreen ?? () {},
             onPictureInPicture: onPictureInPicture ?? () {},
             onCast: onCast ?? () {},
+            onCastMultiview: onCastMultiview ?? () {},
           ),
         ),
       ),
@@ -91,6 +93,25 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('ways-to-watch-cast')));
     expect(castCount, 0);
   });
+
+  testWidgets(
+    'Cast MultiView row always fires regardless of cast device availability',
+    (tester) async {
+      var multiviewCount = 0;
+      await pumpDialog(
+        tester,
+        pictureInPictureSupported: false,
+        castAvailable: false,
+        onCastMultiview: () => multiviewCount++,
+      );
+
+      expect(find.text('Cast MultiView'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('ways-to-watch-cast-multiview')),
+      );
+      expect(multiviewCount, 1);
+    },
+  );
 
   testWidgets('D-pad traversal reaches and activates enabled options', (
     tester,

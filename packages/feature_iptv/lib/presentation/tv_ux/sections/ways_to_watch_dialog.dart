@@ -11,6 +11,7 @@ class WaysToWatchDialog extends StatelessWidget {
     required this.onFullScreen,
     required this.onPictureInPicture,
     required this.onCast,
+    required this.onCastMultiview,
   });
 
   final bool pictureInPictureSupported;
@@ -21,6 +22,11 @@ class WaysToWatchDialog extends StatelessWidget {
   final VoidCallback onPictureInPicture;
   final VoidCallback onCast;
 
+  /// Opens the Cast MultiView remote-control screen — a phone remote for a
+  /// TV's MultiView grid, distinct from casting this one channel. See
+  /// docs/superpowers/specs/2026-09-07-cast-multiview-remote-control-spec.md.
+  final VoidCallback onCastMultiview;
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -28,48 +34,57 @@ class WaysToWatchDialog extends StatelessWidget {
       title: const Text('Ways to Watch'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const _SectionLabel('ON THIS DEVICE'),
-            _WatchOption(
-              key: const ValueKey('ways-to-watch-fit'),
-              icon: Icons.fit_screen_outlined,
-              title: 'Fit Screen',
-              description: 'Keep video fitted inside the Aika Stream window.',
-              autofocus: true,
-              onSelect: onFitScreen,
-            ),
-            _WatchOption(
-              key: const ValueKey('ways-to-watch-fullscreen'),
-              icon: Icons.fullscreen,
-              title: 'Full Screen',
-              description: 'Fill this display and hide the browsing shell.',
-              onSelect: onFullScreen,
-            ),
-            if (pictureInPictureSupported)
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _SectionLabel('ON THIS DEVICE'),
               _WatchOption(
-                key: const ValueKey('ways-to-watch-pip'),
-                icon: Icons.picture_in_picture_alt_outlined,
-                title: 'Floating Window',
-                description: 'Keep video visible while using other apps.',
-                onSelect: onPictureInPicture,
+                key: const ValueKey('ways-to-watch-fit'),
+                icon: Icons.fit_screen_outlined,
+                title: 'Fit Screen',
+                description: 'Keep video fitted inside the Aika Stream window.',
+                autofocus: true,
+                onSelect: onFitScreen,
               ),
-            if (showCast) ...[
-              const Divider(height: 28),
-              const _SectionLabel('ON ANOTHER SCREEN'),
               _WatchOption(
-                key: const ValueKey('ways-to-watch-cast'),
-                icon: Icons.cast,
-                title: 'Cast to TV',
-                description: castAvailable
-                    ? 'Choose a nearby Cast-enabled TV.'
-                    : 'No Cast devices available.',
-                onSelect: castAvailable ? onCast : null,
+                key: const ValueKey('ways-to-watch-fullscreen'),
+                icon: Icons.fullscreen,
+                title: 'Full Screen',
+                description: 'Fill this display and hide the browsing shell.',
+                onSelect: onFullScreen,
               ),
+              if (pictureInPictureSupported)
+                _WatchOption(
+                  key: const ValueKey('ways-to-watch-pip'),
+                  icon: Icons.picture_in_picture_alt_outlined,
+                  title: 'Floating Window',
+                  description: 'Keep video visible while using other apps.',
+                  onSelect: onPictureInPicture,
+                ),
+              if (showCast) ...[
+                const Divider(height: 28),
+                const _SectionLabel('ON ANOTHER SCREEN'),
+                _WatchOption(
+                  key: const ValueKey('ways-to-watch-cast'),
+                  icon: Icons.cast,
+                  title: 'Cast to TV',
+                  description: castAvailable
+                      ? 'Choose a nearby Cast-enabled TV.'
+                      : 'No Cast devices available.',
+                  onSelect: castAvailable ? onCast : null,
+                ),
+                _WatchOption(
+                  key: const ValueKey('ways-to-watch-cast-multiview'),
+                  icon: Icons.grid_view_rounded,
+                  title: 'Cast MultiView',
+                  description: 'Remote-control a TV\'s MultiView grid.',
+                  onSelect: onCastMultiview,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
       actions: [
