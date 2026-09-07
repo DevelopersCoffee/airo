@@ -619,8 +619,12 @@ void main() {
 
     await activateAppBarAction(tester, 'Guide URL');
 
-    expect(find.text('XMLTV Guide Source'), findsOneWidget);
-    expect(find.text('No XMLTV source configured yet.'), findsOneWidget);
+    // XmltvSourceSheet now leads with the guide catalog picker ("Browse
+    // guides"); the raw-URL paste flow (previously this sheet's only
+    // content) moved under a collapsed "Advanced" section and has its own
+    // dedicated coverage in xmltv_source_sheet_test.dart. This assertion
+    // only needs to confirm the app bar action opens the right sheet.
+    expect(find.text('Browse guides'), findsOneWidget);
   });
 
   testWidgets('playlist manager adds a named source from the app bar', (
