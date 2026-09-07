@@ -58,7 +58,10 @@ preset in production UI.
 
 1. **v0.0.1 preview (this wave):** production-signed Pixel sideload / internal
    UAT. `versionName` is `0.0.1`. Play already consumed `versionCode` **13**
-   when the first AAB was attached, so the Play drop is **14** (`0.0.1+14`).
+   when the first AAB was attached, so the first Play drop is **14** (`0.0.1+14`).
+   Bundle 14 shipped `android.software.leanback` `required="true"` and is TV-only
+   on Play. The phone/tablet-capable drop is **15** (`0.0.1+15`), after
+   `required="false"` in the tv-flavor manifest.
 2. **v0.0.1 hard release (after UAT):** same `versionName` on Play. Never reuse
    a `versionCode` Play has already seen, even if that AAB was removed from a
    draft.
