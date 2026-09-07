@@ -601,6 +601,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  dpad_qualification:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: main
+      resolved-ref: b823187937d069ae33549793ab78b76617d6a6fd
+      url: "https://github.com/DevelopersCoffee/dpad_qualification.git"
+    source: git
+    version: "1.0.0"
   drift:
     dependency: "direct main"
     description:
@@ -1857,13 +1866,6 @@ packages:
     dependency: transitive
     description:
       path: "../packages/platform_device_profile"
-      relative: true
-    source: path
-    version: "0.0.1"
-  platform_device_qualification:
-    dependency: "direct main"
-    description:
-      path: "../packages/platform_device_qualification"
       relative: true
     source: path
     version: "0.0.1"

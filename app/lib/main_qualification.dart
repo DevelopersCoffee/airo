@@ -9,7 +9,7 @@ library;
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
-import 'package:platform_device_qualification/platform_device_qualification.dart';
+import 'package:dpad_qualification/dpad_qualification.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +21,7 @@ import 'core/pro/pro_bootstrap_runner.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
 
 const _defaultPlaylistUrl = 'https://iptv-org.github.io/iptv/index.m3u';
+
 
 void main() {
   late SharedPreferences prefs;
@@ -78,7 +79,6 @@ class AiroIptvQualificationApp extends StatelessWidget {
       themeMode: AiroTheme.defaultThemeMode,
       debugShowCheckedModeBanner: false,
       home: DeviceQualificationOverlay(
-        defaultPlaylistUrl: _defaultPlaylistUrl,
         autoCycle: true,
         onFormFactorOverride: (formFactor, tvPlatform) {
           if (formFactor == 'tv') {
