@@ -26,47 +26,60 @@ package-ID cutover and human console actions.
 | Field | Final metadata |
 | --- | --- |
 | App name | `Aika Stream` |
-| Short description | `Play your own authorized playlists on Android TV.` |
+| Short description | `Your sources. Your screen. An Android TV player for authorized M3U playlists.` |
 | Category | Video Players & Editors |
 | Tags / keywords | M3U, M3U8, playlist player, Android TV, Google TV, Chromecast, Cast, HLS |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
+| Website | `https://developerscoffee.github.io/airo/aika-stream/` |
 | Content rating | Complete the IARC questionnaire in Play Console before submission. |
 
-Short description length: 51/80 characters.
+Short description length: 77/80 characters.
 
 ### Full Description
 
 ```text
-Aika Stream is a media player for Android TV, Google TV, and compatible TV
-devices. Bring your own authorized M3U or M3U8 playlist and watch it in a
-clean, remote-friendly living-room interface.
+Aika Stream is a media player for Android TV and Google TV. Your sources.
+Your screen.
 
-This app does not include channels, playlists, or subscriptions. You add the
-sources you already have the right to use.
+Add an M3U or M3U8 playlist you are authorized to use, then browse, search,
+and play it with a remote. The app does not include channels, playlists,
+subscriptions, or a media catalog.
 
-Key features:
-- Import your own M3U/M3U8 playlist URL
-- Browse and search entries by name
-- Add XMLTV guide sources and favorites for playlists you configured
-- Play supported HLS and media streams on TV devices
-- Use Chromecast/Cast controls where supported by your device and network
-- Keep playlist URLs on the device unless you choose a remote URL
-- Use a TV-focused interface designed for remote navigation
+On Android TV you can:
+• Load M3U, M3U8, Xtream, Stalker, or Jellyfin sources
+• Search channels by name and keep favorites on the device
+• Add an XMLTV guide for programs that are on now
+• Switch audio and subtitle tracks when the stream provides them
+• Browse USB or removable media on supported devices
+• Use Chromecast when your TV, phone, and network allow it
 
-Important content notice:
-Aika Stream is a media player only. It does not provide, host, sell, endorse,
-verify, or distribute channels, playlists, streams, subscriptions, or IPTV
-services. You must supply your own lawful content sources and ensure that you
-have the rights to access every stream you load.
+Aika Stream is a player only. It does not provide, host, sell, or distribute
+TV channels or IPTV services. Recording and cloud playlists are not included.
 
-Supported playlist formats:
-M3U and M3U8.
+Learn more at https://developerscoffee.github.io/airo/aika-stream/
 
-Playback support depends on the stream format, codec, device capability, and
-network connection. Recording and cloud playlists are not included.
+Playback depends on your source, codec, device, and network.
 ```
 
-Full description length: 1,122/4,000 characters.
+Full description length: 922/4,000 characters.
+
+### Release notes (What's new)
+
+Paste into Play Console → Internal testing → Release notes. Keep under 500
+characters. Do not claim bundled channels or Aika Stream Pro.
+
+```text
+Your sources. Your screen.
+
+Aika Stream is a remote-first player for authorized M3U and M3U8 sources on
+Android TV. Search loaded channels by name, keep favorites on the device, add
+an XMLTV guide, and play supported streams with a D-pad interface.
+
+This app includes no channels, playlists, subscriptions, or media catalog. You
+add sources you are authorized to use.
+
+https://developerscoffee.github.io/airo/aika-stream/
+```
 
 ## Google Play Assets
 
