@@ -51,6 +51,83 @@ void main() {
     );
   });
 
+  testWidgets(
+    'compact defaults to false, keeping the original higher-contrast '
+    'inactive-chip background for the ten-foot D-pad layout',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: FilterRow(
+                dimensions: ChannelFilterDimensions(
+                  categories: {'News'},
+                  countries: {},
+                  languages: {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final material = tester.widget<Material>(
+        find.descendant(
+          of: find.byKey(const ValueKey('filter-chip-category')),
+          matching: find.byType(Material),
+        ),
+      );
+      expect(material.color!.a, closeTo(0.72, 0.001));
+    },
+  );
+
+  testWidgets(
+    'compact: true lightens the inactive-chip background for the phone '
+    'touch/cursor layout',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: FilterRow(
+                compact: true,
+                dimensions: ChannelFilterDimensions(
+                  categories: {'News'},
+                  countries: {},
+                  languages: {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final material = tester.widget<Material>(
+        find.descendant(
+          of: find.byKey(const ValueKey('filter-chip-category')),
+          matching: find.byType(Material),
+        ),
+      );
+      expect(material.color!.a, closeTo(0.46, 0.001));
+    },
+  );
+
   testWidgets('wide filter row keeps category and country labels readable', (
     tester,
   ) async {

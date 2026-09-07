@@ -13,9 +13,10 @@ class AiroBadge extends StatefulWidget {
     this.variant = AiroBadgeVariant.neutral,
     this.size = AiroBadgeSize.md,
     this.pulse = false,
+    this.borderRadius,
   });
 
-  const AiroBadge.live({super.key, this.pulse = true})
+  const AiroBadge.live({super.key, this.pulse = true, this.borderRadius})
     : label = 'LIVE',
       variant = AiroBadgeVariant.live,
       size = AiroBadgeSize.md;
@@ -24,12 +25,20 @@ class AiroBadge extends StatefulWidget {
     : label = 'PRO',
       variant = AiroBadgeVariant.pro,
       size = AiroBadgeSize.sm,
-      pulse = false;
+      pulse = false,
+      borderRadius = null;
 
   final String label;
   final AiroBadgeVariant variant;
   final AiroBadgeSize size;
   final bool pulse;
+
+  /// Overrides the variant's default corner radius (4px for `live`, 9999px
+  /// — a full pill — for everything else). Null keeps that default; callers
+  /// that need a specific radius (e.g. matching a design system's small-badge
+  /// token) pass it explicitly rather than this widget guessing per call
+  /// site.
+  final double? borderRadius;
 
   @override
   State<AiroBadge> createState() => _AiroBadgeState();
@@ -65,7 +74,7 @@ class _AiroBadgeState extends State<AiroBadge>
         : const EdgeInsets.symmetric(horizontal: 8, vertical: 3);
     final fontSize = isSm ? 9.0 : 11.0;
     final isRound = widget.variant == AiroBadgeVariant.live;
-    final radius = isRound ? 4.0 : 9999.0;
+    final radius = widget.borderRadius ?? (isRound ? 4.0 : 9999.0);
 
     return Container(
       padding: padding,
