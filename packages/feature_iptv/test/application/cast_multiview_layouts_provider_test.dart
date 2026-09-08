@@ -1,5 +1,6 @@
 import 'package:feature_iptv/application/providers/cast_multiview_layouts_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_player/platform_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -90,4 +91,33 @@ void main() {
     final second = newMultiviewCastLayoutId();
     expect(first, isNot(second));
   });
+
+  test(
+    'layout kind round-trips and older records without one still load',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final storage = MultiviewCastLayoutStorage(
+        await SharedPreferences.getInstance(),
+      );
+      await storage.saveLayout(
+        layout('layout-1', 'News', [
+          'aajtak-hd',
+        ]).copyWith(layout: MultiviewLayoutKind.spotlight),
+      );
+
+      final loaded = await storage.getLayouts();
+      expect(loaded.single.layout, MultiviewLayoutKind.spotlight);
+
+      expect(
+        MultiviewCastLayout.fromJson({
+          'id': 'legacy',
+          'name': 'Old',
+          'slots': [
+            {'channelId': 'a', 'channelName': 'A'},
+          ],
+        }).layout,
+        isNull,
+      );
+    },
+  );
 }

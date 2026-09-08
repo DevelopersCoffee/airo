@@ -23,6 +23,7 @@ void main() {
     List<_FakeSession> sessions, {
     ValueChanged<String>? onPromote,
     void Function(String, String)? onSwap,
+    MultiviewLayoutKind? layout,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -35,6 +36,7 @@ void main() {
               featuredChannelId: sessions.first.id,
               onPromote: onPromote ?? (_) {},
               onSwap: onSwap,
+              layout: layout,
             ),
           ),
         ),
@@ -107,6 +109,55 @@ void main() {
     expect(find.byIcon(Icons.volume_off), findsNWidgets(count - 1));
   });
 
+  testWidgets('splitVertical stacks two channels instead of side-by-side', (
+    tester,
+  ) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions, layout: MultiviewLayoutKind.splitVertical);
+
+    expect(
+      find.byKey(const ValueKey('multiview-layout-split-vertical')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('multiview-layout-split')), findsNothing);
+  });
+
+  testWidgets('spotlight is the 1+3 PiP mosaic and fills unused cells', (
+    tester,
+  ) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions, layout: MultiviewLayoutKind.spotlight);
+
+    expect(
+      find.byKey(const ValueKey('multiview-layout-spotlight')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('multiview-empty-slot-2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('multiview-empty-slot-3')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('player-one')), findsOneWidget);
+    expect(find.byKey(const ValueKey('player-two')), findsOneWidget);
+  });
+
+  testWidgets('tripleLeft is the large-left mosaic', (tester) async {
+    final sessions = [session('1'), session('2'), session('3')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions, layout: MultiviewLayoutKind.tripleLeft);
+
+    expect(
+      find.byKey(const ValueKey('multiview-layout-triple-left')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('multiview-layout-triple')), findsNothing);
+  });
+
   testWidgets('D-pad focus promotes the focused tile for audio', (
     tester,
   ) async {
@@ -171,6 +222,29 @@ void main() {
     expect(sessions.last.selectedSubtitleTrackId, isNull);
     expect(sessions.last.selectedQuality, isNull);
   });
+
+  testWidgets(
+    'tile menu volume slider sets that tile volume independent of the '
+    'other tile (manual mix, not the pool single-audible default)',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      await pump(tester, sessions);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      await tester.pumpAndSettle();
+
+      final slider = find.byKey(const ValueKey('multiview-volume-one'));
+      expect(slider, findsOneWidget);
+      tester.widget<Slider>(slider).onChanged!(0.4);
+      await tester.pump();
+
+      expect(sessions.first.volume, 0.4);
+      // The other tile's volume is untouched by mixing this one in.
+      expect(sessions.last.volume, 1);
+    },
+  );
 }
 
 class _FakeSession implements IptvMultiviewSession {
@@ -182,6 +256,7 @@ class _FakeSession implements IptvMultiviewSession {
   String? selectedAudioTrackId;
   String? selectedSubtitleTrackId;
   VideoQuality? selectedQuality;
+  double volume = 1;
 
   @override
   String get id => channel.id;
@@ -190,6 +265,7 @@ class _FakeSession implements IptvMultiviewSession {
   StreamingState get currentState => StreamingState(
     currentChannel: channel,
     playbackState: PlaybackState.playing,
+    volume: volume,
     tracks: const [
       AiroPlaybackTrackOption(
         id: 'audio-en',
@@ -235,7 +311,9 @@ class _FakeSession implements IptvMultiviewSession {
   }
 
   @override
-  Future<void> setAudible(bool audible) async {}
+  Future<void> setVolume(double value) async {
+    volume = value;
+  }
 
   @override
   Future<void> close() => _states.close();

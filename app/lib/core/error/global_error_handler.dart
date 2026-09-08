@@ -90,7 +90,17 @@ class GlobalErrorHandler {
       stackTrace: stack,
     );
 
-    // Show bug report dialog for critical errors
+    // In debug mode, print to console instead of interrupting every dev
+    // session with the bug report dialog (matches _handleFlutterError's
+    // kDebugMode gate below).
+    if (kDebugMode) {
+      debugPrint(
+        '=== FULL ERROR DUMP ===\n$error\n$stack\n=== END FULL ERROR DUMP ===',
+      );
+      return true;
+    }
+
+    // In release mode, show bug report dialog for critical errors
     _showBugReportDialogIfNeeded(
       error: error,
       stackTrace: stack,

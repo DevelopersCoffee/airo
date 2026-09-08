@@ -55,6 +55,22 @@ void main() {
     },
   );
 
+  test('setLayout is kept when sessions are added', () async {
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async => _FakeMultiviewSession(item),
+    );
+    addTearDown(controller.close);
+
+    controller.setLayout(MultiviewLayoutKind.spotlight);
+    expect(
+      await controller.toggle(channel('one')),
+      MultiviewToggleResult.added,
+    );
+    expect(controller.state.layout, MultiviewLayoutKind.spotlight);
+  });
+
   test('failed first open resumes primary and leaves no session', () async {
     final primary = _FakePrimaryService();
     final controller = MultiviewController(
@@ -102,6 +118,7 @@ class _FakeMultiviewSession implements IptvMultiviewSession {
   @override
   final IPTVChannel channel;
   bool audible = false;
+  double volume = 0;
   bool closed = false;
   final _states = StreamController<StreamingState>.broadcast();
 
@@ -133,8 +150,9 @@ class _FakeMultiviewSession implements IptvMultiviewSession {
   Future<void> setQuality(VideoQuality quality) async {}
 
   @override
-  Future<void> setAudible(bool value) async {
-    audible = value;
+  Future<void> setVolume(double value) async {
+    volume = value;
+    audible = value > 0;
   }
 
   @override

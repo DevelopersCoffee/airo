@@ -500,6 +500,9 @@ jobs:
           git diff --check
 
       - name: Build Android TV APK
+        env:
+          GITHUB_ISSUE_PROXY_URL: ${{ secrets.AIRO_ISSUE_PROXY_URL }}
+          GITHUB_ISSUE_PROXY_API_KEY: ${{ secrets.AIRO_ISSUE_PROXY_API_KEY }}
         run: |
           cd app
           export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
@@ -507,6 +510,10 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --dart-define=GITHUB_ISSUE_OWNER=DevelopersCoffee \
+            --dart-define=GITHUB_ISSUE_REPO=airo \
+            --dart-define=GITHUB_ISSUE_PROXY_URL="$GITHUB_ISSUE_PROXY_URL" \
+            --dart-define=GITHUB_ISSUE_PROXY_API_KEY="$GITHUB_ISSUE_PROXY_API_KEY" \
             --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUMBER" \
             --target-platform=android-arm64 \
@@ -516,6 +523,9 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk build/airo-tv-canonical-arm64.apk
 
       - name: Build Android TV AAB
+        env:
+          GITHUB_ISSUE_PROXY_URL: ${{ secrets.AIRO_ISSUE_PROXY_URL }}
+          GITHUB_ISSUE_PROXY_API_KEY: ${{ secrets.AIRO_ISSUE_PROXY_API_KEY }}
         run: |
           cd app
           export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
@@ -523,6 +533,10 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --dart-define=GITHUB_ISSUE_OWNER=DevelopersCoffee \
+            --dart-define=GITHUB_ISSUE_REPO=airo \
+            --dart-define=GITHUB_ISSUE_PROXY_URL="$GITHUB_ISSUE_PROXY_URL" \
+            --dart-define=GITHUB_ISSUE_PROXY_API_KEY="$GITHUB_ISSUE_PROXY_API_KEY" \
             --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUMBER" \
             --tree-shake-icons \
@@ -530,6 +544,9 @@ jobs:
             --obfuscate
 
       - name: Build Android TV ABI split APKs
+        env:
+          GITHUB_ISSUE_PROXY_URL: ${{ secrets.AIRO_ISSUE_PROXY_URL }}
+          GITHUB_ISSUE_PROXY_API_KEY: ${{ secrets.AIRO_ISSUE_PROXY_API_KEY }}
         run: |
           cd app
           export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
@@ -537,6 +554,10 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --dart-define=GITHUB_ISSUE_OWNER=DevelopersCoffee \
+            --dart-define=GITHUB_ISSUE_REPO=airo \
+            --dart-define=GITHUB_ISSUE_PROXY_URL="$GITHUB_ISSUE_PROXY_URL" \
+            --dart-define=GITHUB_ISSUE_PROXY_API_KEY="$GITHUB_ISSUE_PROXY_API_KEY" \
             --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUMBER" \
             --split-per-abi \
@@ -545,6 +566,9 @@ jobs:
             --obfuscate
 
       - name: Build Android TV universal APK
+        env:
+          GITHUB_ISSUE_PROXY_URL: ${{ secrets.AIRO_ISSUE_PROXY_URL }}
+          GITHUB_ISSUE_PROXY_API_KEY: ${{ secrets.AIRO_ISSUE_PROXY_API_KEY }}
         run: |
           cd app
           export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
@@ -562,6 +586,10 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --dart-define=GITHUB_ISSUE_OWNER=DevelopersCoffee \
+            --dart-define=GITHUB_ISSUE_REPO=airo \
+            --dart-define=GITHUB_ISSUE_PROXY_URL="$GITHUB_ISSUE_PROXY_URL" \
+            --dart-define=GITHUB_ISSUE_PROXY_API_KEY="$GITHUB_ISSUE_PROXY_API_KEY" \
             --build-name="$BUILD_NAME" \
             --build-number="$BUILD_NUMBER" \
             --target-platform=android-arm,android-arm64 \

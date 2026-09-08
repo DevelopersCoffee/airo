@@ -29,16 +29,35 @@ flutter run -d macos -t lib/main_tv.dart
 
 Swap `-d macos` for `-d chrome`, `-d <android-device-id>`, etc. as needed.
 
-### Android target: `flutter run` always shows the wrong version, `flutter build` must not
+### Android target: swap in `pubspec_tv.yaml` first — `flutter run` needs it too
 
 `--target=lib/main_tv.dart` only picks the Dart entrypoint — it does **not** make Flutter
-read `app/pubspec_tv.yaml`. Android's real `versionName`/`versionCode` always come from
-whichever pubspec Flutter defaults to (`app/pubspec.yaml`, the phone app's own version).
+read `app/pubspec_tv.yaml`. Skip the swap and you get more than a cosmetic version number:
+`pubspec_tv.yaml` replaces several plugins with no-op stubs (`media_kit_libs_android_video`
+among them) so their Android side never registers. Without the swap, the *real*
+`media_kit_libs_android_video` plugin loads, and its native `System.loadLibrary("mpv")`
+throws `UnsatisfiedLinkError` on every launch — the TV Gradle config always strips
+`libmpv.so` from the APK regardless of which pubspec built it. Every later channel call that
+plugin should have served then throws `MissingPluginException`, which the global error
+handler surfaces as an auto-popping bug report dialog on nearly every cold start.
 
-`flutter run` has no `--build-name`/`--build-number` flags at all, so a debug `flutter run
--d <device> -t lib/main_tv.dart ...` session will always install with the phone app's
-version baked in (e.g. Settings shows "0.0.7 (12)" instead of Aika Stream's real version) —
-harmless for a throwaway debug session, but don't read anything into that number.
+Always run this from `app/` before `flutter run` **or** `flutter build` against
+`main_tv.dart`:
+
+```bash
+cp pubspec_tv.yaml pubspec.yaml && flutter pub get
+```
+
+(`scripts/build-tv.sh` does this automatically for release builds; a plain `flutter run`
+debug session does not, so do it by hand first.) Restore `app/pubspec.yaml` via `git
+checkout -- pubspec.yaml pubspec.lock` afterward if you also work on the phone app in the
+same checkout.
+
+Separately, Android's real `versionName`/`versionCode` always come from whichever pubspec
+built the APK — `flutter run` has no `--build-name`/`--build-number` flags at all, so even
+with the swap applied a debug session shows the version baked into `pubspec_tv.yaml` at
+build time, not necessarily what you'd expect from a mid-session edit. Harmless to ignore
+for a throwaway debug session.
 
 For anything you actually keep installed or hand to someone (`flutter build apk --release`,
 a local dogfood/sideload build), that same default is a real bug, not a display quirk — it
