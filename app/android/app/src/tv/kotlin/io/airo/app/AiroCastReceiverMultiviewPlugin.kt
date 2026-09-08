@@ -36,6 +36,12 @@ class AiroCastReceiverMultiviewPlugin {
         channel.setMethodCallHandler { call, result -> onMethodCall(call, result) }
         this.channel = channel
 
+        // AiroCastReceiverApplication only calls CastReceiverContext.initInstance
+        // when BuildConfig.ENABLE_CAST_RECEIVER is set -- getInstance() throws
+        // IllegalStateException otherwise, so this must stay in lockstep with
+        // that same gate (see AiroCastReceiverApplication's doc comment).
+        if (!BuildConfig.ENABLE_CAST_RECEIVER) return
+
         val receiverContext = CastReceiverContext.getInstance()
         receiverContext.setMessageReceivedListener(NAMESPACE) { _, senderId, message ->
             currentSenderId = senderId

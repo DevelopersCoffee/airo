@@ -56,6 +56,19 @@ val variantAppLabel = when (appVariant) {
     else -> "Airo"
 }
 
+// Cast Connect's receiver-side init (AiroCastReceiverApplication,
+// AiroCastReceiverMultiviewPlugin) is dev/test only -- the F353F9C7 receiver
+// app is unpublished and unreachable by any real user's Cast device. Gated
+// on the same dart-define the sender side already requires
+// (flutter_chrome_cast_controller.dart's defaultReceiverApplicationId) so one
+// flag turns on both halves; a normal release build never passes it, so
+// CastReceiverContext is never touched. Without this gate, initializing it
+// unconditionally crashes every launch on Android 13+ (targetSdk 34+): the
+// play-services-cast-tv 20.0.0 SDK's own CastReceiverContext.start() calls
+// registerReceiver() without RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED, which
+// that OS version enforces as a fatal SecurityException.
+val enableCastReceiver = isTvVariant && !dartDefine("CAST_MULTIVIEW_RECEIVER_APP_ID").isNullOrBlank()
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android Gradle plugin.
@@ -119,6 +132,10 @@ android {
         checkReleaseBuilds = false
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = variantApplicationId
         minSdk = libs.versions.airo.min.sdk.get().toInt()
@@ -126,6 +143,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["appLabel"] = variantAppLabel
+        buildConfigField("boolean", "ENABLE_CAST_RECEIVER", "$enableCastReceiver")
 
         // Enable multidex for larger apps
         multiDexEnabled = true
