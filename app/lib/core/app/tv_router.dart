@@ -261,6 +261,23 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
       );
     }
 
+    // A wide window on non-TV hardware only means a real remote-first
+    // session when the OS is actually giving it a fixed fullscreen surface.
+    // Android's Desktop Windowing (and classic split-screen) instead hands
+    // this TV build a resizable, mouse/keyboard-driven window on a phone or
+    // tablet -- forcing the 10-foot layout there hid the video preview
+    // behind a bare remote-first grid with no visible player (#reported:
+    // "desktop mode" screenshot from a Pixel 9 on an external monitor).
+    if (DeviceFormFactorDetector.isDesktopWindowedSync()) {
+      return IPTVScreen(
+        onSettings: () => context.push(TvRouteNames.settings),
+        onPickLocalMediaForTv: isGoogleCastSenderPlatform
+            ? pickPhoneLocalMediaForTv
+            : null,
+        deepLinkIntent: deepLinkIntent,
+      );
+    }
+
     // Wide layouts get the 10-foot AiroTvShell path with phone chrome
     // (app bar, drawer, cast entry) suppressed — the TvShell sidebar owns
     // navigation.

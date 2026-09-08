@@ -325,6 +325,7 @@ Future<List<IPTVChannel>> loadTvDebugPlaylistForWeb(
 @visibleForTesting
 Future<void> configureTvSystemChrome({
   Future<DeviceFormFactor> Function()? detectFormFactor,
+  Future<bool> Function()? detectIsDesktopWindowed,
   Future<void> Function(List<DeviceOrientation> orientations)?
   setPreferredOrientations,
   Future<void> Function(SystemUiMode mode, {List<SystemUiOverlay>? overlays})?
@@ -335,6 +336,11 @@ Future<void> configureTvSystemChrome({
           () {
             return DeviceFormFactorDetector.detect(null);
           })();
+  // Warms tv_router.dart's synchronous cached read of the Desktop
+  // Windowing check the same way the form-factor detection above is
+  // warmed, so the router never blocks on it.
+  await (detectIsDesktopWindowed ??
+      DeviceFormFactorDetector.detectIsDesktopWindowed)();
   final applyOrientations =
       setPreferredOrientations ?? SystemChrome.setPreferredOrientations;
   final applySystemUiMode =
