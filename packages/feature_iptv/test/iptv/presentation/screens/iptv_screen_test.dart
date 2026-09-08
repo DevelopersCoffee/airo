@@ -12,6 +12,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Auto Scan's real transport makes actual HTTP requests, which flutter
+/// test's binding rejects with a blanket 400 -- silently marking every
+/// fake channel here "unavailable" and blocking tap-to-play (see
+/// airo_tv_shell_test.dart, which fakes this the same way).
+class _FakeProbeTransport implements StreamProbeTransport {
+  @override
+  Future<StreamProbeHttpResponse> get(
+    StreamProbeRequest request, {
+    required StreamProbeCancellation cancellation,
+  }) async {
+    return const StreamProbeHttpResponse(statusCode: 206);
+  }
+}
+
 void main() {
   final channels = [
     const IPTVChannel(
@@ -60,6 +74,9 @@ void main() {
         return ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(snapshot.data!),
+            streamProbeTransportProvider.overrideWithValue(
+              _FakeProbeTransport(),
+            ),
             iptvChannelsProvider.overrideWith(
               (ref) async => channelLoader?.call() ?? channels,
             ),
