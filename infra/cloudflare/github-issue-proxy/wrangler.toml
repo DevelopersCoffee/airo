@@ -1,0 +1,24 @@
+name = "airo-github-issue-proxy"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+preview_urls = false
+
+# Secrets (never committed here) -- set with:
+#   wrangler secret put GITHUB_TOKEN
+#   wrangler secret put PROXY_API_KEY
+#
+# GITHUB_TOKEN: a GitHub Personal Access Token scoped to just this repo,
+# with only the "Issues: write" (fine-grained) or "public_repo" (classic)
+# permission -- nothing broader. It never leaves this Worker.
+#
+# PROXY_API_KEY: any random string. Generate one with, e.g.:
+#   openssl rand -hex 32
+# The Flutter app is built with the same value via
+# --dart-define=GITHUB_ISSUE_PROXY_API_KEY=<value>. This only gates casual
+# abuse (a compiled APK can be decompiled to read it) -- it is not a secret
+# boundary the way GITHUB_TOKEN is.
+
+[vars]
+GITHUB_OWNER = "DevelopersCoffee"
+GITHUB_REPO = "airo"
