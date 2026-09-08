@@ -3,6 +3,21 @@
 /// This entrypoint initializes a minimal app with only IPTV functionality.
 /// Target APK size: <120MB
 ///
+/// `--target=lib/main_tv.dart` alone only selects the Dart entrypoint --
+/// Android still resolves plugins from whichever `pubspec.yaml` is on disk,
+/// which defaults to the full phone app's. `pubspec_tv.yaml` swaps several
+/// plugins (media_kit_libs_android_video included) for no-op stubs so their
+/// Android side never registers; skip that swap and the *real*
+/// media_kit_libs_android_video plugin loads instead, whose native
+/// `System.loadLibrary("mpv")` throws `UnsatisfiedLinkError` on every launch
+/// -- TV's `build.gradle.kts` always strips `libmpv.so` from the APK -- and
+/// every later channel call that plugin should have served throws
+/// `MissingPluginException` instead. Always copy `pubspec_tv.yaml` over
+/// `pubspec.yaml` first, `flutter run` included, not just release builds:
+/// ```bash
+/// cp pubspec_tv.yaml pubspec.yaml && flutter pub get
+/// ```
+///
 /// Build command:
 /// ```bash
 /// flutter build apk --release \
