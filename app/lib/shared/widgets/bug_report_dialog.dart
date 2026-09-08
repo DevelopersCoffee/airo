@@ -251,6 +251,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
   Widget _buildSeverityDropdown() {
     return DropdownButtonFormField<BugSeverity>(
       initialValue: _severity,
+      isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Severity',
         border: OutlineInputBorder(),
@@ -259,7 +260,10 @@ class _BugReportDialogState extends State<BugReportDialog> {
       items: BugSeverity.values.map((severity) {
         return DropdownMenuItem(
           value: severity,
-          child: Text('${severity.label} - ${severity.description}'),
+          child: Text(
+            '${severity.label} - ${severity.description}',
+            overflow: TextOverflow.ellipsis,
+          ),
         );
       }).toList(),
       onChanged: (value) {
@@ -271,6 +275,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
   Widget _buildCategoryDropdown() {
     return DropdownButtonFormField<BugCategory>(
       initialValue: _category,
+      isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Category',
         border: OutlineInputBorder(),
@@ -279,7 +284,10 @@ class _BugReportDialogState extends State<BugReportDialog> {
       items: BugCategory.values.map((category) {
         return DropdownMenuItem(
           value: category,
-          child: Text('${category.label} - ${category.description}'),
+          child: Text(
+            '${category.label} - ${category.description}',
+            overflow: TextOverflow.ellipsis,
+          ),
         );
       }).toList(),
       onChanged: (value) {

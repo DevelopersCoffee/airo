@@ -38,6 +38,16 @@ void main() {
       expect(config.isConfigured, isFalse);
     });
 
+    test(
+      'fromEnvironment defaults to the real DevelopersCoffee/airo repo',
+      () {
+        final config = GitHubIssueConfig.fromEnvironment();
+
+        expect(config.owner, 'DevelopersCoffee');
+        expect(config.repo, 'airo');
+      },
+    );
+
     test('useProxy returns true when proxyUrl is set', () {
       const config = GitHubIssueConfig(
         owner: 'test-owner',

@@ -168,6 +168,19 @@ void main() {
     expect(publishedStates.length, beforeCount + 1);
     expect(publishedStates.last, publishedStates[beforeCount - 1]);
   });
+
+  test('set_layout is published on the next state', () async {
+    bridge.start();
+    await pump();
+
+    await link.sender.sendCommand(
+      const MultiviewSetLayoutCommand(layout: MultiviewLayoutKind.spotlight),
+    );
+    await pump();
+
+    expect(publishedStates.last.layout, MultiviewLayoutKind.spotlight);
+    expect(controller.state.layout, MultiviewLayoutKind.spotlight);
+  });
 }
 
 class _FakeMultiviewSession implements IptvMultiviewSession {
@@ -205,7 +218,7 @@ class _FakeMultiviewSession implements IptvMultiviewSession {
   Future<void> setQuality(VideoQuality quality) async {}
 
   @override
-  Future<void> setAudible(bool audible) async {}
+  Future<void> setVolume(double volume) async {}
 
   @override
   Future<void> close() async {

@@ -5,6 +5,7 @@ export "src/models/cast_proxy_benchmark_models.dart";
 export "src/models/engine_fallback_coordinator_models.dart";
 export "src/models/multi_source_failover_models.dart";
 export "src/models/multiview_cast_protocol.dart";
+export "src/models/multiview_layout_kind.dart";
 export "src/models/native_media_engine_spike_models.dart";
 export "src/models/playback_engine_models.dart";
 export "src/models/playback_engine_resolver_models.dart";

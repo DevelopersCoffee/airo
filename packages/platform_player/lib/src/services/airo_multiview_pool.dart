@@ -4,12 +4,19 @@ const int kAiroMultiviewHardCap = 4;
 
 /// One independently owned playback session in a bounded multiview pool.
 ///
-/// Implementations must absorb backend volume/cleanup failures so the pool can
-/// preserve its single-audible-session invariant without throwing into UI.
+/// Implementations must absorb backend volume/cleanup failures so the pool's
+/// own audio routing never throws into UI. [setVolume] takes any level in
+/// `[0.0, 1.0]`, not just mute/unmute -- the pool itself only ever routes
+/// full volume to one "featured" session and mutes the rest by default, but
+/// a host can call [setVolume] directly on any session to mix in a second
+/// stream's audio at a partial level, independent of that default routing
+/// (see `MultiviewStage`'s per-tile volume slider). The next pool-driven
+/// routing change (add/promote/remove) resets every session back to the
+/// single-audible default, overwriting any manual mix.
 abstract interface class AiroMultiviewSession {
   String get id;
 
-  Future<void> setAudible(bool audible);
+  Future<void> setVolume(double volume);
 
   Future<void> close();
 }
@@ -74,7 +81,7 @@ class AiroMultiviewPool {
         await _closeSafely(session);
         return AiroMultiviewAddResult.openFailed;
       }
-      await session.setAudible(false);
+      await session.setVolume(0);
       final sessions = List<AiroMultiviewSession>.unmodifiable([
         ..._state.sessions,
         session,
@@ -145,7 +152,7 @@ class AiroMultiviewPool {
         featuredSessionId: featured,
       ),
     );
-    await removed.setAudible(false);
+    await removed.setVolume(0);
     await _closeSafely(removed);
     if (featured != null) await _routeAudio(featured);
   }
@@ -158,7 +165,7 @@ class AiroMultiviewPool {
     await Future.wait(
       sessions.map((session) async {
         try {
-          await session.setAudible(false);
+          await session.setVolume(0);
         } catch (_) {
           // Continue closing every owned session.
         }
@@ -174,11 +181,11 @@ class AiroMultiviewPool {
 
   Future<void> _applyAudioRoute(String featuredId) async {
     for (final session in _state.sessions) {
-      await session.setAudible(false);
+      await session.setVolume(0);
     }
     for (final session in _state.sessions) {
       if (session.id == featuredId) {
-        await session.setAudible(true);
+        await session.setVolume(1);
         break;
       }
     }

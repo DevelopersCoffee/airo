@@ -92,6 +92,22 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   /// Test seam for explicit system PiP. Defaults to the native PiP channel.
   final Future<bool> Function()? requestPictureInPicture;
 
+  /// Adds an "App help" entry to this widget's own player-actions sheet.
+  /// Hosts that have a help surface of their own (see `AiroTvShell`) pass
+  /// this instead of drawing a second, separately-visible icon over the
+  /// video -- the touch-reveal chrome is the one overlay this widget shows,
+  /// so anything else the host wants reachable belongs inside it (#1025).
+  final VoidCallback? onShowHelp;
+
+  /// Adds an "App settings" entry to this widget's own player-actions
+  /// sheet, for the same reason as [onShowHelp].
+  final VoidCallback? onOpenSettings;
+
+  /// Adds a "MultiView layout" entry to this widget's own player-actions
+  /// sheet. Hosts pass this only while a MultiView session is actually
+  /// active; leave it null otherwise.
+  final VoidCallback? onShowMultiviewLayout;
+
   const VideoPlayerWidget({
     super.key,
     this.showControls = true,
@@ -108,6 +124,9 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.ownsPlatformBack = false,
     this.setAudioOnlyMode,
     this.requestPictureInPicture,
+    this.onShowHelp,
+    this.onOpenSettings,
+    this.onShowMultiviewLayout,
   });
 
   @override
@@ -950,7 +969,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _scheduleAdjacentChannelWarmup(state);
     });
 
-    final videoView = service.buildVideoView();
+    // Listen-only mode never asks the engine for a view: the native
+    // AVAudioSession/AudioFocusRequest handlers only manage OS audio focus,
+    // they never touch the video pipeline, so this Dart-level gate is what
+    // actually delivers the documented "video surface torn down, audio
+    // keeps decoding" contract (AiroBackgroundAudioMode's doc comment) --
+    // this was previously a no-op that only relabelled the menu entry.
+    final videoView = _isAudioOnly ? null : service.buildVideoView();
     final compactInlinePlayer = _usesCompactInlinePlayer(context);
     final hasPlaybackError = state.hasError;
     final blocksPlaybackChrome =
@@ -968,6 +993,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               : _buildError(state.errorMessage ?? 'Playback could not start.')
         else if (state.isLoading)
           _buildLoading()
+        else if (_isAudioOnly)
+          _buildAudioOnlyPlaceholder(state)
         else if (videoView != null)
           SizedBox.expand(
             child: FittedBox(fit: _boxFitFor(aspectRatioFit), child: videoView),
@@ -1641,6 +1668,56 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   Widget _buildDefaultPlaceholder() {
     return IptvIconPlaceholder.videoPlayer();
+  }
+
+  /// Listen-only mode's cover: same channel-art treatment as
+  /// [_buildPlaceholder], plus an explicit label so it reads as a
+  /// deliberate mode rather than a stalled video.
+  Widget _buildAudioOnlyPlaceholder(StreamingState state) {
+    final channel = state.currentChannel;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.blueGrey.shade900, Colors.black],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (channel != null && channel.hasLogo)
+              AiroNetworkImage(
+                url: channel.logoUrl!,
+                width: 96,
+                height: 96,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.headphones, size: 72, color: Colors.white70),
+              )
+            else
+              const Icon(Icons.headphones, size: 72, color: Colors.white70),
+            const SizedBox(height: 16),
+            Text(
+              'Listening only',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+              ),
+            ),
+            if (channel != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                channel.name,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildControlsOverlay(
@@ -2557,6 +2634,36 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     ),
                     onSelect: () => unawaited(afterSheet(_toggleFullscreen)),
                   ),
+                  if (widget.onShowMultiviewLayout != null)
+                    _TvSheetListTile(
+                      itemKey: const ValueKey(
+                        'iptv-player-multiview-layout-menu-action',
+                      ),
+                      leading: const Icon(Icons.grid_view),
+                      title: const Text('MultiView layout'),
+                      onSelect: () =>
+                          unawaited(afterSheet(widget.onShowMultiviewLayout!)),
+                    ),
+                  if (widget.onShowHelp != null || widget.onOpenSettings != null)
+                    const Divider(height: 1),
+                  if (widget.onShowHelp != null)
+                    _TvSheetListTile(
+                      itemKey: const ValueKey('iptv-player-help-menu-action'),
+                      leading: const Icon(Icons.help_outline),
+                      title: const Text('Help'),
+                      onSelect: () =>
+                          unawaited(afterSheet(widget.onShowHelp!)),
+                    ),
+                  if (widget.onOpenSettings != null)
+                    _TvSheetListTile(
+                      itemKey: const ValueKey(
+                        'iptv-player-settings-menu-action',
+                      ),
+                      leading: const Icon(Icons.settings_outlined),
+                      title: const Text('App settings'),
+                      onSelect: () =>
+                          unawaited(afterSheet(widget.onOpenSettings!)),
+                    ),
                 ],
               ),
             ),

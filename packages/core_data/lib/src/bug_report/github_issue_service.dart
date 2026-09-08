@@ -18,7 +18,7 @@ class GitHubIssueConfig {
   /// GitHub repository owner (e.g., 'DevelopersCoffee')
   final String owner;
 
-  /// GitHub repository name (e.g., 'airo_super_app')
+  /// GitHub repository name (e.g., 'airo')
   final String repo;
 
   /// GitHub Personal Access Token with `issues:write` permission.
@@ -71,7 +71,7 @@ class GitHubIssueConfig {
   ///
   /// Environment variables:
   /// - `GITHUB_ISSUE_OWNER` - Repository owner (default: 'DevelopersCoffee')
-  /// - `GITHUB_ISSUE_REPO` - Repository name (default: 'airo_super_app')
+  /// - `GITHUB_ISSUE_REPO` - Repository name (default: 'airo')
   /// - `GITHUB_ISSUE_TOKEN` - GitHub PAT (for direct mode)
   /// - `GITHUB_ISSUE_PROXY_URL` - Backend proxy URL (for proxy mode)
   /// - `GITHUB_ISSUE_PROXY_API_KEY` - API key for proxy authentication
@@ -83,7 +83,7 @@ class GitHubIssueConfig {
       ),
       repo: const String.fromEnvironment(
         'GITHUB_ISSUE_REPO',
-        defaultValue: 'airo_super_app',
+        defaultValue: 'airo',
       ),
       token: const String.fromEnvironment('GITHUB_ISSUE_TOKEN'),
       proxyUrl: const String.fromEnvironment('GITHUB_ISSUE_PROXY_URL'),
