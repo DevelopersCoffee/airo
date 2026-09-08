@@ -1,4 +1,1 @@
-library;
-
-export 'src/resource_scheduler_models.dart';
-export 'src/worker_executor.dart';
+export 'package:airo_job_scheduler/airo_job_scheduler.dart';
