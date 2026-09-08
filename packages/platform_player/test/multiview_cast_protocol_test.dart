@@ -36,6 +36,24 @@ void main() {
       expect(decoded, command);
     });
 
+    test('set_layout', () {
+      const command = MultiviewSetLayoutCommand(
+        layout: MultiviewLayoutKind.spotlight,
+      );
+      final decoded = MultiviewCastCommand.fromJson(command.toJson());
+      expect(decoded, command);
+    });
+
+    test('set_layout with an unknown kind throws', () {
+      expect(
+        () => MultiviewCastCommand.fromJson({
+          'type': 'multiview.set_layout',
+          'layout': 'pip-asymmetric',
+        }),
+        throwsA(isA<MultiviewCastProtocolException>()),
+      );
+    });
+
     test('an unknown type throws rather than silently no-op-ing', () {
       expect(
         () => MultiviewCastCommand.fromJson({'type': 'multiview.teleport'}),
@@ -62,6 +80,7 @@ void main() {
     test('encodes and decodes every slot field', () {
       const state = MultiviewCastState(
         capacity: 2,
+        layout: MultiviewLayoutKind.splitVertical,
         slots: [
           MultiviewCastSlot(
             slotId: 'a',
@@ -80,6 +99,15 @@ void main() {
 
       final decoded = MultiviewCastState.fromJson(state.toJson());
       expect(decoded, state);
+    });
+
+    test('a missing layout field round-trips as null', () {
+      final decoded = MultiviewCastState.fromJson({
+        'capacity': 4,
+        'slots': <Map<String, dynamic>>[],
+      });
+      expect(decoded.layout, isNull);
+      expect(decoded.slots, isEmpty);
     });
 
     test('an empty grid round-trips too', () {

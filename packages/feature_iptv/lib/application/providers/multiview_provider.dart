@@ -39,11 +39,13 @@ class MultiviewState {
     this.sessions = const [],
     this.featuredChannelId,
     required this.capacity,
+    this.layout,
   });
 
   final List<IptvMultiviewSession> sessions;
   final String? featuredChannelId;
   final int capacity;
+  final MultiviewLayoutKind? layout;
 
   bool contains(String channelId) =>
       sessions.any((session) => session.id == channelId);
@@ -114,6 +116,16 @@ class MultiviewController extends StateNotifier<MultiviewState> {
   void swap(String firstChannelId, String secondChannelId) =>
       _pool.swap(firstChannelId, secondChannelId);
 
+  void setLayout(MultiviewLayoutKind layout) {
+    if (_disposed) return;
+    state = MultiviewState(
+      sessions: state.sessions,
+      featuredChannelId: state.featuredChannelId,
+      capacity: state.capacity,
+      layout: layout,
+    );
+  }
+
   Future<void> close() async {
     if (_disposed) return;
     _disposed = true;
@@ -129,6 +141,7 @@ class MultiviewController extends StateNotifier<MultiviewState> {
       ),
       featuredChannelId: poolState.featuredSessionId,
       capacity: _pool.capacity,
+      layout: state.layout,
     );
   }
 
@@ -161,7 +174,7 @@ final iptvMultiviewSessionFactoryProvider =
         // pool's other tiles and possibly the primary player. Without it,
         // the platform's own exclusive audio-focus handling silently
         // pauses (freezes) whichever instance loses that fight, and no
-        // amount of promoting it via setAudible() afterward recovers it —
+        // amount of promoting it via setVolume() afterward recovers it —
         // see VideoPlayerStreamingService's `_mixWithOthers` doc comment.
         final service = VideoPlayerStreamingService(
           config: StreamingConfig.live,
@@ -233,9 +246,9 @@ class _VideoPlayerMultiviewSession implements IptvMultiviewSession {
   Future<void> setQuality(VideoQuality quality) => _service.setQuality(quality);
 
   @override
-  Future<void> setAudible(bool audible) async {
+  Future<void> setVolume(double volume) async {
     try {
-      await _service.setVolume(audible ? 1 : 0);
+      await _service.setVolume(volume.clamp(0.0, 1.0));
     } catch (_) {
       // Pool invariants and cleanup continue after a backend volume failure.
     }

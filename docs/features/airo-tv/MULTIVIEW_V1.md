@@ -5,11 +5,14 @@ MultiView v1 owns at most four independent playback sessions. The
 sessions before opening a player, and guarantees a single audible session.
 Rapid focus changes are serialized so the latest focused tile owns audio.
 
-Aika Stream renders two sessions in a 1×2 split and three or four sessions in a
-stable 2×2 grid. Each session contributes exactly one player view; focus and
-tile swaps do not reopen its decoder. D-pad focus routes audio, OK swaps the
-focused tile with the featured tile, and the remote menu opens that tile's
-audio track, subtitle, and quality/bitrate controls.
+Aika Stream offers eight selectable mosaics, all within that four-session
+cap: 1 pane, 2 split, 2 stacked, 1-over-2, 2-over-1, 1+2, 2×2, and 1+3
+spotlight (PiP-style). Empty cells fill unused positions. When the user has
+not picked a mosaic, count-derived defaults stay 1 → single, 2 → side-by-side,
+3 → two-over-one, 4 → 2×2. Each session contributes exactly one player view;
+focus and tile swaps do not reopen its decoder. D-pad focus routes audio, OK
+swaps the focused tile with the featured tile, and the remote menu opens that
+tile's audio track, subtitle, and quality/bitrate controls.
 
 Track and quality commands are session-scoped. They cannot change another
 tile's engine state. Removing or closing a session mutes and disposes it, and

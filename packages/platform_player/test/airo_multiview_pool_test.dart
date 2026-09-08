@@ -185,11 +185,13 @@ class _FakeSession implements AiroMultiviewSession {
   @override
   final String id;
   bool audible = false;
+  double volume = 0;
   bool closed = false;
 
   @override
-  Future<void> setAudible(bool value) async {
-    audible = value;
+  Future<void> setVolume(double value) async {
+    volume = value;
+    audible = value > 0;
   }
 
   @override

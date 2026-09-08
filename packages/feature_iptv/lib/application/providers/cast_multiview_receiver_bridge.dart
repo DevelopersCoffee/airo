@@ -79,6 +79,8 @@ class CastMultiviewReceiverBridge {
         _controller.swap(firstSlotId, secondSlotId);
       case MultiviewQueryStateCommand():
         _publish(_controller.currentState);
+      case MultiviewSetLayoutCommand(:final layout):
+        _controller.setLayout(layout);
     }
   }
 
@@ -87,6 +89,7 @@ class CastMultiviewReceiverBridge {
       _transport.publishState(
         MultiviewCastState(
           capacity: state.capacity,
+          layout: state.layout,
           slots: [
             for (final session in state.sessions)
               MultiviewCastSlot(
