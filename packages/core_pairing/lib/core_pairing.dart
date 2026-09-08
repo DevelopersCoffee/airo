@@ -1,3 +1,1 @@
-library;
-
-export 'src/pairing_models.dart';
+export 'package:airo_pairing/airo_pairing.dart';
