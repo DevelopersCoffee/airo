@@ -1,6 +1,1 @@
-library;
-
-export 'src/connected_node_models.dart';
-export 'src/edge_media_node_models.dart';
-export 'src/protobuf_protocol_schema_models.dart';
-export 'src/secure_transport_models.dart';
+export 'package:airo_protocol/airo_protocol.dart';
