@@ -49,6 +49,7 @@ class DeviceFormFactorDetector {
 
   static DeviceFormFactor? _cachedFormFactor;
   static TvPlatform? _cachedTvPlatform;
+  static bool? _cachedIsDesktopWindowed;
   static const _tvChannel = MethodChannel('com.airo/device_info');
 
   /// Debug override for form factor (used for testing on iPad/tablet)
@@ -56,6 +57,9 @@ class DeviceFormFactorDetector {
 
   /// Debug override for TV platform
   static TvPlatform? debugTvPlatformOverride;
+
+  /// Debug override for [isDesktopWindowedSync] (used for testing).
+  static bool? debugIsDesktopWindowedOverride;
 
   /// Detect device form factor
   ///
@@ -221,6 +225,36 @@ class DeviceFormFactorDetector {
     return platform == TvPlatform.fireTv;
   }
 
+  /// Detects Android's Desktop Windowing (or classic split-screen) --
+  /// a resizable, mouse/keyboard-driven window rather than a fixed
+  /// fullscreen surface. Always false off Android. Warm this once at
+  /// startup (see `configureTvSystemChrome()`) so [isDesktopWindowedSync]
+  /// has a populated cache before any route builds.
+  static Future<bool> detectIsDesktopWindowed() async {
+    if (debugIsDesktopWindowedOverride != null) {
+      return debugIsDesktopWindowedOverride!;
+    }
+    if (_cachedIsDesktopWindowed != null) return _cachedIsDesktopWindowed!;
+    try {
+      final result = await _tvChannel.invokeMethod<bool>('isDesktopWindowed');
+      _cachedIsDesktopWindowed = result ?? false;
+    } catch (_) {
+      // Platform channel not implemented yet, or the call failed -- default
+      // to false so hosts without this method keep their existing layout.
+      _cachedIsDesktopWindowed = false;
+    }
+    return _cachedIsDesktopWindowed!;
+  }
+
+  /// Synchronous read of the cache [detectIsDesktopWindowed] populates.
+  /// Returns false until that warm-up has completed.
+  static bool isDesktopWindowedSync() {
+    if (debugIsDesktopWindowedOverride != null) {
+      return debugIsDesktopWindowedOverride!;
+    }
+    return _cachedIsDesktopWindowed ?? false;
+  }
+
   /// Check if device supports D-pad navigation
   static bool supportsDpadNavigation(DeviceFormFactor formFactor) {
     return formFactor == DeviceFormFactor.tv;
@@ -252,7 +286,9 @@ class DeviceFormFactorDetector {
   static void clearCache() {
     _cachedFormFactor = null;
     _cachedTvPlatform = null;
+    _cachedIsDesktopWindowed = null;
     debugFormFactorOverride = null;
     debugTvPlatformOverride = null;
+    debugIsDesktopWindowedOverride = null;
   }
 }

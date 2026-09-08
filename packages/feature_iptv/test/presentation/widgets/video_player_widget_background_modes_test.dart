@@ -93,6 +93,64 @@ void main() {
   });
 
   testWidgets(
+    'audio-only toggle tears down the video surface for a placeholder',
+    (tester) async {
+      const channel = MethodChannel('com.airo.player/background_audio_mode');
+      AiroBackgroundAudioMode.debugSetMethodChannel(channel);
+      AiroBackgroundAudioMode.debugReset();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async => null);
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.playing,
+                  isLiveStream: true,
+                  currentChannel: IPTVChannel(
+                    id: 'news-1',
+                    name: 'City News Live',
+                    streamUrl: 'https://example.com/news.m3u8',
+                    group: 'News',
+                    category: ChannelCategory.news,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Before toggling: no audio-only cover.
+      expect(find.text('Listening only'), findsNothing);
+
+      await openPlayerActionsSheet(tester);
+      await selectPlayerAction(
+        tester,
+        const ValueKey('iptv-player-audio-only-menu-action'),
+      );
+
+      // After toggling: the cover replaces the video surface, and the
+      // engine is never asked for a view while it's showing.
+      expect(find.text('Listening only'), findsOneWidget);
+      expect(find.text('City News Live'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'a genuinely successful toggle sequence still notifies the coordinator '
     'for both enable and disable',
     (tester) async {

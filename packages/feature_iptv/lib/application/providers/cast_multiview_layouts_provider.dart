@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:core_data/core_data.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_player/platform_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'iptv_providers.dart' show sharedPreferencesProvider;
@@ -44,17 +45,22 @@ class MultiviewCastLayout extends Equatable {
     required this.id,
     required this.name,
     required this.slots,
+    this.layout,
   });
 
   /// Stable across renames — generated once at creation, never reused.
   final String id;
   final String name;
   final List<MultiviewCastLayoutSlot> slots;
+  final MultiviewLayoutKind? layout;
 
   factory MultiviewCastLayout.fromJson(Map<String, dynamic> json) {
     return MultiviewCastLayout(
       id: json['id'] as String,
       name: json['name'] as String,
+      layout: json['layout'] is String
+          ? MultiviewLayoutKind.tryParse(json['layout'] as String)
+          : null,
       slots: [
         for (final rawSlot in json['slots'] as List)
           MultiviewCastLayoutSlot.fromJson(rawSlot as Map<String, dynamic>),
@@ -65,22 +71,25 @@ class MultiviewCastLayout extends Equatable {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    if (layout != null) 'layout': layout!.wireName,
     'slots': [for (final slot in slots) slot.toJson()],
   };
 
   MultiviewCastLayout copyWith({
     String? name,
     List<MultiviewCastLayoutSlot>? slots,
+    MultiviewLayoutKind? layout,
   }) {
     return MultiviewCastLayout(
       id: id,
       name: name ?? this.name,
       slots: slots ?? this.slots,
+      layout: layout ?? this.layout,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, slots];
+  List<Object?> get props => [id, name, slots, layout];
 }
 
 /// Local storage for saved [MultiviewCastLayout]s.

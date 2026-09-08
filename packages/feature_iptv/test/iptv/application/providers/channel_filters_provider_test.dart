@@ -413,4 +413,22 @@ void main() {
       expect(languageDisplayLabel('zzz'), 'zzz');
     },
   );
+
+  test('channel view mode defaults to list and survives a restart', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final overrides = [sharedPreferencesProvider.overrideWithValue(prefs)];
+    final first = ProviderContainer(overrides: overrides);
+    addTearDown(first.dispose);
+
+    expect(first.read(channelViewModeProvider), ChannelViewMode.list);
+
+    first.read(channelViewModeProvider.notifier).setMode(ChannelViewMode.grid);
+    await Future<void>.delayed(Duration.zero);
+
+    final restarted = ProviderContainer(overrides: overrides);
+    addTearDown(restarted.dispose);
+
+    expect(restarted.read(channelViewModeProvider), ChannelViewMode.grid);
+  });
 }

@@ -459,7 +459,7 @@ dependencies {
         // sample (github.com/googlecast/CastAndroidTvReceiver), paired with
         // the play-services-cast-framework version flutter_chrome_cast
         // already brings in transitively for the sender side.
-        implementation("com.google.android.gms:play-services-cast-tv:20.0.0")
+        implementation("com.google.android.gms:play-services-cast-tv:21.1.1")
     }
 
 }

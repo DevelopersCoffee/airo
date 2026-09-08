@@ -41,6 +41,8 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.favoriteChannelIds = const {},
     this.onFavoriteToggle,
     this.onClearFilters,
+    this.viewMode = ChannelViewMode.list,
+    this.onViewModeChanged,
   });
 
   final List<IPTVChannel> channels;
@@ -55,6 +57,12 @@ class ChannelLibraryGrid extends StatefulWidget {
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel>? onFavoriteToggle;
+
+  /// Phone-width layout choice. Ignored above [_phoneBreakpoint], which
+  /// always gets the dynamic tile grid. Null [onViewModeChanged] hides the
+  /// toggle entirely (tablet/TV hosts that never reach phone width).
+  final ChannelViewMode viewMode;
+  final ValueChanged<ChannelViewMode>? onViewModeChanged;
 
   /// Resets every filter from the "no matches" state. Null hides that
   /// action, leaving the explanation without a shortcut.
@@ -133,9 +141,15 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isPhone = constraints.maxWidth < _phoneBreakpoint;
-        final columns = isPhone ? 1 : _columnCountFor(constraints.maxWidth);
-        final rowExtent = isPhone ? _horizontalCardHeight : _cardHeight;
-        final rowSpacing = isPhone ? _horizontalRowSpacing : _gridSpacing;
+        // Phone width defaults to the single-column editorial list; the user
+        // can opt into the same dynamic tile grid tablet/TV always uses.
+        // Above the breakpoint there's no cramped single column to choose an
+        // alternative to, so the toggle (and this widget's viewMode) has no
+        // effect there.
+        final usePhoneList = isPhone && widget.viewMode == ChannelViewMode.list;
+        final columns = usePhoneList ? 1 : _columnCountFor(constraints.maxWidth);
+        final rowExtent = usePhoneList ? _horizontalCardHeight : _cardHeight;
+        final rowSpacing = usePhoneList ? _horizontalRowSpacing : _gridSpacing;
         if (columns != _lastColumnCount || rowExtent != _lastRowExtent) {
           _lastColumnCount = columns;
           _lastRowExtent = rowExtent;
@@ -149,7 +163,12 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: _LibrarySortRow(sort: widget.sort, onSort: widget.onSort),
+              child: _LibrarySortRow(
+                sort: widget.sort,
+                onSort: widget.onSort,
+                viewMode: widget.viewMode,
+                onViewModeChanged: isPhone ? widget.onViewModeChanged : null,
+              ),
             ),
             // The shell only builds this grid once the unfiltered library is
             // non-empty (an empty library gets the onboarding view instead),
@@ -192,7 +211,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                             channel.id,
                           ),
                           onFavoriteToggle: widget.onFavoriteToggle,
-                          horizontal: isPhone,
+                          horizontal: usePhoneList,
                         ),
                       );
                     },
@@ -296,54 +315,71 @@ const Map<ChannelSortColumn, String> _sortColumnLabels = {
 /// sort columns, tucked behind a single control that opens on demand
 /// (#compact-tv-chrome) rather than permanently occupying a full row.
 class _LibrarySortRow extends StatelessWidget {
-  const _LibrarySortRow({required this.sort, this.onSort});
+  const _LibrarySortRow({
+    required this.sort,
+    this.onSort,
+    this.viewMode = ChannelViewMode.list,
+    this.onViewModeChanged,
+  });
 
   final ChannelSort sort;
   final ValueChanged<ChannelSortColumn>? onSort;
+  final ChannelViewMode viewMode;
+  final ValueChanged<ChannelViewMode>? onViewModeChanged;
 
   @override
   Widget build(BuildContext context) {
     final label = _sortColumnLabels[sort.column] ?? 'Name';
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: TvFocusable(
-          key: const ValueKey('channel-sort-trigger'),
-          semanticLabel:
-              'Sort by $label, ${sort.ascending ? 'ascending' : 'descending'}',
-          onSelect: onSort == null ? null : () => _showSortSheet(context),
-          borderRadius: 8,
-          child: Material(
-            color: Theme.of(
-              context,
-            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: onSort == null ? null : () => _showSortSheet(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      sort.ascending
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward,
-                      size: 16,
+      child: Row(
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TvFocusable(
+                key: const ValueKey('channel-sort-trigger'),
+                semanticLabel:
+                    'Sort by $label, ${sort.ascending ? 'ascending' : 'descending'}',
+                onSelect: onSort == null ? null : () => _showSortSheet(context),
+                borderRadius: 8,
+                child: Material(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: onSort == null ? null : () => _showSortSheet(context),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            sort.ascending
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text('Sort: $label'),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 6),
-                    Text('Sort: $label'),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+          if (onViewModeChanged != null) ...[
+            const SizedBox(width: 8),
+            _ViewModeToggle(mode: viewMode, onChanged: onViewModeChanged!),
+          ],
+        ],
       ),
     );
   }
@@ -374,6 +410,41 @@ class _LibrarySortRow extends StatelessWidget {
                 },
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Phone-only list/grid switch, styled to match [_LibrarySortRow]'s chip.
+class _ViewModeToggle extends StatelessWidget {
+  const _ViewModeToggle({required this.mode, required this.onChanged});
+
+  final ChannelViewMode mode;
+  final ValueChanged<ChannelViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isGrid = mode == ChannelViewMode.grid;
+    return TvFocusable(
+      key: const ValueKey('channel-view-mode-toggle'),
+      semanticLabel: isGrid ? 'Switch to list view' : 'Switch to grid view',
+      onSelect: () =>
+          onChanged(isGrid ? ChannelViewMode.list : ChannelViewMode.grid),
+      borderRadius: 8,
+      child: Material(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () =>
+              onChanged(isGrid ? ChannelViewMode.list : ChannelViewMode.grid),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(isGrid ? Icons.view_list : Icons.grid_view, size: 20),
+          ),
         ),
       ),
     );
@@ -740,8 +811,14 @@ class _ChannelActionsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     void act(VoidCallback? action) {
-      Navigator.of(context).pop();
+      // Call the action before popping: onMultiviewToggle's closure chain
+      // reaches back into AiroTvShellState's own `ref` (via _toggleMultiview),
+      // and popping first can leave that ref "unmounted" by the time the
+      // callback's first ref.read() runs, throwing
+      // "Using 'ref' when a widget is about to or has been unmounted" even
+      // though AiroTvShell itself is still on screen.
       action?.call();
+      Navigator.of(context).pop();
     }
 
     return SafeArea(
