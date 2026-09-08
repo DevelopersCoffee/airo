@@ -269,18 +269,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     final fullscreenButton = find.byKey(
-      const ValueKey('iptv-preview-fullscreen-button'),
+      const ValueKey('iptv-player-fullscreen-button'),
     );
     expect(fullscreenButton, findsOneWidget);
+    expect(
+      tester
+          .widget<VideoPlayerWidget>(find.byType(VideoPlayerWidget))
+          .initiallyFullscreen,
+      isFalse,
+    );
 
     await tester.tap(fullscreenButton);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(fullscreenButton, findsNothing);
+    expect(fullscreenButton, findsOneWidget);
     expect(
-      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
-      findsOneWidget,
+      tester
+          .widget<VideoPlayerWidget>(find.byType(VideoPlayerWidget))
+          .initiallyFullscreen,
+      isTrue,
     );
   });
 
@@ -325,12 +333,9 @@ void main() {
               .handleNativeFullscreen,
           isFalse,
         );
-        tester
-            .widget<IconButton>(
-              find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
-            )
-            .onPressed
-            ?.call();
+        await tester.tap(
+          find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+        );
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
 
@@ -348,7 +353,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
 
         expect(
-          find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+          find.byKey(const ValueKey('iptv-player-fullscreen-button')),
           findsOneWidget,
         );
         await tester.pumpWidget(const SizedBox.shrink());
@@ -398,7 +403,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(
-        find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
         findsOneWidget,
       );
       await tester.pump(const Duration(milliseconds: 600));
@@ -421,7 +426,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(
-        find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
         findsOneWidget,
       );
       await tester.pumpWidget(const SizedBox.shrink());
@@ -452,10 +457,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(
-      find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
-      findsOneWidget,
-    );
+    // Compact mode's floating control bar deliberately omits a dedicated
+    // fullscreen icon to stay uncluttered -- Fullscreen is still reachable
+    // via the "more" sheet's unconditional entry (see iptv-player-more-button
+    // below and video_player_widget.dart's _showPlayerActionsSheet).
     expect(
       find.byKey(const ValueKey('iptv-player-mute-button')),
       findsOneWidget,
@@ -500,7 +505,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     await tester.tap(
-      find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -517,7 +522,7 @@ void main() {
     expect(handled, isTrue);
     expect(find.text('Aika Stream'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
       findsOneWidget,
     );
   });

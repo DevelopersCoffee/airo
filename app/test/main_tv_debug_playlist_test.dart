@@ -665,6 +665,25 @@ https://cdn.example.com/live/news.m3u8
     expect(systemUiMode, SystemUiMode.immersiveSticky);
     expect(systemUiOverlays, isEmpty);
   });
+
+  test(
+    'warms the Desktop Windowing check alongside form-factor detection',
+    () async {
+      var desktopWindowedCalls = 0;
+
+      await configureTvSystemChrome(
+        detectFormFactor: () async => DeviceFormFactor.mobile,
+        detectIsDesktopWindowed: () async {
+          desktopWindowedCalls++;
+          return true;
+        },
+        setPreferredOrientations: (value) async {},
+        setEnabledSystemUIMode: (mode, {overlays}) async {},
+      );
+
+      expect(desktopWindowedCalls, 1);
+    },
+  );
 }
 
 class _FakeFallbackCompactEpgRepository implements CompactEpgRepository {

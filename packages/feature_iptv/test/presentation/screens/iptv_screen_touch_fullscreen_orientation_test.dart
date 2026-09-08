@@ -102,7 +102,7 @@ void main() {
       // exit with back/escape (bounded pumps: the fullscreen player shows
       // a looping buffering spinner, so pumpAndSettle would never settle).
       await tester.tap(
-        find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
       );
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));

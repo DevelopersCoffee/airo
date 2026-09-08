@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_player/platform_player.dart';
 import 'package:platform_streams/platform_streams.dart';
 
 import '../../application/providers/channel_filters_provider.dart';
@@ -24,6 +25,7 @@ import 'sections/channel_library_grid.dart';
 import 'sections/filter_dialogs.dart';
 import 'sections/filter_row.dart';
 import 'sections/hotbar.dart';
+import 'sections/multiview_layout_picker.dart';
 import 'sections/multiview_stage.dart';
 import 'sections/playback_stats_bar.dart';
 import 'sections/shell_help_dialog.dart';
@@ -48,6 +50,8 @@ class AiroTvShell extends ConsumerStatefulWidget {
     this.onWaysToWatchTap,
     this.onShareVideoFrame,
     this.videoFrameEncoder,
+    this.onFullscreenToggle,
+    this.videoStageHasOwnActions = false,
   });
 
   final List<IPTVChannel> channels;
@@ -64,6 +68,15 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// the phone app bar is suppressed; null hides the entry.
   final VoidCallback? onPlaylistSourceTap;
 
+  /// Enters the fullscreen player. Lives on the stage's own action row (not
+  /// inside [videoStage]) so it stays reachable once a MultiView session
+  /// replaces [videoStage] with [MultiviewStage] — [videoStage]'s own
+  /// fullscreen button disappears with it otherwise (see iptv_screen.dart's
+  /// "Open full player" button, which only overlays the single-channel
+  /// preview). Null hides the action, matching every other optional entry
+  /// point here.
+  final VoidCallback? onFullscreenToggle;
+
   /// Opens the fit/full/floating/Cast chooser from the LIVE info bar.
   final VoidCallback? onWaysToWatchTap;
 
@@ -73,6 +86,17 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// Test seam for deterministic rendering validation. Production uses the
   /// boundary's PNG encoder.
   final VideoFrameEncoder? videoFrameEncoder;
+
+  /// Set by callers whose [videoStage] is a real player that already offers
+  /// its own Help/Settings entries (see `VideoPlayerWidget.onShowHelp` /
+  /// `onOpenSettings`) -- this shell then skips its own stage action row for
+  /// the single-channel case so the two overlays don't stack (#1025). Leave
+  /// this false whenever [videoStage] is a placeholder (no channel playing
+  /// yet) or anything else that can't offer those actions itself: the shell
+  /// then keeps drawing its own row so Help/Settings stay reachable no
+  /// matter what [videoStage] renders. MultiView always keeps this shell's
+  /// row regardless, since [MultiviewStage] has no sheet of its own.
+  final bool videoStageHasOwnActions;
 
   @override
   ConsumerState<AiroTvShell> createState() => _AiroTvShellState();
@@ -100,6 +124,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
               widget.metadataByChannelId
         : widget.metadataByChannelId;
     final sort = ref.watch(channelSortProvider);
+    final viewMode = ref.watch(channelViewModeProvider);
     final countryPrompt = ref.watch(channelCountryPromptProvider);
     final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
     final rowVisibility = ref.watch(controlRowVisibilityProvider);
@@ -153,6 +178,9 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       sort: sort,
       onSort: (column) =>
           ref.read(channelSortProvider.notifier).state = sort.toggle(column),
+      viewMode: viewMode,
+      onViewModeChanged: (mode) =>
+          ref.read(channelViewModeProvider.notifier).setMode(mode),
       onChannelSelected: (channel) => _selectChannel(
         context,
         channel,
@@ -209,27 +237,59 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       autofocus: filterRowAutofocus,
       compact: compact,
     );
-    final videoStage = _VideoStageWithActions(
-      child: KeyedSubtree(
-        key: const ValueKey('airo-tv-video-capture-scope'),
-        child: RepaintBoundary(
-          key: _videoCaptureKey,
-          child: multiview.sessions.isEmpty
-              ? widget.videoStage
-              : MultiviewStage(
-                  sessions: multiview.sessions,
-                  featuredChannelId: multiview.featuredChannelId,
-                  onPromote: (channelId) =>
-                      ref.read(multiviewProvider.notifier).promote(channelId),
-                  onSwap: (firstId, secondId) => ref
-                      .read(multiviewProvider.notifier)
-                      .swap(firstId, secondId),
-                ),
-        ),
-      ),
-      onSettings: () => showAiroTvShellSettingsDialog(context),
-      onHelp: () => showAiroTvShellHelpDialog(context),
-    );
+    // A real `VideoPlayerWidget` videoStage owns its own touch-reveal chrome
+    // and player-actions sheet -- wrapping it in a second, always-visible
+    // icon row stacked two overlays the moment a viewer tapped the screen,
+    // so callers that wired Help/Settings into that sheet themselves opt out
+    // of this row via `videoStageHasOwnActions` (#1025). Every other
+    // videoStage (a "select a channel" placeholder, a bare stub, or a live
+    // MultiView session, which has no sheet of its own) keeps this row so
+    // Help/Settings/Fullscreen stay reachable no matter what's on screen.
+    final needsShellVideoActions =
+        multiview.sessions.isNotEmpty || !widget.videoStageHasOwnActions;
+    final videoStage = needsShellVideoActions
+        ? _VideoStageWithActions(
+            onSettings: () => showAiroTvShellSettingsDialog(context),
+            onHelp: () => showAiroTvShellHelpDialog(context),
+            // Available whenever there is something to show fullscreen: a
+            // single playing channel, or a live MultiView session (primary
+            // playback is paused while MultiView is active, so
+            // currentChannel alone would hide this the moment a second
+            // stream joins).
+            onFullscreen:
+                (widget.currentChannel == null && multiview.sessions.isEmpty)
+                ? null
+                : widget.onFullscreenToggle,
+            onLayout: multiview.sessions.isEmpty
+                ? null
+                : () => _showMultiviewLayoutPicker(context, multiview),
+            child: KeyedSubtree(
+              key: const ValueKey('airo-tv-video-capture-scope'),
+              child: RepaintBoundary(
+                key: _videoCaptureKey,
+                child: multiview.sessions.isEmpty
+                    ? widget.videoStage
+                    : MultiviewStage(
+                        sessions: multiview.sessions,
+                        featuredChannelId: multiview.featuredChannelId,
+                        layout: multiview.layout,
+                        onPromote: (channelId) => ref
+                            .read(multiviewProvider.notifier)
+                            .promote(channelId),
+                        onSwap: (firstId, secondId) => ref
+                            .read(multiviewProvider.notifier)
+                            .swap(firstId, secondId),
+                      ),
+              ),
+            ),
+          )
+        : KeyedSubtree(
+            key: const ValueKey('airo-tv-video-capture-scope'),
+            child: RepaintBoundary(
+              key: _videoCaptureKey,
+              child: widget.videoStage,
+            ),
+          );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -350,11 +410,55 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     );
   }
 
+  Future<void> _showMultiviewLayoutPicker(
+    BuildContext context,
+    MultiviewState multiview,
+  ) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const ValueKey('airo-tv-multiview-layout-dialog'),
+        title: const Text('MultiView layout'),
+        content: MultiviewLayoutPicker(
+          selected: resolveMultiviewLayout(
+            preferred: multiview.layout,
+            sessionCount: multiview.sessions.length,
+          ),
+          capacity: multiview.capacity,
+          onSelected: (kind) {
+            ref.read(multiviewProvider.notifier).setLayout(kind);
+            Navigator.of(dialogContext).pop();
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleMultiview(
     BuildContext context,
     IPTVChannel channel,
   ) async {
-    final result = await ref.read(multiviewProvider.notifier).toggle(channel);
+    // AiroTvShellState is observed to be transiently torn down and rebuilt
+    // by an ancestor within a second or so of almost any interaction here
+    // (root cause not yet isolated -- see the churn investigation notes).
+    // `ref` becomes briefly unusable during that window in a way
+    // `context.mounted` does not reliably catch (Riverpod's own disposal
+    // flag flips at Element.deactivate(), before Flutter's `mounted` does),
+    // so a synchronous ref.read can throw here even though this exact
+    // widget is back on screen a frame later. Retry once after a
+    // microtask beat rather than losing the toggle outright.
+    MultiviewToggleResult result;
+    try {
+      result = await ref.read(multiviewProvider.notifier).toggle(channel);
+    } on StateError {
+      await Future<void>.delayed(Duration.zero);
+      if (!context.mounted) return;
+      try {
+        result = await ref.read(multiviewProvider.notifier).toggle(channel);
+      } on StateError {
+        return;
+      }
+    }
     if (!context.mounted) return;
     final message = switch (result) {
       MultiviewToggleResult.added => '${channel.name} added to multiview',
@@ -525,14 +629,18 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
 
 class _VideoStageWithActions extends StatelessWidget {
   const _VideoStageWithActions({
-    required this.child,
     required this.onSettings,
     required this.onHelp,
+    this.onLayout,
+    this.onFullscreen,
+    required this.child,
   });
 
   final Widget child;
   final VoidCallback onSettings;
   final VoidCallback onHelp;
+  final VoidCallback? onLayout;
+  final VoidCallback? onFullscreen;
 
   @override
   Widget build(BuildContext context) {
@@ -546,6 +654,24 @@ class _VideoStageWithActions extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (onFullscreen != null) ...[
+                _StageAction(
+                  key: const ValueKey('airo-tv-shell-fullscreen-action'),
+                  icon: Icons.fullscreen,
+                  tooltip: 'Open full player',
+                  onPressed: onFullscreen!,
+                ),
+                const SizedBox(width: 4),
+              ],
+              if (onLayout != null) ...[
+                _StageAction(
+                  key: const ValueKey('airo-tv-shell-layout-action'),
+                  icon: Icons.grid_view,
+                  tooltip: 'MultiView layout',
+                  onPressed: onLayout!,
+                ),
+                const SizedBox(width: 4),
+              ],
               _StageAction(
                 key: const ValueKey('airo-tv-shell-help-action'),
                 icon: Icons.help_outline,

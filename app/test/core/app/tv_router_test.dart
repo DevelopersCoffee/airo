@@ -319,6 +319,50 @@ void main() {
   );
 
   testWidgets(
+    'wide non-TV window keeps the 10-foot layout when not desktop-windowed',
+    (tester) async {
+      DeviceFormFactorDetector.clearCache();
+      addTearDown(DeviceFormFactorDetector.clearCache);
+      // pumpTvRouter's own surfaceSize goes through
+      // tester.binding.setSurfaceSize, which this MaterialApp.router tree
+      // doesn't observe (see the 1920x1080 Fire TV tests above for the
+      // working pattern) -- set the view directly instead.
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await pumpTvRouter(tester, initialLocation: TvRouteNames.live);
+
+      expect(find.byIcon(Icons.menu), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'wide non-TV window detected as Desktop Windowed gets phone-style '
+    'chrome instead of the 10-foot layout (Android Desktop Windowing on a '
+    'handheld connected to an external monitor)',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      DeviceFormFactorDetector.debugIsDesktopWindowedOverride = true;
+      addTearDown(DeviceFormFactorDetector.clearCache);
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await pumpTvRouter(tester, initialLocation: TvRouteNames.live);
+
+      expect(find.byIcon(Icons.menu), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      expect(find.text('Play file on TV'), findsOneWidget);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets(
     'TV renders the 10-foot AiroTvShell with no phone chrome, and keeps '
     'playlist source reachable without an app bar',
     (tester) async {

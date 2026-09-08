@@ -83,6 +83,7 @@ class MainActivity : AudioServiceFragmentActivity() {
                 when (call.method) {
                     "isTV" -> result.success(isTvDevice())
                     "getTvPlatform" -> result.success(getTvPlatform())
+                    "isDesktopWindowed" -> result.success(isDesktopWindowed())
                     "getSimCountryIso" -> {
                         val telephony = getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
                         result.success(telephony?.simCountryIso?.takeIf { it.isNotBlank() }?.uppercase(Locale.US))
@@ -184,6 +185,31 @@ class MainActivity : AudioServiceFragmentActivity() {
             return "android_tv"
         }
         return "none"
+    }
+
+    // Android's Desktop Windowing (15+) and classic split-screen both report
+    // isInMultiWindowMode() == true, so that alone can't tell them apart --
+    // this app needs to: split-screen still leaves phone-style touch chrome
+    // appropriate (the window keeps roughly the phone's own aspect ratio),
+    // while Desktop Windowing hands the user a freeform, mouse/keyboard-driven
+    // window that rarely matches a clean half-split and needs the wide
+    // explorer layout instead of the 10-foot remote-first one (see
+    // tv_router.dart's tenFootMode decision). Comparing the current window
+    // against the display's real size distinguishes the two without any
+    // hidden WindowConfiguration API: a half-split fills one axis almost
+    // completely and halves the other; freeform rarely lines up with either.
+    private fun isDesktopWindowed(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        if (!isInMultiWindowMode) return false
+        val windowBounds = windowManager.currentWindowMetrics.bounds
+        val displayBounds = windowManager.maximumWindowMetrics.bounds
+        if (displayBounds.width() <= 0 || displayBounds.height() <= 0) return false
+        val widthRatio = windowBounds.width().toFloat() / displayBounds.width()
+        val heightRatio = windowBounds.height().toFloat() / displayBounds.height()
+        val isFullscreen = widthRatio > 0.92f && heightRatio > 0.92f
+        val isHalfSplitWidth = widthRatio in 0.40f..0.60f && heightRatio > 0.85f
+        val isHalfSplitHeight = heightRatio in 0.40f..0.60f && widthRatio > 0.85f
+        return !isFullscreen && !isHalfSplitWidth && !isHalfSplitHeight
     }
 
     override fun onRequestPermissionsResult(

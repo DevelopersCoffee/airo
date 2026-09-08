@@ -341,6 +341,58 @@ final channelSortProvider = StateProvider<ChannelSort>(
   (ref) => const ChannelSort(),
 );
 
+/// Phone-width channel browser layout. Tablet/TV widths always get the
+/// dynamic tile grid regardless of this value -- there's no cramped single
+/// column to choose an alternative to there.
+enum ChannelViewMode { list, grid }
+
+const channelViewModeStorageKey = 'iptv_channel_view_mode';
+
+class ChannelViewModeNotifier extends StateNotifier<ChannelViewMode> {
+  ChannelViewModeNotifier(this._ref) : super(ChannelViewMode.list) {
+    _load();
+  }
+
+  final Ref _ref;
+
+  void setMode(ChannelViewMode mode) {
+    if (mode == state) return;
+    state = mode;
+    unawaited(_save(mode));
+  }
+
+  Future<void> _save(ChannelViewMode mode) async {
+    try {
+      await _ref
+          .read(sharedPreferencesProvider)
+          .setString(channelViewModeStorageKey, mode.name);
+    } catch (_) {
+      // Keep the in-memory choice when local persistence is unavailable.
+    }
+  }
+
+  void _load() {
+    try {
+      final stored = _ref
+          .read(sharedPreferencesProvider)
+          .getString(channelViewModeStorageKey);
+      for (final mode in ChannelViewMode.values) {
+        if (mode.name == stored) {
+          state = mode;
+          break;
+        }
+      }
+    } catch (_) {
+      // Defaults keep the browser usable when preferences are unavailable.
+    }
+  }
+}
+
+final channelViewModeProvider =
+    StateNotifierProvider<ChannelViewModeNotifier, ChannelViewMode>(
+      (ref) => ChannelViewModeNotifier(ref),
+    );
+
 class ChannelFilterDimensions {
   const ChannelFilterDimensions({
     required this.categories,
