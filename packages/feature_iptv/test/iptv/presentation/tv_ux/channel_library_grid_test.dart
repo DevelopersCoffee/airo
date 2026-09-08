@@ -579,4 +579,119 @@ void main() {
     expect(find.byTooltip('Channel reachable'), findsOneWidget);
     expect(find.byTooltip('Channel may be restricted'), findsOneWidget);
   });
+
+  SliverGrid gridSliver(WidgetTester tester) =>
+      tester.widget<SliverGrid>(find.byType(SliverGrid));
+
+  testWidgets(
+    'phone width defaults to a single-column list and hides the toggle '
+    'when no callback is supplied',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const ValueKey('channel-view-mode-toggle')),
+        findsNothing,
+      );
+      final delegate =
+          gridSliver(tester).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 1);
+    },
+  );
+
+  testWidgets(
+    'phone width toggle switches between the single-column list and the '
+    'dynamic tile grid',
+    (tester) async {
+      var mode = ChannelViewMode.list;
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) => MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 360,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: {},
+                  viewMode: mode,
+                  onViewModeChanged: (next) =>
+                      setState(() => mode = next),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Starts in list mode: single column, and the toggle offers grid next.
+      var delegate =
+          gridSliver(tester).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 1);
+      expect(find.byIcon(Icons.grid_view), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('channel-view-mode-toggle')),
+      );
+      await tester.pump();
+
+      // Same 360-wide viewport now uses the dynamic multi-column grid, and
+      // the toggle icon flips to offer list mode next.
+      delegate =
+          gridSliver(tester).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, greaterThan(1));
+      expect(find.byIcon(Icons.view_list), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'tablet/TV width always uses the dynamic grid regardless of viewMode, '
+    'and never shows the toggle',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                viewMode: ChannelViewMode.list,
+                // Even a non-null callback must not surface a toggle here:
+                // there's no cramped single column at this width to offer
+                // an alternative to.
+                onViewModeChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const ValueKey('channel-view-mode-toggle')),
+        findsNothing,
+      );
+      final delegate =
+          gridSliver(tester).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, greaterThan(1));
+    },
+  );
 }

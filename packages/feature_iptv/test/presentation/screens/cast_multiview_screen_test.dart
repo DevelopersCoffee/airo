@@ -290,4 +290,37 @@ void main() {
       ),
     ]);
   });
+
+  testWidgets(
+    'the eight layout mosaics are on screen and tapping one sets layout',
+    (tester) async {
+      final link = FakeMultiviewCastLink();
+      addTearDown(link.dispose);
+      final receivedCommands = <MultiviewCastCommand>[];
+      link.receiver.commands.listen(receivedCommands.add);
+
+      await pump(tester, transport: link.sender);
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('multiview-layout-picker')),
+        findsOneWidget,
+      );
+      for (final kind in MultiviewLayoutKind.values) {
+        expect(
+          find.byKey(ValueKey('multiview-layout-pick-${kind.wireName}')),
+          findsOneWidget,
+        );
+      }
+
+      await tester.tap(
+        find.byKey(const ValueKey('multiview-layout-pick-spotlight')),
+      );
+      await tester.pump();
+
+      expect(receivedCommands, [
+        const MultiviewSetLayoutCommand(layout: MultiviewLayoutKind.spotlight),
+      ]);
+    },
+  );
 }

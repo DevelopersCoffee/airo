@@ -11,8 +11,12 @@ import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/multiview_provider.dart'
-    show multiviewDecoderBudgetProvider;
+    show multiviewDecoderBudgetProvider, multiviewProvider, MultiviewState;
 import '../../application/wakelock_playback_coordinator.dart';
+import '../tv_ux/sections/multiview_layout_picker.dart';
+import '../tv_ux/sections/multiview_stage.dart';
+import '../tv_ux/sections/shell_help_dialog.dart';
+import '../tv_ux/sections/shell_settings_dialog.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_media/platform_media.dart";
 import "package:platform_player/platform_player.dart";
@@ -966,6 +970,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // player's own minimize/fullscreen-toggle button would never be able
     // to take a deep-linked channel back to the browse grid.
     final showFullscreenPlayer = isFullscreen;
+    final multiview = ref.watch(multiviewProvider);
 
     // System PiP: the floating window IS the whole app window, so render
     // only the video surface — no app bar, drawer, headers, or controls —
@@ -989,15 +994,19 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           }
         });
       }
-      return guardRouteBack(
-        Focus(
-          focusNode: _fullscreenFocusNode,
-          autofocus: true,
-          onKeyEvent: _handleFullscreenKey,
-          child: AiroResponsiveScaffold(
-            padding: EdgeInsets.zero,
-            backgroundColor: Colors.black,
-            body: VideoPlayerWidget(
+      // MultiView sessions were being silently dropped on entering
+      // fullscreen: this branch previously always rendered a single-channel
+      // VideoPlayerWidget bound to the primary streaming service, which
+      // multiview_provider.dart's toggle() pauses the moment a MultiView
+      // session starts — so "activeChannel" itself is likely null here.
+      // Render the same MultiviewStage the browse grid uses instead,
+      // whenever there is a live session to show.
+      final fullscreenBody = multiview.sessions.isNotEmpty
+          ? _FullscreenMultiviewStage(
+              multiview: multiview,
+              onExit: _exitFullscreen,
+            )
+          : VideoPlayerWidget(
               showControls: true,
               initiallyFullscreen: true,
               handleNativeFullscreen: false,
@@ -1018,7 +1027,19 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               // the remote-only Android TV and Fire TV player surfaces.
               showPictureInPicture: !widget.tenFootMode,
               useTvTransportBar: widget.tenFootMode,
-            ),
+              onOpenSettings: () =>
+                  showAiroTvShellSettingsDialog(context),
+              onShowHelp: () => showAiroTvShellHelpDialog(context),
+            );
+      return guardRouteBack(
+        Focus(
+          focusNode: _fullscreenFocusNode,
+          autofocus: true,
+          onKeyEvent: _handleFullscreenKey,
+          child: AiroResponsiveScaffold(
+            padding: EdgeInsets.zero,
+            backgroundColor: Colors.black,
+            body: fullscreenBody,
           ),
         ),
       );
@@ -1504,6 +1525,9 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                     onBack: _exitFullscreen,
                     onFullscreenToggle: _toggleFullscreen,
                     enableSwipeChannelChange: true,
+                    onOpenSettings: () =>
+                        showAiroTvShellSettingsDialog(context),
+                    onShowHelp: () => showAiroTvShellHelpDialog(context),
                   ),
                 ),
               ),
@@ -1593,6 +1617,14 @@ class _StreamTabContent extends ConsumerWidget {
       onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
       onWaysToWatchTap: onWaysToWatchTap,
       onShareVideoFrame: onShareVideoFrame,
+      onFullscreenToggle: onFullscreenToggle,
+      // Only true once there's an actual channel playing: that's the only
+      // state where `videoStage` below is a real `VideoPlayerWidget` with
+      // Help/Settings wired into its own sheet. The "select a channel"
+      // placeholder has no sheet to fold into, so the shell keeps its own
+      // row for that state (and it's also how Settings stays reachable to
+      // turn hidden rows back on before any channel has ever played).
+      videoStageHasOwnActions: activeChannel != null,
       videoStage: AspectRatio(
         aspectRatio: 16 / 9,
         child: activeChannel == null
@@ -1611,27 +1643,10 @@ class _StreamTabContent extends ConsumerWidget {
                     enableTouchGestures: !playlistSourceInInfoBar,
                     onFullscreenToggle: onFullscreenToggle,
                     showPictureInPicture: !playlistSourceInInfoBar,
-                    // This screen already renders its own persistent
-                    // "Open full player" fullscreen button below, right on
-                    // top of this embedded preview -- suppress the widget's
-                    // own hover-chrome fullscreen button so the two don't
-                    // stack in the same top-left corner (#1025, #1600).
-                    showFullscreenButton: false,
-                  ),
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Material(
-                      color: Colors.black.withValues(alpha: 0.48),
-                      shape: const CircleBorder(),
-                      child: IconButton(
-                        key: const ValueKey('iptv-preview-fullscreen-button'),
-                        tooltip: 'Open full player',
-                        icon: const Icon(Icons.fullscreen),
-                        color: Colors.white,
-                        onPressed: onFullscreenToggle,
-                      ),
-                    ),
+                    showFullscreenButton: true,
+                    onOpenSettings: () =>
+                        showAiroTvShellSettingsDialog(context),
+                    onShowHelp: () => showAiroTvShellHelpDialog(context),
                   ),
                   const Positioned(
                     top: 60,
@@ -1660,6 +1675,105 @@ class _StreamTabContent extends ConsumerWidget {
             label: const Text('Retry'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The fullscreen player's MultiView view -- shares [MultiviewStage] with
+/// the browse grid rather than a bespoke fullscreen mosaic, so tapping
+/// fullscreen never drops or re-arranges live sessions. Exit/layout controls
+/// live in a top action row instead of on the tiles themselves, since
+/// fullscreen has no info bar to host them.
+class _FullscreenMultiviewStage extends ConsumerWidget {
+  const _FullscreenMultiviewStage({required this.multiview, required this.onExit});
+
+  final MultiviewState multiview;
+  final VoidCallback onExit;
+
+  Future<void> _showLayoutPicker(BuildContext context, WidgetRef ref) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const ValueKey('fullscreen-multiview-layout-dialog'),
+        title: const Text('MultiView layout'),
+        content: MultiviewLayoutPicker(
+          selected: resolveMultiviewLayout(
+            preferred: multiview.layout,
+            sessionCount: multiview.sessions.length,
+          ),
+          capacity: multiview.capacity,
+          onSelected: (kind) {
+            ref.read(multiviewProvider.notifier).setLayout(kind);
+            Navigator.of(dialogContext).pop();
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        MultiviewStage(
+          sessions: multiview.sessions,
+          featuredChannelId: multiview.featuredChannelId,
+          layout: multiview.layout,
+          onPromote: (channelId) =>
+              ref.read(multiviewProvider.notifier).promote(channelId),
+          onSwap: (firstId, secondId) =>
+              ref.read(multiviewProvider.notifier).swap(firstId, secondId),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _FullscreenStageAction(
+                key: const ValueKey('fullscreen-multiview-layout-action'),
+                icon: Icons.grid_view,
+                tooltip: 'MultiView layout',
+                onPressed: () => _showLayoutPicker(context, ref),
+              ),
+              const SizedBox(width: 4),
+              _FullscreenStageAction(
+                key: const ValueKey('fullscreen-multiview-exit-action'),
+                icon: Icons.fullscreen_exit,
+                tooltip: 'Exit full screen',
+                onPressed: onExit,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FullscreenStageAction extends StatelessWidget {
+  const _FullscreenStageAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.56),
+      shape: const CircleBorder(),
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon, color: Colors.white),
       ),
     );
   }

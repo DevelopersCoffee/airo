@@ -12,12 +12,17 @@ class MultiviewStage extends StatelessWidget {
     required this.featuredChannelId,
     required this.onPromote,
     this.onSwap,
+    this.layout,
   });
 
   final List<IptvMultiviewSession> sessions;
   final String? featuredChannelId;
   final ValueChanged<String> onPromote;
   final void Function(String firstId, String secondId)? onSwap;
+
+  /// Preferred mosaic. Ignored when it cannot fit every live session —
+  /// see [resolveMultiviewLayout].
+  final MultiviewLayoutKind? layout;
 
   @override
   Widget build(BuildContext context) {
@@ -26,72 +31,149 @@ class MultiviewStage extends StatelessWidget {
     // `orElse` returning that subtype.
     final activeSessions = List<IptvMultiviewSession>.of(sessions);
     if (activeSessions.isEmpty) return const SizedBox.shrink();
-    if (activeSessions.length == 1) {
-      return _SessionSurface(
-        key: const ValueKey('multiview-layout-single'),
-        session: activeSessions.single,
-        featured: true,
-      );
-    }
-    if (activeSessions.length == 2) {
-      return Row(
-        key: const ValueKey('multiview-layout-split'),
-        children: [
-          for (final session in activeSessions)
-            Expanded(
-              child: _PromotableSurface(
-                session: session,
-                featured: session.id == featuredChannelId,
-                onPromote: onPromote,
-                onSwap: onSwap,
-                featuredChannelId: featuredChannelId,
-              ),
-            ),
-        ],
-      );
-    }
-
-    if (activeSessions.length == 3) {
-      // A 2-column grid leaves a dead fourth cell for exactly three tiles;
-      // two-over-one keeps every tile equally sized with no empty space.
-      Widget tileFor(IptvMultiviewSession session) => _PromotableSurface(
+    final kind = resolveMultiviewLayout(
+      preferred: layout,
+      sessionCount: activeSessions.length,
+    );
+    Widget cell(int index) {
+      if (index >= activeSessions.length) {
+        return _EmptySlot(index: index);
+      }
+      final session = activeSessions[index];
+      if (kind == MultiviewLayoutKind.single) {
+        return _SessionSurface(session: session, featured: true);
+      }
+      return _PromotableSurface(
         session: session,
         featured: session.id == featuredChannelId,
         onPromote: onPromote,
         onSwap: onSwap,
         featuredChannelId: featuredChannelId,
       );
-      return Column(
+    }
+
+    return switch (kind) {
+      MultiviewLayoutKind.single => KeyedSubtree(
+        key: const ValueKey('multiview-layout-single'),
+        child: cell(0),
+      ),
+      MultiviewLayoutKind.splitHorizontal => Row(
+        key: const ValueKey('multiview-layout-split'),
+        children: [
+          Expanded(child: cell(0)),
+          Expanded(child: cell(1)),
+        ],
+      ),
+      MultiviewLayoutKind.splitVertical => Column(
+        key: const ValueKey('multiview-layout-split-vertical'),
+        children: [
+          Expanded(child: cell(0)),
+          Expanded(child: cell(1)),
+        ],
+      ),
+      MultiviewLayoutKind.tripleTop => Column(
+        key: const ValueKey('multiview-layout-triple-top'),
+        children: [
+          Expanded(child: cell(0)),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: cell(1)),
+                Expanded(child: cell(2)),
+              ],
+            ),
+          ),
+        ],
+      ),
+      MultiviewLayoutKind.tripleBottom => Column(
         key: const ValueKey('multiview-layout-triple'),
         children: [
           Expanded(
             child: Row(
               children: [
-                Expanded(child: tileFor(activeSessions[0])),
-                Expanded(child: tileFor(activeSessions[1])),
+                Expanded(child: cell(0)),
+                Expanded(child: cell(1)),
               ],
             ),
           ),
-          Expanded(child: tileFor(activeSessions[2])),
+          Expanded(child: cell(2)),
         ],
-      );
-    }
-
-    return GridView.count(
-      key: ValueKey('multiview-layout-quad-${activeSessions.length}'),
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      childAspectRatio: 16 / 9,
-      children: [
-        for (final session in activeSessions)
-          _PromotableSurface(
-            session: session,
-            featured: session.id == featuredChannelId,
-            onPromote: onPromote,
-            onSwap: onSwap,
-            featuredChannelId: featuredChannelId,
+      ),
+      MultiviewLayoutKind.tripleLeft => Row(
+        key: const ValueKey('multiview-layout-triple-left'),
+        children: [
+          Expanded(flex: 2, child: cell(0)),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(child: cell(1)),
+                Expanded(child: cell(2)),
+              ],
+            ),
           ),
-      ],
+        ],
+      ),
+      MultiviewLayoutKind.quad => Column(
+        key: ValueKey('multiview-layout-quad-${activeSessions.length}'),
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: cell(0)),
+                Expanded(child: cell(1)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: cell(2)),
+                Expanded(child: cell(3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+      MultiviewLayoutKind.spotlight => Row(
+        key: const ValueKey('multiview-layout-spotlight'),
+        children: [
+          Expanded(flex: 2, child: cell(0)),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(child: cell(1)),
+                Expanded(child: cell(2)),
+                Expanded(child: cell(3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    };
+  }
+}
+
+class _EmptySlot extends StatelessWidget {
+  const _EmptySlot({required this.index});
+
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      key: ValueKey('multiview-empty-slot-$index'),
+      color: Colors.black,
+      child: DecoratedBox(
+        decoration: BoxDecoration(border: Border.all(color: Colors.white24)),
+        child: Center(
+          child: Text(
+            'Empty',
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: Colors.white54),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -156,6 +238,34 @@ Future<void> _showTileControls(
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(24, 4, 24, 4),
+              child: Text('Volume'),
+            ),
+            // Sets this tile's volume directly, independent of which tile
+            // the pool currently treats as "featured" -- lets a viewer mix
+            // in a second stream's audio at a partial level instead of the
+            // pool's default one-audible-tile-at-a-time routing. The next
+            // promote/add/remove resets every tile back to that default,
+            // overwriting this (see AiroMultiviewSession's doc comment).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Icon(
+                    state.volume <= 0 ? Icons.volume_off : Icons.volume_up,
+                    size: 20,
+                  ),
+                  Expanded(
+                    child: Slider(
+                      key: ValueKey('multiview-volume-${session.id}'),
+                      value: state.volume.clamp(0.0, 1.0),
+                      onChanged: (value) => session.setVolume(value),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 4, 24, 4),
               child: Text('Audio track'),
             ),
             for (final track in audioTracks)
@@ -206,11 +316,7 @@ Future<void> _showTileControls(
 }
 
 class _SessionSurface extends StatelessWidget {
-  const _SessionSurface({
-    super.key,
-    required this.session,
-    required this.featured,
-  });
+  const _SessionSurface({required this.session, required this.featured});
 
   final IptvMultiviewSession session;
   final bool featured;

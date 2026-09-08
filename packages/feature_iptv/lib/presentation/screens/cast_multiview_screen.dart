@@ -5,6 +5,7 @@ import 'package:platform_player/platform_player.dart';
 import '../../application/providers/cast_multiview_layouts_provider.dart';
 import '../../application/providers/cast_multiview_sender_provider.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../tv_ux/sections/multiview_layout_picker.dart';
 import '../widgets/adaptive_iptv_sheet.dart';
 
 /// Phone-side remote control for a TV's MultiView grid — a distinct
@@ -30,6 +31,10 @@ class CastMultiviewScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _ConnectionCard(receiverState: receiverState),
+          const SizedBox(height: 24),
+          Text('Layouts', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _LayoutPicker(receiverState: receiverState),
           const SizedBox(height: 24),
           Text('On the TV now', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -122,6 +127,24 @@ class _ConnectionCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LayoutPicker extends ConsumerWidget {
+  const _LayoutPicker({required this.receiverState});
+
+  final AsyncValue<MultiviewCastState?> receiverState;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = receiverState.value;
+    final sender = ref.read(multiviewCastSenderTransportProvider);
+    return MultiviewLayoutPicker(
+      selected: state?.layout,
+      capacity: state?.capacity ?? kAiroMultiviewHardCap,
+      onSelected: (kind) =>
+          sender.sendCommand(MultiviewSetLayoutCommand(layout: kind)),
     );
   }
 }
@@ -219,6 +242,11 @@ class _SavedLayoutsList extends ConsumerWidget {
                     tooltip: 'Launch on TV',
                     icon: const Icon(Icons.play_arrow),
                     onPressed: () async {
+                      if (layout.layout != null) {
+                        await sender.sendCommand(
+                          MultiviewSetLayoutCommand(layout: layout.layout!),
+                        );
+                      }
                       for (final slot in layout.slots) {
                         await sender.sendCommand(
                           MultiviewSetSlotCommand(
@@ -259,6 +287,7 @@ class _CastMultiviewLayoutEditorSheetState
     extends ConsumerState<CastMultiviewLayoutEditorSheet> {
   final _nameController = TextEditingController();
   final _selected = <MultiviewCastLayoutSlot>[];
+  MultiviewLayoutKind? _layout;
 
   @override
   void initState() {
@@ -279,89 +308,125 @@ class _CastMultiviewLayoutEditorSheetState
     final channels = ref.watch(iptvChannelsProvider);
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Create layout', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('cast-multiview-layout-name'),
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Layout name'),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Channels (${_selected.length})',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final slot in _selected)
-                Chip(
-                  key: ValueKey('cast-multiview-slot-chip-${slot.channelId}'),
-                  label: Text(slot.channelName),
-                  onDeleted: () => setState(
-                    () => _selected.removeWhere(
-                      (s) => s.channelId == slot.channelId,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Create layout',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          channels.when(
-            data: (available) => SizedBox(
-              height: 200,
-              child: ListView(
-                children: [
-                  for (final channel in available)
-                    CheckboxListTile(
-                      key: ValueKey(
-                        'cast-multiview-channel-option-${channel.id}',
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const ValueKey('cast-multiview-layout-name'),
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Layout name',
                       ),
-                      value: _selected.any((s) => s.channelId == channel.id),
-                      title: Text(channel.name),
-                      onChanged: (checked) => setState(() {
-                        if (checked == true) {
-                          _selected.add(
-                            MultiviewCastLayoutSlot(
-                              channelId: channel.id,
-                              channelName: channel.name,
-                            ),
-                          );
-                        } else {
-                          _selected.removeWhere(
-                            (s) => s.channelId == channel.id,
-                          );
-                        }
-                      }),
                     ),
-                ],
+                    const SizedBox(height: 12),
+                    Text(
+                      'Arrangement',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    MultiviewLayoutPicker(
+                      selected: _layout,
+                      capacity: kAiroMultiviewHardCap,
+                      onSelected: (kind) => setState(() => _layout = kind),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Channels (${_selected.length})',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final slot in _selected)
+                          Chip(
+                            key: ValueKey(
+                              'cast-multiview-slot-chip-${slot.channelId}',
+                            ),
+                            label: Text(slot.channelName),
+                            onDeleted: () => setState(
+                              () => _selected.removeWhere(
+                                (s) => s.channelId == slot.channelId,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    channels.when(
+                      data: (available) => SizedBox(
+                        height: 160,
+                        child: ListView(
+                          children: [
+                            for (final channel in available)
+                              CheckboxListTile(
+                                key: ValueKey(
+                                  'cast-multiview-channel-option-${channel.id}',
+                                ),
+                                value: _selected.any(
+                                  (s) => s.channelId == channel.id,
+                                ),
+                                title: Text(channel.name),
+                                onChanged: (checked) => setState(() {
+                                  if (checked == true) {
+                                    _selected.add(
+                                      MultiviewCastLayoutSlot(
+                                        channelId: channel.id,
+                                        channelName: channel.name,
+                                      ),
+                                    );
+                                  } else {
+                                    _selected.removeWhere(
+                                      (s) => s.channelId == channel.id,
+                                    );
+                                  }
+                                }),
+                              ),
+                          ],
+                        ),
+                      ),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (error, stackTrace) =>
+                          Text('Could not load channels: $error'),
+                    ),
+                  ],
+                ),
               ),
             ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stackTrace) =>
-                Text('Could not load channels: $error'),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                key: const ValueKey('cast-multiview-save-layout'),
-                onPressed: _canSave ? _save : null,
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  key: const ValueKey('cast-multiview-save-layout'),
+                  onPressed: _canSave ? _save : null,
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -375,6 +440,7 @@ class _CastMultiviewLayoutEditorSheetState
       MultiviewCastLayout(
         id: newMultiviewCastLayoutId(),
         name: _nameController.text.trim(),
+        layout: _layout,
         slots: List.unmodifiable(_selected),
       ),
     );

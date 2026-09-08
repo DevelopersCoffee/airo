@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'multiview_layout_kind.dart';
+
 /// Custom Cast message namespace for remote MultiView control (see
 /// docs/superpowers/specs/2026-09-07-cast-multiview-remote-control-spec.md).
 /// Google's `urn:x-cast:<reverse-domain>` convention.
@@ -57,6 +59,16 @@ sealed class MultiviewCastCommand extends Equatable {
         );
       case 'multiview.query_state':
         return const MultiviewQueryStateCommand();
+      case 'multiview.set_layout':
+        final layout = MultiviewLayoutKind.tryParse(
+          _requireString(json, 'layout'),
+        );
+        if (layout == null) {
+          throw const MultiviewCastProtocolException(
+            'Unknown or missing "layout" field.',
+          );
+        }
+        return MultiviewSetLayoutCommand(layout: layout);
       default:
         throw MultiviewCastProtocolException('Unknown command type "$type".');
     }
@@ -133,6 +145,21 @@ class MultiviewSwapCommand extends MultiviewCastCommand {
   List<Object?> get props => [firstSlotId, secondSlotId];
 }
 
+class MultiviewSetLayoutCommand extends MultiviewCastCommand {
+  const MultiviewSetLayoutCommand({required this.layout});
+
+  final MultiviewLayoutKind layout;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'type': 'multiview.set_layout',
+    'layout': layout.wireName,
+  };
+
+  @override
+  List<Object?> get props => [layout];
+}
+
 /// Asks the receiver to publish its current [MultiviewCastState] immediately
 /// — used right after a sender connects, before any command of its own.
 class MultiviewQueryStateCommand extends MultiviewCastCommand {
@@ -185,10 +212,15 @@ class MultiviewCastSlot extends Equatable {
 /// shows up here as "the slot didn't change" rather than a separate error
 /// message the sender has to correlate back to its own command.
 class MultiviewCastState extends Equatable {
-  const MultiviewCastState({required this.capacity, required this.slots});
+  const MultiviewCastState({
+    required this.capacity,
+    required this.slots,
+    this.layout,
+  });
 
   final int capacity;
   final List<MultiviewCastSlot> slots;
+  final MultiviewLayoutKind? layout;
 
   factory MultiviewCastState.fromJson(Map<String, dynamic> json) {
     final capacity = json['capacity'];
@@ -203,6 +235,9 @@ class MultiviewCastState extends Equatable {
     }
     return MultiviewCastState(
       capacity: capacity,
+      layout: json['layout'] is String
+          ? MultiviewLayoutKind.tryParse(json['layout'] as String)
+          : null,
       slots: [
         for (final rawSlot in rawSlots)
           MultiviewCastSlot.fromJson(rawSlot as Map<String, dynamic>),
@@ -213,11 +248,12 @@ class MultiviewCastState extends Equatable {
   Map<String, dynamic> toJson() => {
     'type': 'multiview.state',
     'capacity': capacity,
+    if (layout != null) 'layout': layout!.wireName,
     'slots': [for (final slot in slots) slot.toJson()],
   };
 
   @override
-  List<Object?> get props => [capacity, slots];
+  List<Object?> get props => [capacity, slots, layout];
 }
 
 String _requireString(Map<String, dynamic> json, String key) {
