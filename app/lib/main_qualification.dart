@@ -22,7 +22,6 @@ import 'features/iptv/iptv_cast_provider_override.dart';
 
 const _defaultPlaylistUrl = 'https://iptv-org.github.io/iptv/index.m3u';
 
-
 void main() {
   late SharedPreferences prefs;
   late ModuleRegistry registry;
