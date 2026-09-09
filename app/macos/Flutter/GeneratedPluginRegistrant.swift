@@ -5,6 +5,7 @@
 import FlutterMacOS
 import Foundation
 
+import airo_calendar
 import audio_service
 import audio_session
 import audioplayers_darwin
@@ -24,7 +25,6 @@ import local_auth_darwin
 import media_kit_libs_macos_video
 import package_info_plus
 import pdfx
-import platform_calendar
 import record_macos
 import screen_brightness_macos
 import share_plus
@@ -37,6 +37,7 @@ import video_player_avfoundation
 import wakelock_plus
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  PlatformCalendarPlugin.register(with: registry.registrar(forPlugin: "PlatformCalendarPlugin"))
   AudioServicePlugin.register(with: registry.registrar(forPlugin: "AudioServicePlugin"))
   AudioSessionPlugin.register(with: registry.registrar(forPlugin: "AudioSessionPlugin"))
   AudioplayersDarwinPlugin.register(with: registry.registrar(forPlugin: "AudioplayersDarwinPlugin"))
@@ -56,7 +57,6 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   MediaKitLibsMacosVideoPlugin.register(with: registry.registrar(forPlugin: "MediaKitLibsMacosVideoPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   PdfxPlugin.register(with: registry.registrar(forPlugin: "PdfxPlugin"))
-  PlatformCalendarPlugin.register(with: registry.registrar(forPlugin: "PlatformCalendarPlugin"))
   RecordMacOsPlugin.register(with: registry.registrar(forPlugin: "RecordMacOsPlugin"))
   ScreenBrightnessMacosPlugin.register(with: registry.registrar(forPlugin: "ScreenBrightnessMacosPlugin"))
   SharePlusMacosPlugin.register(with: registry.registrar(forPlugin: "SharePlusMacosPlugin"))

@@ -4,11 +4,10 @@ packages:
   airo_analytics:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "8bade9769afed77ff29bbc69df321927cd8a87f1"
-      url: "https://github.com/DevelopersCoffee/airo_analytics.git"
-    source: git
+      name: airo_analytics
+      sha256: cd90c81c06876e274feffd85d8adf21ff2327a8fe2fae0c06e88f3c991ba5b78
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   async:
     dependency: transitive

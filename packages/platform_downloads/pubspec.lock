@@ -4,11 +4,10 @@ packages:
   airo_background_downloads:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: deedde3346b63c86b563ddc8b0d33569e5fa8e9a
-      url: "https://github.com/DevelopersCoffee/airo_background_downloads.git"
-    source: git
+      name: airo_background_downloads
+      sha256: "825644c6c63f5e3bfc7b7ed0dcc88143690aaca0ee8a8891782302237daacaae"
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   async:
     dependency: transitive

@@ -150,10 +150,7 @@ dependencies:
     path: ../packages/feature_iptv
   platform_playlist:
     path: ../packages/platform_playlist
-  dpad_qualification:
-    git:
-      url: https://github.com/DevelopersCoffee/dpad_qualification.git
-      ref: main
+  dpad_qualification: ^1.0.0
   platform_channels:
     path: ../packages/platform_channels
   platform_player:

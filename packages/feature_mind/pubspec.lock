@@ -9,6 +9,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "96.0.0"
+  airo_background_downloads:
+    dependency: transitive
+    description:
+      name: airo_background_downloads
+      sha256: "825644c6c63f5e3bfc7b7ed0dcc88143690aaca0ee8a8891782302237daacaae"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  airo_calendar:
+    dependency: transitive
+    description:
+      name: airo_calendar
+      sha256: "3b226dbcad7cc0f4f334f109c19038c84e44c6bc8a710d8b7a9ebe0f15a891ea"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  airo_protocol:
+    dependency: transitive
+    description:
+      name: airo_protocol
+      sha256: c94824cc32612db3da54a0519b42123ee67ed5184bee42860871e3de34c07210
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   analyzer:
     dependency: transitive
     description:
@@ -1195,6 +1219,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.2"
+  run_off_main:
+    dependency: transitive
+    description:
+      name: run_off_main
+      sha256: d66d6d3121385b58f9fe4dffafc1b999543a9daf5749217de582bdf8376e8e71
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   share_plus:
     dependency: "direct main"
     description:

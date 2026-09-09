@@ -4,11 +4,10 @@ packages:
   airo_protocol:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "350960e44747887b503d83c09a7e66703d77af77"
-      url: "https://github.com/DevelopersCoffee/airo_protocol.git"
-    source: git
+      name: airo_protocol
+      sha256: c94824cc32612db3da54a0519b42123ee67ed5184bee42860871e3de34c07210
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   async:
     dependency: transitive

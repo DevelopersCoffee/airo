@@ -24,6 +24,38 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  airo_analytics:
+    dependency: transitive
+    description:
+      name: airo_analytics
+      sha256: cd90c81c06876e274feffd85d8adf21ff2327a8fe2fae0c06e88f3c991ba5b78
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  airo_background_downloads:
+    dependency: transitive
+    description:
+      name: airo_background_downloads
+      sha256: "825644c6c63f5e3bfc7b7ed0dcc88143690aaca0ee8a8891782302237daacaae"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  airo_calendar:
+    dependency: transitive
+    description:
+      name: airo_calendar
+      sha256: "3b226dbcad7cc0f4f334f109c19038c84e44c6bc8a710d8b7a9ebe0f15a891ea"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  airo_job_scheduler:
+    dependency: transitive
+    description:
+      name: airo_job_scheduler
+      sha256: a37c773312c038d283fce6177c2b23cdc95181fa2a31ca1201f10429912afc0d
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   airo_pro_bootstrap:
     dependency: "direct main"
     description:
@@ -31,6 +63,14 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  airo_protocol:
+    dependency: transitive
+    description:
+      name: airo_protocol
+      sha256: c94824cc32612db3da54a0519b42123ee67ed5184bee42860871e3de34c07210
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   alchemist:
     dependency: "direct dev"
     description:
@@ -604,11 +644,10 @@ packages:
   dpad_qualification:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: b823187937d069ae33549793ab78b76617d6a6fd
-      url: "https://github.com/DevelopersCoffee/dpad_qualification.git"
-    source: git
+      name: dpad_qualification
+      sha256: eaa5026cd310e5757c2f14d72f536ba61526da8945e83316e8a18456492440c3
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   drift:
     dependency: "direct main"
@@ -1361,6 +1400,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
+  iptv_org_api:
+    dependency: transitive
+    description:
+      name: iptv_org_api
+      sha256: d8991bc09e3a1b9e6702c1fca812f9bc89c935a9fc14203e31f339876cf46239
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   jni:
     dependency: transitive
     description:
@@ -2158,6 +2205,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.8"
+  run_off_main:
+    dependency: transitive
+    description:
+      name: run_off_main
+      sha256: d66d6d3121385b58f9fe4dffafc1b999543a9daf5749217de582bdf8376e8e71
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   rxdart:
     dependency: "direct overridden"
     description:

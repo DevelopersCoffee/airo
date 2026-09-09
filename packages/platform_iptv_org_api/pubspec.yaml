@@ -7,10 +7,7 @@ environment:
   sdk: ^3.12.2
 
 dependencies:
-  iptv_org_api:
-    git:
-      url: https://github.com/DevelopersCoffee/iptv_org_api.git
-      ref: main
+  iptv_org_api: ^1.0.0
 
 dev_dependencies:
   lints: ^6.0.0

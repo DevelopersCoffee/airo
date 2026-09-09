@@ -4,11 +4,10 @@ packages:
   airo_job_scheduler:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "185db3ac649bd22a4f1a0e494c53a44271b5ce4d"
-      url: "https://github.com/DevelopersCoffee/airo_job_scheduler.git"
-    source: git
+      name: airo_job_scheduler
+      sha256: a37c773312c038d283fce6177c2b23cdc95181fa2a31ca1201f10429912afc0d
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   async:
     dependency: transitive

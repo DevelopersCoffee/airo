@@ -4,11 +4,10 @@ packages:
   airo_pairing:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "6cec850639d22488e6da5dbedbbef46a711cc137"
-      url: "https://github.com/DevelopersCoffee/airo_pairing.git"
-    source: git
+      name: airo_pairing
+      sha256: "04d1b2d70ae0b0c735a4d021a03eab0fef573370b0739efd85cae6e3b06cb628"
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   async:
     dependency: transitive

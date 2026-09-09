@@ -132,11 +132,10 @@ packages:
   iptv_org_api:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "3886771e84b9b624e015acd30d7dfeef3467105e"
-      url: "https://github.com/DevelopersCoffee/iptv_org_api.git"
-    source: git
+      name: iptv_org_api
+      sha256: d8991bc09e3a1b9e6702c1fca812f9bc89c935a9fc14203e31f339876cf46239
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   lints:
     dependency: "direct dev"
@@ -221,11 +220,10 @@ packages:
   run_off_main:
     dependency: transitive
     description:
-      path: "."
-      ref: main
-      resolved-ref: "5231c1b9cf44b2f1f129840cd2fa0b29a7e44f2e"
-      url: "https://github.com/DevelopersCoffee/run_off_main.git"
-    source: git
+      name: run_off_main
+      sha256: d66d6d3121385b58f9fe4dffafc1b999543a9daf5749217de582bdf8376e8e71
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   shelf:
     dependency: transitive

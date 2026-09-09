@@ -157,4 +157,7 @@ final class _FakeTransport implements IptvOrgTransport {
     requests.add(request);
     return handler(request);
   }
+
+  @override
+  void close() {}
 }

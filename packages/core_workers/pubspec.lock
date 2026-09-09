@@ -134,11 +134,10 @@ packages:
   run_off_main:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "5231c1b9cf44b2f1f129840cd2fa0b29a7e44f2e"
-      url: "https://github.com/DevelopersCoffee/run_off_main.git"
-    source: git
+      name: run_off_main
+      sha256: d66d6d3121385b58f9fe4dffafc1b999543a9daf5749217de582bdf8376e8e71
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   sky_engine:
     dependency: transitive
