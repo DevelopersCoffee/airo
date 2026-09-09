@@ -443,7 +443,50 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     BuildContext context,
     IPTVChannel channel,
   ) async {
-    final result = await ref.read(multiviewProvider.notifier).toggle(channel);
+    // AiroTvShellState's channel-list reload no longer tears this widget
+    // down on its own (see #1985), but `ref` can still momentarily go
+    // unusable from unrelated ancestor rebuilds -- this used to be a fully
+    // uncaught StateError here (silent no-op: no snackbar, no state change,
+    // confirmed on-device), which is worse than the retry itself. One short
+    // retry catches the residual race; a final failure is at least visible.
+    //
+    // Separately (confirmed on-device): opening a new session has no
+    // feedback at all while it's in flight, and a slow/dead stream can take
+    // 10+ seconds to time out and report failure -- during that whole
+    // window the toggle looks exactly like it's doing nothing. An
+    // immediate "opening" snackbar (add only; remove is effectively
+    // instant) makes that wait legible instead of looking broken.
+    final wasInMultiview = ref.read(multiviewProvider).contains(channel.id);
+    if (!wasInMultiview && context.mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Opening ${channel.name}...'),
+            duration: const Duration(seconds: 20),
+          ),
+        );
+    }
+    MultiviewToggleResult result;
+    try {
+      result = await ref.read(multiviewProvider.notifier).toggle(channel);
+    } on StateError {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      if (!context.mounted) return;
+      try {
+        result = await ref.read(multiviewProvider.notifier).toggle(channel);
+      } on StateError {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('Could not update multiview right now. Try again.'),
+            ),
+          );
+        return;
+      }
+    }
     if (!context.mounted) return;
     final message = switch (result) {
       MultiviewToggleResult.added => '${channel.name} added to multiview',
