@@ -64,6 +64,31 @@ class AiroNativePictureInPicture {
     }
   }
 
+  /// Tells the native side the video surface's current on-screen bounds
+  /// (in physical pixels), so `PictureInPictureParams.setSourceRectHint`
+  /// can restrict the system PiP snapshot to just the video -- without
+  /// this, Android snapshots the whole Activity window, capturing whatever
+  /// surrounding chrome (channel list, app bar, dialogs) happens to be
+  /// visible the instant PiP is entered. Safe to call every frame; no-op
+  /// on hosts without the channel.
+  static Future<void> updateSourceRectHint(Rect rect) async {
+    _configureMethodCallHandler();
+    try {
+      await _channel.invokeMethod<void>('setSourceRectHint', {
+        'rect': [
+          rect.left.round(),
+          rect.top.round(),
+          rect.right.round(),
+          rect.bottom.round(),
+        ],
+      });
+    } on MissingPluginException {
+      debugPrint('PiP channel is unavailable on this host');
+    } catch (error) {
+      debugPrint('PiP updateSourceRectHint error: $error');
+    }
+  }
+
   /// Whether the app is currently in system PiP mode. Used by the
   /// backgrounding coordinator to distinguish "native auto-enter already
   /// handled it" from "PiP failed, fall back to audio-only".

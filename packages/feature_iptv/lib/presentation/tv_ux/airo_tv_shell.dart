@@ -450,18 +450,41 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     // `context.mounted` does not reliably catch (Riverpod's own disposal
     // flag flips at Element.deactivate(), before Flutter's `mounted` does),
     // so a synchronous ref.read can throw here even though this exact
-    // widget is back on screen a frame later. Retry once after a
-    // microtask beat rather than losing the toggle outright.
-    MultiviewToggleResult result;
-    try {
-      result = await ref.read(multiviewProvider.notifier).toggle(channel);
-    } on StateError {
-      await Future<void>.delayed(Duration.zero);
-      if (!context.mounted) return;
+    // widget is back on screen shortly after.
+    //
+    // Measured on-device: once this state is hit in a session, retrying
+    // for up to 4.5s does not recover it -- it is not a one-frame blip a
+    // longer backoff can outlast. So this keeps only a short bounded retry
+    // (in case a genuine microtask-scale race exists) and, critically,
+    // always surfaces a visible failure message instead of the previous
+    // single Duration.zero retry, which silently dropped the toggle with
+    // zero user feedback on the (common, per on-device testing) case where
+    // it doesn't recover in time.
+    const retryDelays = [
+      Duration(milliseconds: 50),
+      Duration(milliseconds: 150),
+      Duration(milliseconds: 300),
+    ];
+    MultiviewToggleResult? result;
+    for (var attempt = 0; result == null; attempt++) {
       try {
         result = await ref.read(multiviewProvider.notifier).toggle(channel);
       } on StateError {
-        return;
+        if (attempt >= retryDelays.length) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Could not update multiview right now. Try again.',
+                  ),
+                ),
+              );
+          }
+          return;
+        }
+        await Future<void>.delayed(retryDelays[attempt]);
       }
     }
     if (!context.mounted) return;

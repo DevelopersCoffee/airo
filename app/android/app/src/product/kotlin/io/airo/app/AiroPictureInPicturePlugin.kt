@@ -3,6 +3,7 @@ package io.airo.app
 import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.pm.PackageManager
+import android.graphics.Rect
 import android.os.Build
 import android.util.Rational
 import io.flutter.plugin.common.BinaryMessenger
@@ -19,6 +20,16 @@ class AiroPictureInPicturePlugin(private val activity: Activity) {
     /** When true, the app wants PiP on user-leave (Home press) while playing. */
     private var autoEnterArmed = false
 
+    /**
+     * The video surface's current on-screen bounds (physical pixels), kept
+     * in sync by the Flutter side on every frame. Restricts the system PiP
+     * snapshot to just the video via [PictureInPictureParams.Builder.setSourceRectHint] --
+     * without it Android snapshots the whole Activity window, capturing
+     * whatever chrome (channel list, app bar, dialogs) is visible the
+     * instant PiP is entered.
+     */
+    private var sourceRectHint: Rect? = null
+
     fun register(messenger: BinaryMessenger) {
         val channel = MethodChannel(messenger, CHANNEL_NAME)
         channel.setMethodCallHandler { call, result ->
@@ -27,6 +38,10 @@ class AiroPictureInPicturePlugin(private val activity: Activity) {
                 "requestEnter" -> result.success(requestEnter())
                 "setAutoEnterEnabled" -> {
                     setAutoEnterEnabled(call.argument<Boolean>("enabled") ?: false)
+                    result.success(null)
+                }
+                "setSourceRectHint" -> {
+                    updateSourceRectHint(call.argument<List<Int>>("rect"))
                     result.success(null)
                 }
                 "isActive" -> result.success(activity.isInPictureInPictureMode)
@@ -71,9 +86,28 @@ class AiroPictureInPicturePlugin(private val activity: Activity) {
         if (autoEnterArmed) requestEnter()
     }
 
+    /**
+     * Called from Flutter on every frame the video surface builds. Only
+     * stores the rect -- [buildParams] reads it whenever [requestEnter] or
+     * [setAutoEnterEnabled] next runs, which is already how every other
+     * params field (aspect ratio, autoEnter) reaches the system. Proactively
+     * calling `setPictureInPictureParams` here as well was redundant and, on
+     * device, correlated with auto-enter PiP silently no-longer triggering
+     * on Home press -- removed rather than risk that regression for a hint
+     * that's purely cosmetic (crops the snapshot) and not required to be
+     * live between real params-applying calls.
+     */
+    private fun updateSourceRectHint(rect: List<Int>?) {
+        if (rect == null || rect.size != 4) return
+        val next = Rect(rect[0], rect[1], rect[2], rect[3])
+        if (next.isEmpty) return
+        sourceRectHint = next
+    }
+
     private fun buildParams(autoEnter: Boolean): PictureInPictureParams {
         val builder = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
+        sourceRectHint?.let { builder.setSourceRectHint(it) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(autoEnter)
         }
