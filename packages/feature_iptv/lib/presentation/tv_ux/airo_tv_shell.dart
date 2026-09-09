@@ -443,27 +443,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     BuildContext context,
     IPTVChannel channel,
   ) async {
-    // AiroTvShellState is observed to be transiently torn down and rebuilt
-    // by an ancestor within a second or so of almost any interaction here
-    // (root cause not yet isolated -- see the churn investigation notes).
-    // `ref` becomes briefly unusable during that window in a way
-    // `context.mounted` does not reliably catch (Riverpod's own disposal
-    // flag flips at Element.deactivate(), before Flutter's `mounted` does),
-    // so a synchronous ref.read can throw here even though this exact
-    // widget is back on screen a frame later. Retry once after a
-    // microtask beat rather than losing the toggle outright.
-    MultiviewToggleResult result;
-    try {
-      result = await ref.read(multiviewProvider.notifier).toggle(channel);
-    } on StateError {
-      await Future<void>.delayed(Duration.zero);
-      if (!context.mounted) return;
-      try {
-        result = await ref.read(multiviewProvider.notifier).toggle(channel);
-      } on StateError {
-        return;
-      }
-    }
+    final result = await ref.read(multiviewProvider.notifier).toggle(channel);
     if (!context.mounted) return;
     final message = switch (result) {
       MultiviewToggleResult.added => '${channel.name} added to multiview',

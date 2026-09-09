@@ -1582,6 +1582,18 @@ class _StreamTabContent extends ConsumerWidget {
     final streamingState = ref.watch(streamingStateProvider);
 
     return channelsAsync.when(
+      // iptvChannelsProvider re-runs whenever any of its watched
+      // dependencies changes (auto-scan availability, favorites, personal
+      // channels, ...) -- Riverpod calls that a "reload", distinct from an
+      // explicit invalidate/refresh, and `when()` does NOT skip the loading
+      // branch for a reload by default. Without this flag, any such
+      // dependency change -- triggerable by almost any interaction on this
+      // screen -- replaced this whole subtree with TvLoadingScreen and back,
+      // tearing down and recreating AiroTvShellState (and therefore
+      // invalidating any `ref` a caller had captured, e.g. mid-flight in
+      // _toggleMultiview) even though cached channel data was already on
+      // screen. See AsyncValue.when's skipLoadingOnReload/isReloading docs.
+      skipLoadingOnReload: true,
       data: (channels) => _buildContent(context, ref, channels, streamingState),
       loading: () => const TvLoadingScreen(message: 'Loading channels...'),
       error: (error, stack) => _buildError(context, ref, error.toString()),
