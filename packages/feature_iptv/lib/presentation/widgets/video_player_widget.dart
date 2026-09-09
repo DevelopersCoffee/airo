@@ -2362,7 +2362,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               children: [
                 if (widget.showFullscreenButton)
                   _PlayerFloatingControlButton(
-                    key: const ValueKey('iptv-player-fullscreen-button'),
+                    key: const ValueKey('iptv-player-fullscreen-button-compact'),
                     icon: _isFullscreen
                         ? Icons.fullscreen_exit
                         : Icons.fullscreen,

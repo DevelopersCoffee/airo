@@ -443,50 +443,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     BuildContext context,
     IPTVChannel channel,
   ) async {
-    // AiroTvShellState is observed to be transiently torn down and rebuilt
-    // by an ancestor within a second or so of almost any interaction here
-    // (root cause not yet isolated -- see the churn investigation notes).
-    // `ref` becomes briefly unusable during that window in a way
-    // `context.mounted` does not reliably catch (Riverpod's own disposal
-    // flag flips at Element.deactivate(), before Flutter's `mounted` does),
-    // so a synchronous ref.read can throw here even though this exact
-    // widget is back on screen shortly after.
-    //
-    // Measured on-device: once this state is hit in a session, retrying
-    // for up to 4.5s does not recover it -- it is not a one-frame blip a
-    // longer backoff can outlast. So this keeps only a short bounded retry
-    // (in case a genuine microtask-scale race exists) and, critically,
-    // always surfaces a visible failure message instead of the previous
-    // single Duration.zero retry, which silently dropped the toggle with
-    // zero user feedback on the (common, per on-device testing) case where
-    // it doesn't recover in time.
-    const retryDelays = [
-      Duration(milliseconds: 50),
-      Duration(milliseconds: 150),
-      Duration(milliseconds: 300),
-    ];
-    MultiviewToggleResult? result;
-    for (var attempt = 0; result == null; attempt++) {
-      try {
-        result = await ref.read(multiviewProvider.notifier).toggle(channel);
-      } on StateError {
-        if (attempt >= retryDelays.length) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Could not update multiview right now. Try again.',
-                  ),
-                ),
-              );
-          }
-          return;
-        }
-        await Future<void>.delayed(retryDelays[attempt]);
-      }
-    }
+    final result = await ref.read(multiviewProvider.notifier).toggle(channel);
     if (!context.mounted) return;
     final message = switch (result) {
       MultiviewToggleResult.added => '${channel.name} added to multiview',
