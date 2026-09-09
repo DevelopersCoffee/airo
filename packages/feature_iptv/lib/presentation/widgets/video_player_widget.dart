@@ -143,6 +143,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   static const _controlsHideDelay = Duration(seconds: 4);
   static const _pointerExitHideDelay = Duration(seconds: 3);
 
+  /// Marks the video surface's own bounds (excluding surrounding chrome
+  /// like the channel list/app bar) so the native PiP snapshot can be
+  /// restricted to just the video via `setSourceRectHint` -- without this,
+  /// Android snapshots the entire Activity window, capturing whatever else
+  /// happens to be on screen the instant PiP is entered.
+  final GlobalKey _videoSurfaceKey = GlobalKey();
+  Rect? _lastReportedPipRect;
+
   /// Default focus holder for the player surface. While it has focus the
   /// D-pad channel-surfs; revealing the controls moves focus onto them.
   final FocusNode _playerFocusNode = FocusNode(
@@ -427,6 +435,28 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     ref
         .read(playerBackgroundingCoordinatorProvider)
         .manualAudioOnlyToggled(next);
+  }
+
+  /// Keeps the native side's PiP source-rect hint in sync with the video
+  /// surface's actual on-screen bounds, in physical pixels. Auto-enter PiP
+  /// can fire at any time (Home press), not only when the user explicitly
+  /// requests it, so this runs on every frame the player builds rather than
+  /// only right before an explicit PiP request -- otherwise the hint would
+  /// be stale (or never set) for the more common auto-enter path.
+  void _reportPipSourceRectIfChanged() {
+    final renderObject = _videoSurfaceKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+    final topLeft = renderObject.localToGlobal(Offset.zero);
+    final rect = Rect.fromLTWH(
+      topLeft.dx * dpr,
+      topLeft.dy * dpr,
+      renderObject.size.width * dpr,
+      renderObject.size.height * dpr,
+    );
+    if (rect == _lastReportedPipRect || rect.isEmpty) return;
+    _lastReportedPipRect = rect;
+    unawaited(AiroNativePictureInPicture.updateSourceRectHint(rect));
   }
 
   Future<void> _requestPictureInPicture() async {
@@ -967,6 +997,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _handleVodResume(service, state);
       _applyCaptionPreferenceIfNeeded(service, state);
       _scheduleAdjacentChannelWarmup(state);
+      _reportPipSourceRectIfChanged();
     });
 
     // Listen-only mode never asks the engine for a view: the native
@@ -997,6 +1028,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           _buildAudioOnlyPlaceholder(state)
         else if (videoView != null)
           SizedBox.expand(
+            key: _videoSurfaceKey,
             child: FittedBox(fit: _boxFitFor(aspectRatioFit), child: videoView),
           )
         else
