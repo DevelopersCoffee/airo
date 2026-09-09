@@ -131,6 +131,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
+  run_off_main:
+    dependency: "direct main"
+    description:
+      name: run_off_main
+      sha256: d66d6d3121385b58f9fe4dffafc1b999543a9daf5749217de582bdf8376e8e71
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   sky_engine:
     dependency: transitive
     description: flutter

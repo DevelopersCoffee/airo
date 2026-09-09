@@ -150,8 +150,7 @@ dependencies:
     path: ../packages/feature_iptv
   platform_playlist:
     path: ../packages/platform_playlist
-  platform_device_qualification:
-    path: ../packages/platform_device_qualification
+  dpad_qualification: ^1.0.0
   platform_channels:
     path: ../packages/platform_channels
   platform_player:

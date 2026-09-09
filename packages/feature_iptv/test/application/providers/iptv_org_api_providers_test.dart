@@ -93,4 +93,7 @@ final class _TaxonomyTransport implements IptvOrgTransport {
       body: Uint8List.fromList(utf8.encode(jsonEncode([row]))),
     );
   }
+
+  @override
+  void close() {}
 }

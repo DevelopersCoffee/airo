@@ -1,8 +1,1 @@
-/// Typed, cached access to the public iptv-org relational API.
-library;
-
-export 'src/cache.dart';
-export 'src/client.dart';
-export 'src/index.dart';
-export 'src/models.dart';
-export 'src/transport.dart';
+export 'package:iptv_org_api/iptv_org_api.dart';

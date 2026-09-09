@@ -1,7 +1,6 @@
 name: core_protocol
-description: Connected-node protocol contracts for Airo devices.
+description: Monorepo shim re-exporting airo_protocol.
 version: 0.0.1
-homepage:
 publish_to: none
 
 environment:
@@ -9,13 +8,11 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
-  equatable: ^2.1.0
+  airo_protocol: ^1.0.0
   flutter:
     sdk: flutter
 
 dev_dependencies:
+  flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
-
-flutter:
