@@ -1,0 +1,8 @@
+# m3u_parser's own FRB bridge — a standalone crate/dylib (`libm3u_parser`),
+# deliberately separate from airo_core's `libairo_core` so the two can
+# coexist in one process without symbol/dylib-name collisions once Airo
+# consumes this package (#1502).
+rust_root: packages/m3u_parser/rust
+rust_input: crate::api
+dart_output: packages/m3u_parser/lib/src
+rust_output: packages/m3u_parser/rust/src/frb_generated.rs
