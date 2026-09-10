@@ -133,5 +133,41 @@ https://cdn.example.com/live.m3u8
       expect(result.channels.single.url, 'https://cdn.example.com/live.m3u8');
       expect(result.channels.single.logo, isNull);
     });
+
+    test('unions tags from both tvg-tags and tags attributes', () {
+      final result = parseM3uChannelsWithStats('''
+#EXTM3U
+#EXTINF:-1 tvg-tags="news,live" tags="live,hd",Tagged Channel
+https://example.com/tagged.m3u8
+''');
+
+      expect(result.channels, hasLength(1));
+      expect(result.channels.single.tags, ['news', 'live', 'hd']);
+    });
+
+    test('whitespace-only tvg-country yields null country', () {
+      final result = parseM3uChannelsWithStats('''
+#EXTM3U
+#EXTINF:-1 tvg-country="  ",Whitespace Country
+https://example.com/whitespace-country.m3u8
+''');
+
+      expect(result.channels, hasLength(1));
+      expect(result.channels.single.country, isNull);
+    });
+
+    test('mixed-case scheme/host with default port is preserved verbatim', () {
+      final result = parseM3uChannelsWithStats('''
+#EXTM3U
+#EXTINF:-1,Mixed Case Url
+HTTPS://Example.COM:443/News.m3u8
+''');
+
+      expect(result.channels, hasLength(1));
+      expect(
+        result.channels.single.url,
+        'HTTPS://Example.COM:443/News.m3u8',
+      );
+    });
   });
 }

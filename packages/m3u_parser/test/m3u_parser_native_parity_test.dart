@@ -24,6 +24,7 @@ void main() {
     final asyncResult = await parseM3uWithStatsAsync(_corpus);
     final syncResult = parseM3uWithStats(_corpus);
 
+    expect(syncResult.playlist.entries, isNotEmpty);
     expect(asyncResult.playlist.entries.length, syncResult.playlist.entries.length);
     expect(asyncResult.playlist.headers, syncResult.playlist.headers);
     expect(asyncResult.stats.parsedCount, syncResult.stats.parsedCount);
@@ -49,6 +50,7 @@ void main() {
     final asyncResult = await parseM3uChannelsWithStatsAsync(_corpus);
     final syncResult = parseM3uChannelsWithStats(_corpus);
 
+    expect(syncResult.channels, isNotEmpty);
     expect(asyncResult.channels.length, syncResult.channels.length);
     for (var i = 0; i < syncResult.channels.length; i++) {
       expect(asyncResult.channels[i].name, syncResult.channels[i].name);

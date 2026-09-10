@@ -238,11 +238,9 @@ M3uChannelParseResult _dartChannelsFromResult(M3uParseResult result) {
       tvgName: entry.tvgName,
       language: entry.language,
       aliases: aliases,
-      country: entry.extras['tvg-country'] ?? entry.extras['country'],
-      provider: entry.extras['provider'] ?? entry.extras['tvg-provider'],
-      tags: _splitMetadataList(
-        entry.extras['tvg-tags'] ?? entry.extras['tags'],
-      ),
+      country: _firstExtra(entry.extras, const ['tvg-country', 'country']),
+      provider: _firstExtra(entry.extras, const ['provider', 'tvg-provider']),
+      tags: _listExtra(entry.extras, const ['tvg-tags', 'tags']),
     );
 
     final existing = seenChannels[normalizedName];
@@ -257,14 +255,37 @@ M3uChannelParseResult _dartChannelsFromResult(M3uParseResult result) {
   return M3uChannelParseResult(channels: channels, stats: result.stats);
 }
 
-List<String> _splitMetadataList(String? value) {
-  if (value == null) return const [];
-  return value
-      .split(RegExp('[,;|]'))
-      .map((item) => item.trim())
-      .where((item) => item.isNotEmpty)
-      .toSet()
-      .toList(growable: false);
+/// Mirrors the Rust `first_extra`: find the FIRST key (in order) that is
+/// *present* in the map (regardless of whether its value is empty), then
+/// trim that one value. Does not fall through to later keys once a present
+/// key is found, even if its trimmed value is empty.
+String? _firstExtra(Map<String, String> extras, List<String> keys) {
+  for (final key in keys) {
+    final value = extras[key];
+    if (value != null) {
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+  }
+  return null;
+}
+
+/// Mirrors the Rust `list_extra`: iterate ALL the given keys that are
+/// present (not just the first), split each on `,`/`;`/`|`, trim each
+/// piece, and union everything into one deduped list in first-seen order.
+List<String> _listExtra(Map<String, String> extras, List<String> keys) {
+  final values = <String>[];
+  for (final key in keys) {
+    final raw = extras[key];
+    if (raw == null) continue;
+    for (final piece in raw.split(RegExp('[,;|]'))) {
+      final value = piece.trim();
+      if (value.isNotEmpty && !values.contains(value)) {
+        values.add(value);
+      }
+    }
+  }
+  return values;
 }
 
 M3uParseResult _dartParseM3uWithStats(String content) {
@@ -428,7 +449,7 @@ String? _normalizeNetworkUrl(String value) {
 
   final uri = Uri.tryParse(raw);
   if (uri == null || !_isAllowedNetworkUri(uri)) return null;
-  return uri.toString();
+  return raw;
 }
 
 bool _isAllowedNetworkUri(Uri uri) {

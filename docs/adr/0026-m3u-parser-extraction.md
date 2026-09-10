@@ -163,6 +163,42 @@ it directly from a UI-thread hot path.
 - **Public semver discipline is new** — nothing in this repo has shipped to
   pub.dev before (every package here is `publish_to: none` today). The
   team has no prior track record on this specific failure mode to draw on.
+- **The Rust/Dart parity test is not yet real cross-engine enforcement.**
+  The parity test added in this plan
+  (`packages/m3u_parser/test/m3u_parser_native_parity_test.dart`) can only
+  exercise the Dart-fallback path against itself in the current CI/test
+  environment — the native bridge doesn't load in a plain `flutter test`
+  run, so "async (Rust-preferred)" and "sync Dart" are, in practice, the
+  same code path today. An on-device test that forces the native path (
+  mirroring `core_native`'s existing env-var-gated native verification test
+  pattern) is the actual follow-up needed to make the parity guarantee
+  real, not just asserted.
+- **iOS/macOS static-link symbol collision risk for #1502.** The new crate
+  and `core_native`'s `airo_core` crate each emit an unprefixed
+  `frb_get_rust_content_hash` symbol (and related FRB boilerplate) via
+  `flutter_rust_bridge::frb_generated_boilerplate_io!()`. On Android this is
+  harmless (separate `.so` files). On iOS/macOS, both podspecs
+  `-force_load` their static archive into the same app binary — an app
+  depending on both `core_native` and `m3u_parser` at once will hit a
+  duplicate-symbol link error. This means #1502 (Airo consumes the
+  package, deletes its own copy) cannot safely be a transition period
+  where both packages coexist on iOS/macOS — it needs to be a same-commit
+  swap (delete `core_native`'s M3U path in the same change that adds the
+  `m3u_parser` dependency), or the coexistence needs to be verified with
+  an actual iOS build first. Not a problem for the current branch (nothing
+  depends on both packages yet), but it constrains how #1502 must be
+  sequenced.
+- **The extracted crate dropped `for_each_m3u_channel_bytes`** (a
+  `pub(crate)` zero-copy mmap-streaming parse path used internally by
+  `airo_core::api::playlist_engine`) since it's not part of any public API
+  and irrelevant to an external consumer. This was the correct scope call
+  for a parser-only public package, but it means #1502 cannot simply
+  delete `airo_core`'s copy of the M3U parsing code wholesale —
+  `playlist_engine`'s mmap-based import path still needs *some* M3U
+  parsing capability, either kept in `airo_core` alongside the (now
+  largely redundant) FFI-exposed functions, or by adding a streaming API
+  to the published package. Worth deciding explicitly in #1502's own
+  scoping, not assumed away.
 
 ## Alternatives Considered
 
