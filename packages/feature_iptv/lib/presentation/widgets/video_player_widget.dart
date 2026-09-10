@@ -1501,8 +1501,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       // removed — a vertically-centered error message can grow tall enough
       // to sit under the bottom control bar. Anchoring to the upper band
       // guarantees no collision regardless of message length.
-      child: Align(
-        alignment: Alignment.topCenter,
+      //
+      // Scrollable rather than a bare Align: on the compact embedded player
+      // (phone-width, non-fullscreen -- a fraction of screen height), this
+      // content (diagnostic overlay + up to 3 recovery buttons) can exceed
+      // the available height and hard-overflow at the bottom (confirmed
+      // on-device, "BOTTOM OVERFLOWED BY 47 PIXELS"). Scrolling degrades
+      // gracefully instead; the ample-space (fullscreen) case is unaffected
+      // since nothing needs to scroll there.
+      child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.only(top: 48),
           child: Column(
@@ -2306,6 +2313,27 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       fit: StackFit.expand,
       children: [
         Center(child: _buildCenterButton(service, state)),
+        // Isolated top-right slot, matching the conventional placement used
+        // by most video players (YouTube, Netflix, VLC): fullscreen must be
+        // easy to find and never compete for space with the bottom-edge
+        // transport/channel/settings cluster, which already gets crowded on
+        // narrow phone widths (rewind/mute/vol on one side, prev/next/
+        // random/settings on the other) -- packing a 5th-6th icon in there
+        // caused it to wrap/overlap and effectively hide behind the others.
+        if (widget.showFullscreenButton)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: SafeArea(
+              bottom: false,
+              child: _PlayerFloatingControlButton(
+                key: const ValueKey('iptv-player-fullscreen-button-compact'),
+                icon: _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
+                onPressed: _toggleFullscreen,
+              ),
+            ),
+          ),
         Positioned(
           left: 12,
           bottom: 8,
@@ -2360,15 +2388,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               runSpacing: 8,
               alignment: WrapAlignment.end,
               children: [
-                if (widget.showFullscreenButton)
-                  _PlayerFloatingControlButton(
-                    key: const ValueKey('iptv-player-fullscreen-button-compact'),
-                    icon: _isFullscreen
-                        ? Icons.fullscreen_exit
-                        : Icons.fullscreen,
-                    tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
-                    onPressed: _toggleFullscreen,
-                  ),
                 if (widget.enableSwipeChannelChange) ...[
                   _PlayerFloatingControlButton(
                     key: const ValueKey('iptv-player-channel-previous-button'),
