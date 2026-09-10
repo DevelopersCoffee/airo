@@ -1,0 +1,41 @@
+// Cargokit cross-compiles m3u_parser for each Android ABI using the NDK as
+// part of the ordinary Gradle build. Mirrors packages/core_native's
+// pattern (#1677) with its own crate/dylib so the two never collide.
+group = "com.developerscoffee.airo.m3u_parser"
+version = "0.1.0"
+
+buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath("com.android.tools.build:gradle:8.7.3") }
+}
+
+rootProject.allprojects {
+    repositories { google(); mavenCentral() }
+}
+
+apply plugin: "com.android.library"
+apply from: "../cargokit/gradle/plugin.gradle"
+
+cargokit {
+    // The crate lives inside this package (packages/m3u_parser/rust), not
+    // in the shared rust/ cargo workspace — a pub.dev consumer outside this
+    // monorepo needs the source to resolve from inside the package tree.
+    manifestDir = "../rust"
+    libname = "m3u_parser"
+}
+
+android {
+    namespace = "com.developerscoffee.airo.m3u_parser"
+    // Must track gradle/libs.versions.toml airo-compile-sdk (#1575).
+    compileSdk = 37
+    ndkVersion = "27.0.12077973"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = 24
+    }
+}

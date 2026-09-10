@@ -1,0 +1,12 @@
+name: m3u_parser
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Rust Architect
+  - Chief Open Source Officer
+  - Media Intelligence Architect
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+quality_gates: {}
+status: pre-wired
