@@ -65,6 +65,7 @@ class M3UParserService {
   final Future<Directory> Function() _cacheDirectoryProvider;
   final Future<Directory> Function() _downloadDirectoryProvider;
   final String? _sourceId;
+  final bool _isWeb;
   final AiroWorkerExecutor workerExecutor;
 
   M3UParserService({
@@ -75,6 +76,10 @@ class M3UParserService {
     Future<Directory> Function()? cacheDirectoryProvider,
     Future<Directory> Function()? downloadDirectoryProvider,
     String? sourceId,
+    // Overrides [kIsWeb] for tests: the real value is only known at compile
+    // time, so this is the only way to exercise the web fetch path (no
+    // filesystem) on the VM test runner.
+    bool? isWeb,
     this.workerExecutor = const AiroWorkerExecutor(),
     // Keep the public constructor API as `dio`/`prefs` instead of exposing
     // private field names to callers.
@@ -88,7 +93,8 @@ class M3UParserService {
            cacheDirectoryProvider ?? getApplicationSupportDirectory,
        _downloadDirectoryProvider =
            downloadDirectoryProvider ?? getTemporaryDirectory,
-       _sourceId = _validatedSourceId(sourceId);
+       _sourceId = _validatedSourceId(sourceId),
+       _isWeb = isWeb ?? kIsWeb;
 
   String _key(String base) => _sourceId == null ? base : '$base.$_sourceId';
 
@@ -219,22 +225,51 @@ class M3UParserService {
     );
   }
 
-  /// Download the playlist to a temporary file so native imports can parse
-  /// from disk instead of materializing the HTTP body as a Dart string first.
-  Future<_PlaylistDownloadResult> _downloadPlaylist(String url) async {
+  /// Fetch the playlist body. Native platforms download to a temporary file
+  /// so native imports can parse from disk instead of materializing the HTTP
+  /// body as a Dart string first. Web has no filesystem — `dart:io`
+  /// File/Directory calls throw `UnsupportedError` there — so web keeps the
+  /// body in memory and parses it through the pure-Dart fallback path.
+  Future<_PlaylistSource> _fetchPlaylistSource(String url) async {
+    final options = await _playlistRequestOptions();
+    if (_isWeb) {
+      final response = await _dio.get<String>(
+        url,
+        options: options.copyWith(responseType: ResponseType.plain),
+      );
+      return _PlaylistSource(response: response, content: response.data);
+    }
     final file = await _newPlaylistDownloadFile();
-    final response = await _dio.download(
-      url,
-      file.path,
-      options: await _playlistRequestOptions(),
-    );
-    return _PlaylistDownloadResult(response: response, file: file);
+    final response = await _dio.download(url, file.path, options: options);
+    return _PlaylistSource(response: response, file: file);
+  }
+
+  Future<bool> _isEmptySource(_PlaylistSource source) async {
+    final file = source.file;
+    if (file != null) {
+      return !await file.exists() || await file.length() == 0;
+    }
+    return source.content == null || source.content!.isEmpty;
+  }
+
+  Future<M3UParseResult> _parseSource(_PlaylistSource source) {
+    final file = source.file;
+    return file != null
+        ? parseM3UFileWithStatsOffMain(file.path)
+        : parseM3UWithStatsOffMain(source.content!);
+  }
+
+  Future<void> _disposeSource(_PlaylistSource source) async {
+    final file = source.file;
+    if (file != null) {
+      await _deletePlaylistDownload(file);
+    }
   }
 
   /// Fetch and parse M3U from URL.
   Future<_PlaylistFetchResult> _fetchAndParse(String url) async {
-    final download = await _downloadPlaylist(url);
-    final response = download.response;
+    final source = await _fetchPlaylistSource(url);
+    final response = source.response;
 
     try {
       if (response.statusCode == HttpStatus.notModified) {
@@ -245,17 +280,15 @@ class M3UParserService {
         throw Exception('Playlist not modified but no cache is available');
       }
 
-      if (!await download.file.exists() || await download.file.length() == 0) {
+      if (await _isEmptySource(source)) {
         throw Exception('Empty playlist response');
       }
 
-      final parseResult = await parseM3UFileWithStatsOffMain(
-        download.file.path,
-      );
+      final parseResult = await _parseSource(source);
       await _saveHttpValidators(response.headers);
       return _PlaylistFetchResult(channels: parseResult.channels);
     } finally {
-      await _deletePlaylistDownload(download.file);
+      await _disposeSource(source);
     }
   }
 
@@ -301,8 +334,8 @@ class M3UParserService {
         stage: ImportStage.download,
         message: 'Downloading playlist',
       );
-      final download = await _downloadPlaylist(playlistUrl);
-      final response = download.response;
+      final source = await _fetchPlaylistSource(playlistUrl);
+      final response = source.response;
 
       try {
         if (response.statusCode == HttpStatus.notModified) {
@@ -314,8 +347,7 @@ class M3UParserService {
           return;
         }
 
-        if (!await download.file.exists() ||
-            await download.file.length() == 0) {
+        if (await _isEmptySource(source)) {
           throw Exception('Empty playlist response');
         }
 
@@ -323,9 +355,7 @@ class M3UParserService {
           stage: ImportStage.parse,
           message: 'Parsing playlist',
         );
-        final parseResult = await parseM3UFileWithStatsOffMain(
-          download.file.path,
-        );
+        final parseResult = await _parseSource(source);
         final channels = parseResult.channels;
         await _saveHttpValidators(response.headers);
 
@@ -360,7 +390,7 @@ class M3UParserService {
           message: 'Imported ${channels.length} channels',
         );
       } finally {
-        await _deletePlaylistDownload(download.file);
+        await _disposeSource(source);
       }
     } catch (error) {
       yield ImportProgress(stage: ImportStage.failed, error: error);
@@ -408,7 +438,7 @@ class M3UParserService {
   /// telemetry for progress/diagnostics. No source URL or playlist entry is
   /// retained in the stats result.
   Future<M3UParseResult> parseM3UWithStatsOffMain(String content) async {
-    if (!kIsWeb) {
+    if (!_isWeb) {
       final result = await parseM3uPlaylistWithStatsNative(content);
       final channels = await workerExecutor.run<List<IPTVChannel>>(
         debugName: 'm3u_variant_merge',
@@ -624,11 +654,14 @@ class _PlaylistFetchResult {
   final bool fromCache;
 }
 
-class _PlaylistDownloadResult {
-  const _PlaylistDownloadResult({required this.response, required this.file});
+/// A fetched playlist body: [file] on native (downloaded to disk), or
+/// [content] on web (kept in memory — web has no filesystem).
+class _PlaylistSource {
+  const _PlaylistSource({required this.response, this.file, this.content});
 
   final Response<dynamic> response;
-  final File file;
+  final File? file;
+  final String? content;
 }
 
 /// Aggregate-only output of a playlist parse. Channel records remain local to
