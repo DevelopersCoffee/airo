@@ -1,5 +1,3 @@
-# CHANGELOG
-
 ## 0.1.0
 
 - Initial extraction from Airo's `core_native`/`platform_playlist_import`.
