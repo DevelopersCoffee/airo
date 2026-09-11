@@ -367,93 +367,87 @@ void main() {
     },
   );
 
-  test(
-    'resolve returns a fresh snapshot when favoriteIds changes, even if '
-    'filters/sort are unchanged',
-    () {
-      final cache = ChannelBrowserSnapshotCache();
-      const twoChannels = [
-        IPTVChannel(
-          id: 'a',
-          name: 'A Channel',
-          streamUrl: 'https://example.test/a',
-          group: 'News',
-        ),
-        IPTVChannel(
-          id: 'b',
-          name: 'B Channel',
-          streamUrl: 'https://example.test/b',
-          group: 'News',
-        ),
-      ];
-      const filters = ChannelFilters();
-      const sort = ChannelSort();
+  test('resolve returns a fresh snapshot when favoriteIds changes, even if '
+      'filters/sort are unchanged', () {
+    final cache = ChannelBrowserSnapshotCache();
+    const twoChannels = [
+      IPTVChannel(
+        id: 'a',
+        name: 'A Channel',
+        streamUrl: 'https://example.test/a',
+        group: 'News',
+      ),
+      IPTVChannel(
+        id: 'b',
+        name: 'B Channel',
+        streamUrl: 'https://example.test/b',
+        group: 'News',
+      ),
+    ];
+    const filters = ChannelFilters();
+    const sort = ChannelSort();
 
-      final first = cache.resolve(
-        channels: twoChannels,
-        metadataByChannelId: const {},
-        filters: filters,
-        sort: sort,
-        favoriteIds: const [],
-        notForMeIds: const {},
-      );
-      final second = cache.resolve(
-        channels: twoChannels,
-        metadataByChannelId: const {},
-        filters: filters,
-        sort: sort,
-        favoriteIds: const ['b'],
-        notForMeIds: const {},
-      );
+    final first = cache.resolve(
+      channels: twoChannels,
+      metadataByChannelId: const {},
+      filters: filters,
+      sort: sort,
+      favoriteIds: const [],
+      notForMeIds: const {},
+    );
+    final second = cache.resolve(
+      channels: twoChannels,
+      metadataByChannelId: const {},
+      filters: filters,
+      sort: sort,
+      favoriteIds: const ['b'],
+      notForMeIds: const {},
+    );
 
-      expect(identical(first, second), isFalse);
-      expect(second.visibleChannels.first.id, 'b');
-    },
-  );
+    expect(identical(first, second), isFalse);
+    expect(second.visibleChannels.first.id, 'b');
+  });
 
-  test(
-    'resolve reuses the cached snapshot when favoriteIds/notForMeIds are '
-    'unchanged',
-    () {
-      final cache = ChannelBrowserSnapshotCache();
-      const twoChannels = [
-        IPTVChannel(
-          id: 'a',
-          name: 'A Channel',
-          streamUrl: 'https://example.test/a',
-          group: 'News',
-        ),
-        IPTVChannel(
-          id: 'b',
-          name: 'B Channel',
-          streamUrl: 'https://example.test/b',
-          group: 'News',
-        ),
-      ];
-      const filters = ChannelFilters();
-      const sort = ChannelSort();
-      final ids = ['a']; // same list instance reused below
+  test('resolve reuses the cached snapshot when favoriteIds/notForMeIds are '
+      'unchanged', () {
+    final cache = ChannelBrowserSnapshotCache();
+    const twoChannels = [
+      IPTVChannel(
+        id: 'a',
+        name: 'A Channel',
+        streamUrl: 'https://example.test/a',
+        group: 'News',
+      ),
+      IPTVChannel(
+        id: 'b',
+        name: 'B Channel',
+        streamUrl: 'https://example.test/b',
+        group: 'News',
+      ),
+    ];
+    const filters = ChannelFilters();
+    const sort = ChannelSort();
+    final ids = ['a']; // same list instance reused below
 
-      final first = cache.resolve(
-        channels: twoChannels,
-        metadataByChannelId: const {},
-        filters: filters,
-        sort: sort,
-        favoriteIds: ids,
-        notForMeIds: const {},
-      );
-      final second = cache.resolve(
-        channels: twoChannels,
-        metadataByChannelId: const {},
-        filters: filters,
-        sort: sort,
-        favoriteIds: ids,
-        notForMeIds: const {},
-      );
+    final first = cache.resolve(
+      channels: twoChannels,
+      metadataByChannelId: const {},
+      filters: filters,
+      sort: sort,
+      favoriteIds: ids,
+      notForMeIds: const {},
+    );
+    final second = cache.resolve(
+      channels: twoChannels,
+      metadataByChannelId: const {},
+      filters: filters,
+      sort: sort,
+      favoriteIds: ids,
+      notForMeIds: const {},
+    );
 
-      expect(identical(first, second), isTrue);
-    },
-  );
+    expect(identical(first, second), isTrue);
+  });
 
   test('filter state survives a fresh provider container', () async {
     SharedPreferences.setMockInitialValues({});

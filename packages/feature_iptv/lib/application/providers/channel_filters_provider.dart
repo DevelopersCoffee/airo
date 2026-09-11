@@ -465,7 +465,8 @@ class ChannelBrowserSnapshotCache {
     );
     final visibleChannels = _partitionByPreference(
       sorted,
-      favoriteIds: favoriteIds.toSet(), // O(1) membership for the partition below
+      favoriteIds: favoriteIds
+          .toSet(), // O(1) membership for the partition below
       notForMeIds: notForMeIds,
     );
     final next = ChannelBrowserSnapshot(
