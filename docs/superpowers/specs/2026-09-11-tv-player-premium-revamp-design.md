@@ -92,7 +92,7 @@ STEP                          | USER DOES              | USER FEELS           | 
 Scope confirmed: the ten-foot layout's `_TvNavigationRail` is untouched — this only replaces the phone/tablet `IptvNavigationDrawer` + AppBar icon row.
 
 1. Remove `Scaffold.drawer` (`IptvNavigationDrawer`) and **the entire AppBar action icon row** (Search, Movies & Shows, Playlist source, Guide URL — the last two already relocated to settings in Phase C, so this is the one and only edit to that row), except Cast (kept top-right, sole remaining top-bar icon, only when `isGoogleCastSenderPlatform`).
-2. **Reuse `AdaptiveNavigation`** (`app/lib/shared/widgets/responsive_center.dart`, per `docs/ui/RESPONSIVE_STANDARDS.md`) instead of a bespoke bottom bar — it already gives phone a bottom nav and desktop/tablet a rail for free, and is the repo's own established pattern for exactly this. Three destinations: **Home**, **Search**, **My Aika**. Home resets to the top of the channel list/clears transient filters (today's `onHome: () {}` is a no-op — this phase gives it real behavior for the first time). Search opens the existing `_showSearchSheet`. **Design risk to verify before committing:** `AdaptiveNavigation`'s default Material styling may read as a standard flat bottom nav rather than the "premium floating pill" look — confirm via the Phase C/D mockup (see Visual language) whether it needs explicit theming (elevation, shape, scrim) to hit that bar, or whether default styling already clears it.
+2. **Bespoke floating bottom bar** — **correction (caught while writing the implementation plan, verified against actual source):** `AdaptiveNavigation` does not exist. `docs/ui/RESPONSIVE_STANDARDS.md`'s "Bottom nav (mobile) → Navigation rail (desktop)" code block is an illustrative example, never implemented — `app/lib/shared/widgets/responsive_center.dart` only defines `ResponsiveCenter`, `ResponsiveBreakpoints`, `AdaptiveLayout`, `ResponsiveGrid` (confirmed by grep across the whole repo: zero matches for `AdaptiveNavigation`). The design review's "reuse it" finding was based on a false premise; reverted to the original plan. Build a new, focused widget instead: three destinations — **Home**, **Search**, **My Aika** — styled as the premium floating pill (full control over shape/elevation/scrim, no fighting a nonexistent component's defaults). Home resets to the top of the channel list/clears transient filters (today's `onHome: () {}` is a no-op — this phase gives it real behavior for the first time). Search opens the existing `_showSearchSheet`.
 3. **My Aika** opens `AdaptiveBottomSheet.show` (same file) with today's drawer contents minus Home/Guide: Settings, Movies & Shows, Favorites, Play local file on TV. (Guide URL already moved into Explorer-rows settings in Phase C.)
 
 **Testing:** widget test confirming the drawer and every AppBar action icon except Cast are gone on phone width, and present-as-before on ten-foot width (no regression to `_TvNavigationRail`); My Aika sheet contains exactly the expected four rows.
@@ -209,7 +209,7 @@ Both gaps are folded into the relevant phase's Testing bullet above (Phase C and
 - `ChannelLogo` widget and `_VideoStageWithActions`'s `Positioned`-overlay pattern — reused verbatim for Phase C's channel-name overlay, no new asset pipeline.
 - `core_watch_progress` + `rails_provider.dart` — Extra 2 is pure UI on top of this existing, already-wired data source.
 - `_showSearchSheet` — reused as-is for Phase D's Search nav button.
-- `AdaptiveNavigation` and `AdaptiveBottomSheet` (`app/lib/shared/widgets/responsive_center.dart`, per `docs/ui/RESPONSIVE_STANDARDS.md`) — reused for Phase D instead of a bespoke bottom bar (design review finding: the repo already has this exact bottom-nav/rail pattern built and documented).
+- `AdaptiveBottomSheet` (`app/lib/shared/widgets/adaptive_dialog.dart`, verified real) — reused for Phase D's "My Aika" sheet. `AdaptiveNavigation` is **not** reused for the bottom bar itself — verified it doesn't exist (see Phase D correction); that part is new, bespoke code.
 
 ## Worktree parallelization strategy
 
@@ -238,6 +238,8 @@ Both gaps are folded into the relevant phase's Testing bullet above (Phase C and
 
 **CROSS-MODEL:** N/A this run (no genuine second model available) — all outside-voice passes were same-family Claude subagents, not scored against Codex.
 
-**VERDICT:** CEO + ENG + DESIGN CLEARED — ready to implement.
+**Post-review correction:** the Design Review row's `AdaptiveNavigation` reuse finding was based on a false premise — verified against actual source while writing the implementation plan, `AdaptiveNavigation` does not exist anywhere in the repo (`RESPONSIVE_STANDARDS.md`'s code block is illustrative, never implemented). Phase D reverted to a bespoke bottom bar; `AdaptiveBottomSheet` (verified real) is still reused for "My Aika." See Phase D in the spec body for the corrected text.
+
+**VERDICT:** CEO + ENG + DESIGN CLEARED — ready to implement (with the Phase D correction above applied).
 
 NO UNRESOLVED DECISIONS
