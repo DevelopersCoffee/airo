@@ -1,0 +1,17 @@
+name: feature_anya_core
+description: >
+  Pure domain layer of Anya: diet profile, meal catalog, weekly planner,
+  grocery aggregation, and PDF heuristic normalization. No Flutter, storage,
+  or app dependencies.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  equatable: ^2.1.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

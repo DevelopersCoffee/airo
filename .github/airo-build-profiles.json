@@ -241,6 +241,39 @@
       }
     },
     {
+      "id": "anya",
+      "releaseLine": "v2",
+      "description": "Anya: local-first personal nutrition planner.",
+      "entrypoint": "app/lib/main_anya.dart",
+      "pubspec": "app/pubspec_anya.yaml",
+      "appId": "io.airo.app.anya",
+      "appVariant": "anya",
+      "appPlatform": "mobileFull",
+      "deviceClass": "phone",
+      "ciBuild": false,
+      "edgeProfile": false,
+      "requiredPackages": [
+        "feature_anya"
+      ],
+      "featureModules": [
+        "feature_anya"
+      ],
+      "allowedNativePlugins": [
+        "file_picker",
+        "shared_preferences"
+      ],
+      "heavyPackages": [],
+      "requiredDependencyOverrides": {},
+      "assetAllowlist": [],
+      "android": {
+        "apkArtifact": "app-arm64-v8a-release.apk",
+        "abiStrategy": "single-arm64-apk",
+        "releaseBudgetMb": 40,
+        "debugBudgetMb": 200,
+        "enforceReleaseBudget": false
+      }
+    },
+    {
       "id": "ios-spm",
       "releaseLine": "v2",
       "description": "iOS Swift Package Manager dependency profile.",

@@ -8,7 +8,7 @@ import 'sibling_app.dart';
 const _placeholderIconAsset =
     'packages/core_product_shell/assets/sibling_icons/airo_mark.png';
 
-/// SSOT for cross-app promotion: the four shipped Airo shells, each with
+/// SSOT for cross-app promotion: the shipped Airo shells, each with
 /// its store links. Every settings screen across every flavor renders its
 /// "More Airo Apps" section from [siblingAppsFor] instead of hardcoding its
 /// own copy — see SPEC.md.
@@ -48,6 +48,14 @@ final siblingApps = <SiblingApp>[
     iconAsset: _placeholderIconAsset,
     androidStoreUrl: _playStoreUrl('com.airo.mind'),
     iosStoreUrl: _appStoreUrl('com.airo.mind'),
+  ),
+  SiblingApp(
+    id: ShellId.anya,
+    name: 'Anya',
+    pitch: 'Your Personal Nutrition Planner.',
+    iconAsset: _placeholderIconAsset,
+    androidStoreUrl: _playStoreUrl('io.airo.app.anya'),
+    iosStoreUrl: _appStoreUrl('io.airo.app.anya'),
   ),
 ];
 

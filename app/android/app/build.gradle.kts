@@ -43,16 +43,20 @@ val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isTvVariant = appVariant == "tv"
 val isCoinsVariant = appVariant == "coins"
 val isMindVariant = appVariant == "mind"
+val isAnyaVariant = appVariant == "anya"
+val isLeanStandaloneVariant = isCoinsVariant || isAnyaVariant
 val variantApplicationId = when (appVariant) {
     "tv" -> "com.developerscoffee.tv.midas"
     "coins" -> "io.airo.app.coins"
     "mind" -> "io.airo.app.mind"
+    "anya" -> "io.airo.app.anya"
     else -> "io.airo.app"
 }
 val variantAppLabel = when (appVariant) {
     "tv" -> "Aika Stream"
     "coins" -> "Airo Coins"
     "mind" -> "Airo Mind"
+    "anya" -> "Anya"
     else -> "Airo"
 }
 
@@ -253,6 +257,9 @@ android {
             if (isCoinsVariant) {
                 manifest.srcFile("src/coins/AndroidManifest.xml")
                 kotlin.setSrcDirs(listOf("src/coins/kotlin"))
+            } else if (isAnyaVariant) {
+                manifest.srcFile("src/anya/AndroidManifest.xml")
+                kotlin.setSrcDirs(listOf("src/anya/kotlin"))
             } else {
                 kotlin.setSrcDirs(listOf("src/product/kotlin"))
             }
@@ -264,7 +271,7 @@ android {
             // compiles without the com.google.ai.edge.litertlm.* imports.
             val liteRtLmAvailable =
                 rootProject.extra.get("liteRtLmAvailable") as Boolean
-            if (!isCoinsVariant) {
+            if (!isLeanStandaloneVariant) {
                 kotlin.srcDir(
                     if (liteRtLmAvailable) "src/withLitertlm/kotlin"
                     else "src/withoutLitertlm/kotlin",
@@ -277,7 +284,7 @@ android {
             // isTvVariant-gated above, so a non-tv build must never compile a
             // file that references it. Coins has its own CoinsActivity and never
             // registers this factory, so it's excluded like the LiteRT-LM split.
-            if (!isCoinsVariant) {
+            if (!isLeanStandaloneVariant) {
                 kotlin.srcDir(
                     if (isTvVariant) "src/tv/kotlin"
                     else "src/streaming_engine_stub/kotlin",
@@ -299,7 +306,7 @@ android {
             // LiteRT-LM's does; the stub keeps TV compiling without it.
             val embeddingAvailable =
                 rootProject.extra.get("embeddingAvailable") as Boolean && !isTvVariant
-            if (!isCoinsVariant) {
+            if (!isLeanStandaloneVariant) {
                 kotlin.srcDir(
                     if (embeddingAvailable) "src/withEmbedding/kotlin"
                     else "src/withoutEmbedding/kotlin",
@@ -342,7 +349,7 @@ android {
             // assistant surface drives the on-device model manager as a
             // first-class feature, so it is the one lean variant that must
             // keep the libraries.
-            if (isTvVariant || isCoinsVariant) {
+            if (isTvVariant || isLeanStandaloneVariant) {
                 excludes += setOf(
                     "**/liblitertlm_jni.so",
                     "**/libLiteRt.so",
@@ -382,7 +389,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
-    if (!isCoinsVariant) {
+    if (!isLeanStandaloneVariant) {
         implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
     }
 
@@ -395,7 +402,7 @@ dependencies {
     // shift in 0.14.0). LiteRtLmPlugin.kt has been verified against the 0.14.0
     // Kotlin API surface (Backend.CPU/GPU/NPU factories, engine.close(),
     // Contents.of, ConversationConfig) per developers.google.com/edge/litert-lm.
-    if (!isCoinsVariant && rootProject.extra.get("liteRtLmAvailable") as Boolean) {
+    if (!isLeanStandaloneVariant && rootProject.extra.get("liteRtLmAvailable") as Boolean) {
         implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.0")
     }
 
@@ -413,12 +420,12 @@ dependencies {
     // reaches them, because the SDK doesn't ship its own protobuf runtime.
     // LiteRT-LM's dependency has no such gap and can stay on TV's classpath
     // unused; this one cannot.
-    if (!isCoinsVariant && !isTvVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
+    if (!isLeanStandaloneVariant && !isTvVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
         implementation("com.google.ai.edge.localagents:localagents-rag:0.3.0")
         implementation("com.google.mediapipe:tasks-genai:0.10.35")
     }
 
-    if (!isCoinsVariant) {
+    if (!isLeanStandaloneVariant) {
         // Coroutines and lifecycle dependencies for async operations
         implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

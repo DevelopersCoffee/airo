@@ -1,0 +1,29 @@
+name: feature_anya
+owner: Anya / Nutrition Agent
+capabilities:
+  - capability.nutrition.anya.planner
+supported_devices:
+  - phone
+  - tablet
+  - desktop
+ship_policy:
+  tv: Never Ship
+  phone: Always Ship
+  tablet: Always Ship
+  desktop: Optional
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+  - Chief QA Officer
+  - Flutter Architect
+  - Product Manager
+allowed_dependencies:
+  - core_product_shell
+  - core_ui
+  - core_workers
+  - feature_anya_core
+forbidden_dependencies:
+  - app
+  - core_ai
+  - feature_mind
+quality_gates: {}

@@ -15,6 +15,7 @@ enum AiroDomain {
   arena,
   quest,
   reader,
+  anya,
   neutral,
 }
 
@@ -86,6 +87,12 @@ class AiroDomainTokens extends ThemeExtension<AiroDomainTokens> {
       accent: Color(0xFFF1DFC0),
       accentSecondary: Color(0xFFD8C49D),
       onAccent: Color(0xFF171007),
+    ),
+    AiroDomain.anya: AiroDomainTokens(
+      domain: AiroDomain.anya,
+      accent: Color(0xFF8ED46C),
+      accentSecondary: Color(0xFF3FA37A),
+      onAccent: Color(0xFF0C1608),
     ),
     AiroDomain.neutral: AiroDomainTokens(
       domain: AiroDomain.neutral,
