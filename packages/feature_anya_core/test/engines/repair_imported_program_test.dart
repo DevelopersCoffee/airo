@@ -48,6 +48,65 @@ void main() {
     ]);
   });
 
+  test('joins newline-split Green/T/ea the way PDF extract arrives', () {
+    const program = DietProgram(
+      id: 'p1',
+      title: 'Clinic',
+      source: ProgramSource.imported,
+      phases: [
+        DietPhase(
+          id: 'ph',
+          name: 'Imported',
+          days: [
+            DietDay(
+              dayNumber: 1,
+              meals: [
+                MealSlot(
+                  type: MealType.evening,
+                  time: '17:30',
+                  items: [
+                    FoodItem(
+                      name: 'Green',
+                      quantityRaw: '',
+                      quantityUninterpreted: true,
+                    ),
+                    FoodItem(
+                      name: 'T',
+                      quantityRaw: '',
+                      quantityUninterpreted: true,
+                    ),
+                    FoodItem(name: 'ea', quantityRaw: '1 cup'),
+                    FoodItem(
+                      name: 'Dinner',
+                      quantityRaw: '',
+                      quantityUninterpreted: true,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final repaired = repairImportedProgram(
+      program: program,
+      originalText: '''
+DAY 1
+17:30 Evening
+Green
+T
+ea 1 cup
+Dinner
+''',
+    );
+
+    expect(repaired.allDays.single.meals.single.items, [
+      const FoodItem(name: 'Green tea', quantityRaw: '1 cup'),
+    ]);
+  });
+
   test('keeps 1k on the day-7 poha fixture', () {
     final text = File('test/fixtures/day7_meal_plan.txt').readAsStringSync();
     const normalizer = DietPdfNormalizer();

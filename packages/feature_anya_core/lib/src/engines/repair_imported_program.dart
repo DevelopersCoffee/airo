@@ -69,27 +69,48 @@ List<FoodItem> _repairItems(List<FoodItem> items, String originalText) {
 bool _isMealTypeLabel(String name) => _mealTypeLabels.contains(_fold(name));
 
 String? _joinedName(List<FoodItem> window, String originalText) {
-  final pattern = [
-    for (final item in window) RegExp.escape(item.name.trim()),
-  ].join(r'\s*');
-  final match = RegExp(pattern, caseSensitive: false).firstMatch(originalText);
-  if (match == null) return null;
-  return match.group(0)!.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final glued = [
+    for (final item in window) item.name.trim(),
+  ].join().toLowerCase().replaceAll(RegExp(r'\s+'), '');
+  if (glued.length < 2) return null;
+  final hay = originalText.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+  if (!hay.contains(glued)) return null;
+  return _reconstructName(window);
+}
+
+/// 1–2 character fragments glue onto the previous word (`T`+`ea` → tea).
+String _reconstructName(List<FoodItem> window) {
+  final words = <String>[];
+  var current = window.first.name.trim();
+  for (var i = 1; i < window.length; i++) {
+    final fragment = window[i].name.trim();
+    if (fragment.length <= 2) {
+      if (current.length > 2) {
+        words.add(current);
+        current = fragment.toLowerCase();
+      } else {
+        current = '$current${fragment.toLowerCase()}';
+      }
+    } else {
+      if (current.isNotEmpty) words.add(current);
+      current = fragment;
+    }
+  }
+  if (current.isNotEmpty) words.add(current);
+  return words.join(' ');
 }
 
 FoodItem _mergedItem(List<FoodItem> window, String name) {
-  var quantityRaw = '';
-  var quantityUninterpreted = false;
+  FoodItem? withQuantity;
   for (final item in window) {
-    if (item.quantityRaw.trim().isNotEmpty) {
-      quantityRaw = item.quantityRaw;
-    }
-    quantityUninterpreted = quantityUninterpreted || item.quantityUninterpreted;
+    if (item.quantityRaw.trim().isNotEmpty) withQuantity = item;
   }
   return FoodItem(
     name: name,
-    quantityRaw: quantityRaw,
-    quantityUninterpreted: quantityUninterpreted,
+    quantityRaw: withQuantity?.quantityRaw ?? '',
+    quantityUninterpreted:
+        withQuantity?.quantityUninterpreted ??
+        window.every((item) => item.quantityUninterpreted),
   );
 }
 
