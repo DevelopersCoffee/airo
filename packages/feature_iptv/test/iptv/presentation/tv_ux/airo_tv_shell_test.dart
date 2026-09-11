@@ -4,6 +4,7 @@ import 'package:feature_iptv/application/providers/channel_auto_scan_providers.d
 import 'package:feature_iptv/application/providers/connectivity_provider.dart';
 import 'package:feature_iptv/application/providers/control_row_visibility_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
+import 'package:feature_iptv/application/providers/multiview_provider.dart';
 import 'package:feature_iptv/application/services/wifi_settings_launcher.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_info_bar.dart';
@@ -409,6 +410,77 @@ void main() {
     );
   });
 
+  testWidgets(
+    'hitting multiview capacity opens the replace dialog, and picking a '
+    'slot swaps that session for the new channel',
+    (tester) async {
+      final primary = _FakeMultiviewPrimaryService();
+      final sessions = <String, _FakeMultiviewSession>{};
+      final controller = MultiviewController(
+        decoderBudget: 1,
+        primaryService: primary,
+        sessionFactory: (item) async =>
+            sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+      );
+      addTearDown(controller.close);
+      // Fill the single-stream capacity with 'one' before the shell mounts.
+      await controller.toggle(channels[0]);
+
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+          isOnlineProvider.overrideWith((ref) => Stream.value(true)),
+          multiviewProvider.overrideWith((ref) => controller),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: AiroTvShell(
+                  channels: channels,
+                  videoStage: const SizedBox(key: ValueKey('video-stage')),
+                  onChannelSelected: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Same call the grid's per-tile multiview button makes.
+      tester
+          .widget<ChannelLibraryGrid>(find.byType(ChannelLibraryGrid))
+          .onMultiviewToggle!(channels[1]);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('airo-tv-multiview-replace-dialog')),
+        findsOneWidget,
+      );
+      expect(find.text('Screen 1: One'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('multiview-replace-slot-one')),
+      );
+      await tester.pumpAndSettle();
+
+      final ids = controller.state.sessions.map((s) => s.id).toList();
+      expect(ids, ['two']);
+      expect(sessions['one']!.closed, isTrue);
+      expect(find.text('Two added to multiview'), findsOneWidget);
+    },
+  );
+
   testWidgets('first TV launch asks for country once', (tester) async {
     final container = await pumpWithCountryPrompt(tester);
     await tester.pumpAndSettle();
@@ -652,4 +724,109 @@ class _FakeProbeTransport implements StreamProbeTransport {
   }) async {
     return const StreamProbeHttpResponse(statusCode: 206);
   }
+}
+
+class _FakeMultiviewSession implements IptvMultiviewSession {
+  _FakeMultiviewSession(this.channel);
+
+  @override
+  final IPTVChannel channel;
+  bool closed = false;
+  final _states = StreamController<StreamingState>.broadcast();
+
+  @override
+  String get id => channel.id;
+
+  @override
+  StreamingState get currentState => StreamingState(
+    currentChannel: channel,
+    playbackState: PlaybackState.playing,
+  );
+
+  @override
+  Stream<StreamingState> get states => _states.stream;
+
+  @override
+  Widget buildView() => const SizedBox();
+
+  @override
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind) async {}
+
+  @override
+  Future<void> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) async {}
+
+  @override
+  Future<void> setQuality(VideoQuality quality) async {}
+
+  @override
+  Future<void> setVolume(double value) async {}
+
+  @override
+  Future<void> close() async {
+    closed = true;
+    await _states.close();
+  }
+}
+
+class _FakeMultiviewPrimaryService implements IPTVStreamingService {
+  int pauseCalls = 0;
+  int resumeCalls = 0;
+  StreamingState _state = StreamingState(playbackState: PlaybackState.playing);
+
+  @override
+  StreamingState get currentState => _state;
+
+  @override
+  Stream<StreamingState> get stateStream => const Stream.empty();
+
+  @override
+  Future<void> pause() async {
+    pauseCalls++;
+    _state = _state.copyWith(playbackState: PlaybackState.paused);
+  }
+
+  @override
+  Future<void> resume() async {
+    resumeCalls++;
+    _state = _state.copyWith(playbackState: PlaybackState.playing);
+  }
+
+  @override
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind) async {}
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<void> goLive() async {}
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> playChannel(IPTVChannel channel) async {}
+
+  @override
+  Future<void> retry() async {}
+
+  @override
+  Future<void> seek(Duration position) async {}
+
+  @override
+  Future<void> setBackgroundAudioMode(bool enabled) async {}
+
+  @override
+  Future<void> setQuality(VideoQuality quality) async {}
+
+  @override
+  Future<void> setVolume(double volume) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> toggleMute() async {}
 }

@@ -26,6 +26,7 @@ import 'sections/channel_library_grid.dart';
 import 'sections/filter_dialogs.dart';
 import 'sections/filter_row.dart';
 import 'sections/hotbar.dart';
+import 'sections/multiview_actions.dart';
 import 'sections/multiview_layout_picker.dart';
 import 'sections/multiview_stage.dart';
 import 'sections/playback_stats_bar.dart';
@@ -297,6 +298,28 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                         onSwap: (firstId, secondId) => ref
                             .read(multiviewProvider.notifier)
                             .swap(firstId, secondId),
+                        // Reuses the same toggle() call (and its snackbar
+                        // + retry-on-StateError handling) that the grid's
+                        // per-tile multiview button already goes through —
+                        // an active session's id is always its channel id
+                        // (see IptvMultiviewSession.id), so this always
+                        // removes rather than adds.
+                        onDismiss: (channelId) => _toggleMultiview(
+                          context,
+                          multiview.sessions
+                              .firstWhere((session) => session.id == channelId)
+                              .channel,
+                        ),
+                        onEmptySlotTap: () => showMultiviewEmptySlotPicker(
+                          context,
+                          allChannels: widget.channels,
+                          excludeChannelIds: {
+                            for (final session in multiview.sessions)
+                              session.id,
+                          },
+                          onSelected: (channel) =>
+                              _toggleMultiview(context, channel),
+                        ),
                       ),
               ),
             ),
@@ -501,6 +524,39 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       }
     }
     if (!context.mounted) return;
+    if (result == MultiviewToggleResult.capacityReached) {
+      // Clears the "Opening ${channel.name}..." snackbar shown above --
+      // toggle() never actually opened anything once capacity was already
+      // full, so that snackbar would otherwise sit behind this dialog for
+      // up to its full 20s duration.
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      await showMultiviewReplaceDialog(
+        context,
+        sessions: ref.read(multiviewProvider).sessions,
+        onReplace: (oldChannelId) async {
+          final replaceResult = await ref
+              .read(multiviewProvider.notifier)
+              .replace(oldChannelId, channel);
+          if (!context.mounted) return;
+          final replaceMessage = switch (replaceResult) {
+            MultiviewToggleResult.added => '${channel.name} added to multiview',
+            MultiviewToggleResult.failed =>
+              '${channel.name} could not be opened in multiview.',
+            // added/failed are the only results replace() can return here:
+            // it never reports removed (replace never removes without also
+            // adding), and it can't recur into capacityReached since a slot
+            // was just freed before the add was attempted.
+            MultiviewToggleResult.removed ||
+            MultiviewToggleResult.capacityReached => null,
+          };
+          if (replaceMessage == null) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(replaceMessage)));
+        },
+      );
+      return;
+    }
     final message = switch (result) {
       MultiviewToggleResult.added => '${channel.name} added to multiview',
       MultiviewToggleResult.removed => '${channel.name} removed from multiview',
