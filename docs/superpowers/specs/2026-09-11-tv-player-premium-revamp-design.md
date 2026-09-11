@@ -37,11 +37,35 @@ Ten requested changes to the IPTV "Explorer" player (`AiroTvShell` + `iptv_scree
 2. **Replace-slot-with-confirm.** Add `MultiviewNotifier.replace(String oldChannelId, IPTVChannel newChannel)`, returning the same `MultiviewToggleResult` enum `toggle()` uses. **Correctness note (caught in review):** `AiroMultiviewPool.add()` rejects with `capacityReached` whenever the pool is already full (`airo_multiview_pool.dart:68-69`) — since `replace()` only runs when already at capacity, opening the new stream *before* freeing the old one would hit that same gate. `replace()` is therefore remove-old-then-add-new, not a true atomic swap: the old session is torn down first, then `add()` runs normally. If the new stream fails, the freed slot shows the same "Empty — tap to add" state Phase A.3 builds (not a claim of atomicity, reuses the recovery path being built anyway). When `toggle()` returns `capacityReached`, replace the snackbar with a dialog listing current sessions by slot label ("Screen 1: BBC News", "Screen 2: ESPN") plus Cancel; picking one calls `replace`.
 3. **Tappable empty slot.** `_EmptySlot` becomes a `TvFocusable` target. Selecting it opens a lightweight channel-picker sheet (reuses the existing filtered channel list, not a new grid), **filtered to exclude channels already present in `multiviewChannelIds`** (caught in review: `toggle()` treats an already-open channel as "remove it," so an unfiltered picker would let a user "fill" the empty slot by accidentally closing that channel somewhere else). Picking a channel calls the existing `toggle()`, which the pool naturally places into the first open slot.
 
-**Testing:** widget tests for the new dialog's slot-selection → `replace()` call, including the failure path (new stream fails → slot goes empty, not a phantom session); provider unit tests for `replace()`'s remove-then-add sequencing; widget test confirming the empty-slot picker excludes already-open channels; no regression to `swap`/`promote`.
+**Loading and empty states (design review):** while a replace or empty-slot pick is connecting, that tile shows the same loading treatment Phase C builds for the main player (channel logo + spinner) — reused, not a second bespoke loading UI. If the channel picker sheet (Phase A.3) has nothing left to offer (every channel already open elsewhere or excluded by filters), it shows the same empty-state treatment `channel_library_grid.dart`'s `_NoMatchesView` already uses for "no channels match" — reused pattern, not new copy to write from scratch.
+
+**User journey — hitting capacity (design review storyboard):**
+```
+STEP                          | USER DOES              | USER FEELS           | PLAN SPECIFIES?
+-------------------------------|-------------------------|-----------------------|------------------
+1. Already at capacity         | Taps "add" on a 3rd     | Neutral, exploring    | (existing capacity gate)
+                                 channel
+2. Hits the gate                | Sees replace dialog     | Mild friction, but    | Dialog names both
+                                 ("Screen 1: X / Screen    given a clear choice,   current channels by
+                                 2: Y")                    not just blocked        name — no guessing
+3. Picks a slot to replace      | Taps "Screen 2"         | Committed, expects    | replace() called
+                                                            it to just work
+4. New stream connects          | Watches Screen 2's       | Brief suspense,       | Loading treatment
+                                 tile                       not confusion — it's   (above), same as
+                                                            clearly loading, not    main player
+                                                            broken
+5a. Success                     | New channel plays        | Satisfied — the flow  | —
+5b. Failure                     | Sees "Empty — tap to     | Mildly disappointed,  | Empty-slot state
+                                 add" in that slot          but not stuck: same    (Phase A.3), same
+                                                            recovery path as any    recovery path
+                                                            other empty slot
+```
+
+**Testing:** widget tests for the new dialog's slot-selection → `replace()` call, including the failure path (new stream fails → slot goes empty, not a phantom session); provider unit tests for `replace()`'s remove-then-add sequencing; widget test confirming the empty-slot picker excludes already-open channels; widget test for the picker's empty state when nothing is pickable; no regression to `swap`/`promote`.
 
 ## Phase B — Channel grid compaction & "not for me" (items 6, 10)
 
-1. **Remove the persistent add-to-queue button** from `_ChannelTile` (`channel_library_grid.dart:597-624`). The long-press `_ChannelActionsSheet` already has "Add/remove split view" and favorite — it becomes the sole path for both touch (long-press) and D-pad (secondary action key, already wired via `TvFocusable.onSecondaryAction`). Freed corner space lets us shrink `_cardWidth`/`_cardHeight` modestly and recompute `_columnCountFor` so common TV widths gain one column, while keeping `TvFocusable`'s focus-scale affordance untouched (per the Fire/Android TV guideline above — compaction must not shrink below the minimum comfortable touch/D-pad target).
+1. **Remove the persistent add-to-queue button** from `_ChannelTile` (`channel_library_grid.dart:597-624`). The long-press `_ChannelActionsSheet` already has "Add/remove split view" and favorite — it becomes the sole path for both touch (long-press) and D-pad (secondary action key, already wired via `TvFocusable.onSecondaryAction`). Freed corner space lets us shrink `_cardWidth`/`_cardHeight` modestly (starting point: ~172px → ~155px, a ~10% reduction, to gain the targeted extra column) and recompute `_columnCountFor` so common TV widths gain one column. **Design review note:** the binding constraint here isn't raw touch-target size (cards stay far above the 48dp minimum either way) — it's whether `TvFocusable`'s enlarged focus-scale state still clips or overlaps a neighboring tile at the new, smaller resting width. Verify in visual QA once built; adjust the shrink percentage if it clips, don't treat ~155px as a hard number.
 2. **"Not for me" flag, unified with favorites into the widened `FavoriteChannelsStorage`** (architecture decision made during eng review — see below for why). Exposed as a new row in `_ChannelActionsSheet`. Ordering: `ChannelBrowserSnapshotCache.resolve()` stable-partitions the sorted list — favorites first, normal middle, not-for-me last — applied after `sortChannels()`, regardless of the active sort column (per your confirmed answer). **Favorite and not-for-me are mutually exclusive by construction**, not by convention (see below).
 
 **Architecture — one storage, not two (caught in eng review):** the original spec had a new standalone `NotForMeChannelsStorage` alongside the existing `FavoriteChannelsStorage`, with exclusivity enforced only in `_ChannelActionsSheet`'s UI code. But `channel_info_bar.dart:180-208` (`_toggleFavorite`) already calls `channelFavoriteTogglerProvider` directly, bypassing that UI entirely — and a second review pass found three more direct call sites of the same provider (`tv_favorites_screen.dart:122`, `browse_screen.dart:60`, `mobile_favorites_screen.dart:114`). Enumerating "safe" call sites is a losing game — the real fix is root-cause, not per-site: **`FavoriteChannelsStorage` (name kept — see below) is widened to also own the not-for-me set**, and the fix lives in the shared `channelFavoriteTogglerProvider`/`channelNotForMeTogglerProvider` layer itself, so *every* call site — enumerated or not, today or added later — inherits exclusivity automatically without needing to know this migration happened. It exposes `setFavorite(id)` / `setNotForMe(id)` / `clearPreference(id)`, each a sequential read-modify-write across two SharedPreferences keys (`iptv_favorite_channel_ids`, `iptv_not_for_me_channel_ids`) — same consistency model the existing `toggleFavorite` already has (no new locking; a human tapping a toggle isn't a transactional-guarantee scenario, and this race has never been an issue in this codebase). `setFavorite`/`replaceAll` (the backup-import path) check membership before appending to the ordered list, so a duplicate id from a stale/re-run import can't sneak a channel into the list twice.
@@ -56,7 +80,7 @@ Ten requested changes to the IPTV "Explorer" player (`AiroTvShell` + `iptv_scree
 
 ## Phase C — Player chrome cleanup (items 5, 7, 8, 9)
 
-1. **Kill the "Channel" row toggle** in the Explorer-rows settings dialog. Replace the always-visible `ChannelInfoBar` row with a transient overlay on the video stage: channel logo + name + LIVE badge, `AnimatedOpacity` fade in on channel change or any remote/touch input, auto-hide after 5s idle (matches the Netflix-style convention above). Reuses the existing `ChannelLogo` widget and `_VideoStageWithActions`-style `Positioned` overlay pattern already in `airo_tv_shell.dart` — no new asset pipeline.
+1. **Kill the "Channel" row toggle** in the Explorer-rows settings dialog. Replace the always-visible `ChannelInfoBar` row with a transient overlay on the video stage: channel logo + name + LIVE badge, `AnimatedOpacity` fade in on channel change or any remote/touch input, auto-hide after 5s idle (matches the Netflix-style convention above). Reuses the existing `ChannelLogo` widget and `_VideoStageWithActions`-style `Positioned` overlay pattern already in `airo_tv_shell.dart` — no new asset pipeline. **Resolved (design review):** opening the player-actions sheet (Settings, Help, MultiView layout, etc.) immediately dismisses the overlay, same as an idle timeout — no two floating layers competing for the same screen corner.
 2. **Loading screen gets a channel logo** (`tv_loading_screen.dart`) instead of spinner-only, so a loading channel is legible rather than looking stuck/blank.
 3. **Zoom-out completion transition:** when the stream reports ready, the loading logo scales down and fades as the video frame fades in (~300-350ms, easeOut) — one new `AnimationController`-backed sequence (everything else in this phase is implicit `Animated*` widgets).
 4. **Playlist source and Guide URL move into the Explorer-rows settings sheet** as new rows (both currently live in the phone `AppBar`, `iptv_screen.dart:1097-1106`). The AppBar icons themselves are **not** removed here — see Phase D below, which guts that whole row for the bottom nav a moment later; removing the icons twice in two phases was flagged in review as wasted, duplicate-tested work on the same widget.
@@ -68,8 +92,8 @@ Ten requested changes to the IPTV "Explorer" player (`AiroTvShell` + `iptv_scree
 Scope confirmed: the ten-foot layout's `_TvNavigationRail` is untouched — this only replaces the phone/tablet `IptvNavigationDrawer` + AppBar icon row.
 
 1. Remove `Scaffold.drawer` (`IptvNavigationDrawer`) and **the entire AppBar action icon row** (Search, Movies & Shows, Playlist source, Guide URL — the last two already relocated to settings in Phase C, so this is the one and only edit to that row), except Cast (kept top-right, sole remaining top-bar icon, only when `isGoogleCastSenderPlatform`).
-2. Add a floating bottom bar: **Home**, **Search**, **My Aika**. Home resets to the top of the channel list/clears transient filters (today's `onHome: () {}` is a no-op — this phase gives it real behavior for the first time). Search opens the existing `_showSearchSheet`.
-3. **My Aika** opens an overflow sheet with today's drawer contents minus Home/Guide: Settings, Movies & Shows, Favorites, Play local file on TV. (Guide URL already moved into Explorer-rows settings in Phase C.)
+2. **Reuse `AdaptiveNavigation`** (`app/lib/shared/widgets/responsive_center.dart`, per `docs/ui/RESPONSIVE_STANDARDS.md`) instead of a bespoke bottom bar — it already gives phone a bottom nav and desktop/tablet a rail for free, and is the repo's own established pattern for exactly this. Three destinations: **Home**, **Search**, **My Aika**. Home resets to the top of the channel list/clears transient filters (today's `onHome: () {}` is a no-op — this phase gives it real behavior for the first time). Search opens the existing `_showSearchSheet`. **Design risk to verify before committing:** `AdaptiveNavigation`'s default Material styling may read as a standard flat bottom nav rather than the "premium floating pill" look — confirm via the Phase C/D mockup (see Visual language) whether it needs explicit theming (elevation, shape, scrim) to hit that bar, or whether default styling already clears it.
+3. **My Aika** opens `AdaptiveBottomSheet.show` (same file) with today's drawer contents minus Home/Guide: Settings, Movies & Shows, Favorites, Play local file on TV. (Guide URL already moved into Explorer-rows settings in Phase C.)
 
 **Testing:** widget test confirming the drawer and every AppBar action icon except Cast are gone on phone width, and present-as-before on ten-foot width (no regression to `_TvNavigationRail`); My Aika sheet contains exactly the expected four rows.
 
@@ -88,6 +112,31 @@ Favorites stop being alpha-sorted-within-group and become a user-orderable list.
 `core_watch_progress` is already wired into `feature_iptv` (`rails_provider.dart`), so this is a UI addition on existing data, not new plumbing. Add a "Jump back in" rail above (or folded into) the channel grid on both layouts, sourced from the existing watch-progress rail provider, filtered to channels still in the current playlist/filters. Selecting a tile resumes that channel exactly like a normal grid tile (`onChannelSelected`).
 
 **Testing:** provider test confirming the rail only shows channels present in the current filtered set (a channel removed from the playlist shouldn't leave a dead tile); widget test for empty state (no watch history yet — rail renders nothing, not an empty shelf).
+
+## Information architecture (design review)
+
+No DESIGN.md exists in this repo — there's no formal token/component system to calibrate against, only the dark cinematic conventions already established in this code (reused throughout, see Visual language below). Not a blocker for this spec since every new element explicitly reuses an existing token or pattern rather than inventing new ones; worth a `/design-consultation` pass at some point to formalize what's already de facto standard, but that's separate scope from this revamp.
+
+Screen composition, phone/tablet (existing structure, unchanged — only the pieces named below are new):
+```
+┌─────────────────────────────┐
+│  [Cast icon only, if avail.] │  ← AppBar: everything else removed (Phase D)
+├─────────────────────────────┤
+│                               │
+│       Video hero frame        │  ← NEW: channel-name overlay, transient (Phase C)
+│                               │
+├─────────────────────────────┤
+│  Explorer chrome rows         │  ← unchanged (Stats/Hotbar/Filter, existing)
+├─────────────────────────────┤
+│  Channel grid                 │  ← compacted (Phase B), NEW: jump-back-in
+│                               │     rail above it (Extra 2)
+├─────────────────────────────┤
+│  Home │ Search │ My Aika      │  ← NEW: AdaptiveNavigation (Phase D)
+└─────────────────────────────┘
+```
+First/second/third: video is the primary focus (existing hierarchy, unchanged), channel identity is secondary (now a transient overlay instead of a permanent row — an explicit demotion, matching the "clean player" ask), navigation is tertiary and always accessible at the bottom.
+
+**Accessibility convention (design review):** every new interactive element (Phase A's tile dismiss/empty-slot controls, Phase B's not-for-me row, Phase D's nav destinations) uses the same `TvFocusable` `semanticLabel`/`semanticHint` pattern already used by every existing focusable element in this codebase — not a new convention to invent, just don't skip it on the new ones.
 
 ## Visual language (all phases)
 
@@ -160,6 +209,7 @@ Both gaps are folded into the relevant phase's Testing bullet above (Phase C and
 - `ChannelLogo` widget and `_VideoStageWithActions`'s `Positioned`-overlay pattern — reused verbatim for Phase C's channel-name overlay, no new asset pipeline.
 - `core_watch_progress` + `rails_provider.dart` — Extra 2 is pure UI on top of this existing, already-wired data source.
 - `_showSearchSheet` — reused as-is for Phase D's Search nav button.
+- `AdaptiveNavigation` and `AdaptiveBottomSheet` (`app/lib/shared/widgets/responsive_center.dart`, per `docs/ui/RESPONSIVE_STANDARDS.md`) — reused for Phase D instead of a bespoke bottom bar (design review finding: the repo already has this exact bottom-nav/rail pattern built and documented).
 
 ## Worktree parallelization strategy
 
@@ -181,13 +231,13 @@ Both gaps are folded into the relevant phase's Testing bullet above (Phase C and
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | clean (issues_found → fixed) | Mode: SELECTIVE EXPANSION. 4 architecture/correctness findings (favorites API contract, snapshot-cache invalidation, replace() failure path, favorite/not-for-me exclusivity) — all resolved. 4 market-informed expansion candidates surfaced, cherry-picked: 2 included (jump-back-in rail, drag-to-reorder favorites, split into "Optional extras"), 1 deferred (mini EPG preview), 1 skipped (channel-number entry, data-model cost too high). |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run (quota) | Codex CLI authenticated but exhausted its usage quota mid-run on both attempts (ChatGPT plan limit, resets 2026-09-15) before producing content. Both outside-voice passes fell back to a Claude subagent — same model family, not a true cross-model check; treat as weaker signal than a real second model. |
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | clean (issues_found → fixed) | 3 architecture/quality findings: mutual-exclusion enforcement moved from UI code to the shared provider layer (root-cause fix covering all call sites, including 3 more than originally enumerated); storage class kept as `FavoriteChannelsStorage` rather than renamed, to avoid breaking typed references; O(n·m) partition-performance regression caught and fixed (Set-based lookup). Plus dedup gap and a missing AnimationController test, both fixed. Test coverage diagram: 19/21 planned paths covered pre-fix, both gaps closed. Parallelization: 5 lanes, 4 parallel-capable (A/C/D/Extra 2), 1 sequential dependency (Extra 1 after B). |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | — |
+| Design Review | `/plan-design-review` | UI/UX gaps | 1 | clean (issues_found → fixed) | No mockups generated — gstack designer binary present but no OpenAI key configured; ran text-only per the skill's documented fallback. Score 6.7/10 → 8.7/10 across 6 rated passes. Found: `AdaptiveNavigation`/`AdaptiveBottomSheet` already exist in `core_ui` for exactly Phase D's pattern — spec was building bespoke, now reuses them. Added loading/empty states to Phase A's replace flow, a user-journey storyboard for the capacity-reached path, an information-architecture diagram, a touch-target/focus-scale note for Phase B's grid compaction, and resolved one unresolved decision (overlay vs. player-actions-sheet stacking — sheet wins). No DESIGN.md exists; flagged as non-blocking, `/design-consultation` recommended separately. |
 | DX Review | `/plan-devex-review` | Developer experience gaps | 0 | not run | — |
 
 **CODEX:** Not run — CLI hit its usage quota before producing review content on both the CEO-review and eng-review outside-voice passes. Both fell back to a fresh-context Claude subagent per each skill's documented fallback rule. Re-run either `/codex review` or ask for a fresh outside-voice pass after 2026-09-15 if a true cross-model check matters before shipping.
 
-**CROSS-MODEL:** N/A this run (no genuine second model available) — both outside-voice passes were same-family Claude subagents, not scored against Codex.
+**CROSS-MODEL:** N/A this run (no genuine second model available) — all outside-voice passes were same-family Claude subagents, not scored against Codex.
 
-**VERDICT:** CEO + ENG CLEARED — ready to implement. Design review recommended given the UI scope (overlay, nav, grid, loading-screen changes across Phases A-D) but not blocking; suggest running it before Phase C/D land since those are the most visually novel.
+**VERDICT:** CEO + ENG + DESIGN CLEARED — ready to implement.
 
 NO UNRESOLVED DECISIONS
