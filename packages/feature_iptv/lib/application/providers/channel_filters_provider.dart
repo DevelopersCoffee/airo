@@ -426,6 +426,8 @@ class ChannelBrowserSnapshotCache {
   Map<String, ChannelBrowseMetadata>? _metadataByChannelId;
   ChannelFilters? _filters;
   ChannelSort? _sort;
+  List<String>? _favoriteIds;
+  Set<String>? _notForMeIds;
   ChannelBrowserSnapshot? _snapshot;
 
   ChannelBrowserSnapshot resolve({
@@ -433,13 +435,17 @@ class ChannelBrowserSnapshotCache {
     required Map<String, ChannelBrowseMetadata> metadataByChannelId,
     required ChannelFilters filters,
     required ChannelSort sort,
+    required List<String> favoriteIds,
+    required Set<String> notForMeIds,
   }) {
     final previous = _snapshot;
     if (previous != null &&
         identical(_channels, channels) &&
         identical(_metadataByChannelId, metadataByChannelId) &&
         _filters == filters &&
-        _sort == sort) {
+        _sort == sort &&
+        identical(_favoriteIds, favoriteIds) &&
+        identical(_notForMeIds, notForMeIds)) {
       return previous;
     }
 
@@ -448,7 +454,7 @@ class ChannelBrowserSnapshotCache {
       metadataByChannelId: metadataByChannelId,
       country: filters.country,
     );
-    final visibleChannels = sortChannels(
+    final sorted = sortChannels(
       channels: applyChannelFilters(
         channels: channels,
         filters: filters,
@@ -456,6 +462,11 @@ class ChannelBrowserSnapshotCache {
       ),
       metadataByChannelId: metadataByChannelId,
       sort: sort,
+    );
+    final visibleChannels = _partitionByPreference(
+      sorted,
+      favoriteIds: favoriteIds.toSet(), // O(1) membership for the partition below
+      notForMeIds: notForMeIds,
     );
     final next = ChannelBrowserSnapshot(
       dimensions: dimensions,
@@ -466,6 +477,8 @@ class ChannelBrowserSnapshotCache {
     _metadataByChannelId = metadataByChannelId;
     _filters = filters;
     _sort = sort;
+    _favoriteIds = favoriteIds;
+    _notForMeIds = notForMeIds;
     _snapshot = next;
     return next;
   }
@@ -475,8 +488,33 @@ class ChannelBrowserSnapshotCache {
     _metadataByChannelId = null;
     _filters = null;
     _sort = null;
+    _favoriteIds = null;
+    _notForMeIds = null;
     _snapshot = null;
   }
+}
+
+/// Stable three-way partition: favorites first, normal middle, not-for-me
+/// last — internal order within each group is whatever [sorted] already
+/// has (the active sort column), untouched.
+List<IPTVChannel> _partitionByPreference(
+  List<IPTVChannel> sorted, {
+  required Set<String> favoriteIds,
+  required Set<String> notForMeIds,
+}) {
+  final favorites = <IPTVChannel>[];
+  final normal = <IPTVChannel>[];
+  final notForMe = <IPTVChannel>[];
+  for (final channel in sorted) {
+    if (favoriteIds.contains(channel.id)) {
+      favorites.add(channel);
+    } else if (notForMeIds.contains(channel.id)) {
+      notForMe.add(channel);
+    } else {
+      normal.add(channel);
+    }
+  }
+  return [...favorites, ...normal, ...notForMe];
 }
 
 ChannelFilterDimensions channelFilterDimensions({
