@@ -46,7 +46,7 @@ void main() {
     CompactEpgProgram? guideProgram,
     RicherContextProvider? richerContextProvider,
     bool remindersAvailable = false,
-    Set<String>? favoriteChannelIds,
+    List<String>? favoriteChannelIds,
   }) async {
     if (richerContextProvider != null) {
       SharedPreferences.setMockInitialValues({
@@ -350,7 +350,7 @@ void main() {
   testWidgets(
     'favorites chip narrows the visible channels to favorites',
     (tester) async {
-      await pumpScreen(tester, favoriteChannelIds: {sportsChannel.id});
+      await pumpScreen(tester, favoriteChannelIds: [sportsChannel.id]);
 
       expect(find.text('City News Live'), findsOneWidget);
       expect(find.text('Stadium Sports'), findsOneWidget);

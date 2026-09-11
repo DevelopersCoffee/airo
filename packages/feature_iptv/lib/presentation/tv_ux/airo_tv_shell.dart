@@ -138,7 +138,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     // watch (not read) so a hot-reload/rebuild doesn't tear it down.
     ref.watch(castMultiviewReceiverBridgeProvider);
     final favoriteChannelIds =
-        ref.watch(favoriteChannelIdsProvider).value ?? const <String>{};
+        ref.watch(favoriteChannelIdsProvider).value?.toSet() ??
+        const <String>{};
     final favoriteToggler = ref.read(channelFavoriteTogglerProvider);
     final playbackStats = ref
         .watch(streamingStateProvider)

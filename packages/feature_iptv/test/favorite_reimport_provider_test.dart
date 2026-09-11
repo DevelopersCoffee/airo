@@ -33,7 +33,7 @@ void main() {
       addTearDown(container.dispose);
 
       final storage = container.read(favoriteChannelsStorageProvider);
-      await storage.addFavorite('a1');
+      await storage.setFavorite('a1');
 
       final needsReview = await applyFavoriteRemapOnReimport(
         favoriteStorage: storage,
@@ -57,7 +57,7 @@ void main() {
       addTearDown(container.dispose);
 
       final storage = container.read(favoriteChannelsStorageProvider);
-      await storage.addFavorite('a1');
+      await storage.setFavorite('a1');
 
       final needsReview = await applyFavoriteRemapOnReimport(
         favoriteStorage: storage,
@@ -97,7 +97,7 @@ void main() {
     addTearDown(container.dispose);
 
     final storage = container.read(favoriteChannelsStorageProvider);
-    await storage.addFavorite('a1');
+    await storage.setFavorite('a1');
 
     final needsReview = await applyFavoriteRemapOnReimport(
       favoriteStorage: storage,

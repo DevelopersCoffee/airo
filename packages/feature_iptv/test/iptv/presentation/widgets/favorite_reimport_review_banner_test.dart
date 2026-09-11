@@ -109,7 +109,7 @@ void main() {
     final container = await buildContainer();
     addTearDown(container.dispose);
     final storage = container.read(favoriteChannelsStorageProvider);
-    await storage.addFavorite(oldChannel.id);
+    await storage.setFavorite(oldChannel.id);
     container.read(favoriteReimportReviewCandidatesProvider.notifier).state = [
       candidate,
     ];
@@ -128,7 +128,7 @@ void main() {
     final container = await buildContainer();
     addTearDown(container.dispose);
     final storage = container.read(favoriteChannelsStorageProvider);
-    await storage.addFavorite(oldChannel.id);
+    await storage.setFavorite(oldChannel.id);
     container.read(favoriteReimportReviewCandidatesProvider.notifier).state = [
       candidate,
     ];
@@ -150,7 +150,7 @@ void main() {
       final container = await buildContainer();
       addTearDown(container.dispose);
       final storage = container.read(favoriteChannelsStorageProvider);
-      await storage.addFavorite(oldChannel.id);
+      await storage.setFavorite(oldChannel.id);
       container.read(favoriteReimportReviewCandidatesProvider.notifier).state =
           [candidate];
 
@@ -173,7 +173,7 @@ void main() {
     final container = await buildContainer();
     addTearDown(container.dispose);
     final storage = container.read(favoriteChannelsStorageProvider);
-    await storage.addFavorite(oldChannel.id);
+    await storage.setFavorite(oldChannel.id);
     container.read(favoriteReimportReviewCandidatesProvider.notifier).state = [
       candidate,
     ];
