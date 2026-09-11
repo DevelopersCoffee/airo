@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:feature_anya_core/feature_anya_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/anya_repository.dart';
 import '../../pdf/syncfusion_anya_pdf_extractor.dart';
+import '../../repair/merge_repaired_program.dart';
+import '../../repair/plan_repair_port.dart';
 
 final anyaRepositoryProvider = Provider<AnyaRepository>((ref) {
   throw StateError('AnyaRepository must be overridden by the shell');
@@ -10,6 +14,10 @@ final anyaRepositoryProvider = Provider<AnyaRepository>((ref) {
 
 final anyaPdfExtractorProvider = Provider<AnyaPdfTextExtractor>((ref) {
   return const SyncfusionAnyaPdfExtractor();
+});
+
+final planRepairPortProvider = Provider<PlanRepairPort>((ref) {
+  return const NoopPlanRepairPort();
 });
 
 final anyaCatalogProvider = Provider<List<CatalogMeal>>((ref) {
@@ -28,6 +36,7 @@ class AnyaSessionState {
     this.emptyExtract = false,
     this.busy = false,
     this.errorMessage,
+    this.repairStatus = RepairStatus.idle,
   });
 
   final bool hydrated;
@@ -37,6 +46,7 @@ class AnyaSessionState {
   final bool emptyExtract;
   final bool busy;
   final String? errorMessage;
+  final RepairStatus repairStatus;
 
   DietProfile? get profile => snapshot.profile;
   WeeklyPlan? get weeklyPlan => snapshot.weeklyPlan;
@@ -52,6 +62,7 @@ class AnyaSessionState {
     bool? emptyExtract,
     bool? busy,
     String? errorMessage,
+    RepairStatus? repairStatus,
     bool clearPending = false,
     bool clearError = false,
   }) => AnyaSessionState(
@@ -64,6 +75,9 @@ class AnyaSessionState {
     emptyExtract: emptyExtract ?? this.emptyExtract,
     busy: busy ?? this.busy,
     errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+    repairStatus: clearPending
+        ? RepairStatus.idle
+        : repairStatus ?? this.repairStatus,
   );
 }
 
@@ -146,23 +160,78 @@ class AnyaSession extends Notifier<AnyaSessionState> {
       state = state.copyWith(
         busy: false,
         emptyExtract: true,
+        repairStatus: RepairStatus.idle,
         clearPending: true,
       );
       return;
     }
     const normalizer = DietPdfNormalizer();
-    final program = normalizer.parseProgram(
+    final parsed = normalizer.parseProgram(
       id: 'import_${DateTime.now().millisecondsSinceEpoch}',
       title: title,
       pages: pages,
     );
+    final originalText = [for (final page in pages) page.text].join('\n');
+    final program = repairImportedProgram(
+      program: parsed,
+      originalText: originalText,
+    );
     final validation = normalizer.validate(pages: pages, program: program);
+    final port = ref.read(planRepairPortProvider);
     state = state.copyWith(
       busy: false,
       pendingProgram: program,
       pendingValidation: validation,
       emptyExtract: false,
+      repairStatus: port.isAvailable
+          ? RepairStatus.cleaning
+          : RepairStatus.idle,
     );
+    if (!port.isAvailable) return;
+    await _applyPortRepair(port: port, heuristic: program, pages: pages);
+  }
+
+  Future<void> _applyPortRepair({
+    required PlanRepairPort port,
+    required DietProgram heuristic,
+    required List<ExtractedPdfPage> pages,
+  }) async {
+    try {
+      final chunks = StringBuffer();
+      await for (final token in port.repair(heuristic)) {
+        chunks.write(token);
+      }
+      final decoded = jsonDecode(_stripJsonFences(chunks.toString()));
+      if (decoded is! Map) {
+        throw const FormatException('Repair output was not a JSON object');
+      }
+      final fromModel = DietProgram.fromJson(
+        Map<String, Object?>.from(decoded),
+      );
+      final merged = mergeRepairedProgram(
+        heuristic: heuristic,
+        repaired: fromModel,
+      );
+      state = state.copyWith(
+        pendingProgram: merged,
+        pendingValidation: const DietPdfNormalizer().validate(
+          pages: pages,
+          program: merged,
+        ),
+        repairStatus: RepairStatus.complete,
+      );
+    } catch (_) {
+      state = state.copyWith(repairStatus: RepairStatus.failed);
+    }
+  }
+
+  String _stripJsonFences(String raw) {
+    final trimmed = raw.trim();
+    final fenced = RegExp(
+      r'^```(?:json)?\s*([\s\S]*?)\s*```$',
+      caseSensitive: false,
+    ).firstMatch(trimmed);
+    return (fenced?.group(1) ?? trimmed).trim();
   }
 
   void updatePendingProgram(DietProgram program) {

@@ -98,6 +98,7 @@ class _AiroAnyaAppState extends State<AiroAnyaApp> {
       overrides: [
         ...widget.registry.allProviderOverrides,
         anyaRepositoryProvider.overrideWithValue(widget.repository),
+        planRepairPortProvider.overrideWithValue(const NoopPlanRepairPort()),
       ],
       child: MaterialApp.router(
         title: 'Anya',

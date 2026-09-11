@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_anya/feature_anya.dart';
 import 'package:feature_anya_core/feature_anya_core.dart';
@@ -6,6 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+const _splitGreenTeaPaste = '''
+DAY 1
+17:30 Evening
+Green
+T
+ea 1 cup
+Dinner
+''';
 
 void main() {
   test('Anya module ships only to ShellId.anya', () {
@@ -248,11 +259,80 @@ void main() {
           title: 'Pasted plan',
           text: 'DAY 7\n10:00 AM\nveg poha 1k\n',
         );
-    final program = container.read(anyaSessionProvider).pendingProgram;
+    final session = container.read(anyaSessionProvider);
+    final program = session.pendingProgram;
     expect(program, isNotNull);
     expect(program!.allDays.single.dayNumber, 7);
     expect(program.allDays.single.meals.single.items.single.quantityRaw, '1k');
+    expect(session.repairStatus, RepairStatus.idle);
   });
+
+  test('noop repair joins Green tea and stays idle', () async {
+    final container = ProviderContainer(
+      overrides: [
+        anyaRepositoryProvider.overrideWithValue(MemoryAnyaRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(anyaSessionProvider.notifier).hydrate();
+    await container
+        .read(anyaSessionProvider.notifier)
+        .importPastedText(title: 'Clinic', text: _splitGreenTeaPaste);
+    final session = container.read(anyaSessionProvider);
+    expect(session.repairStatus, RepairStatus.idle);
+    final items = session.pendingProgram!.allDays.single.meals.single.items;
+    expect(items, [const FoodItem(name: 'Green tea', quantityRaw: '1 cup')]);
+  });
+
+  test('invalid JSON port fails and keeps the heuristic program', () async {
+    final container = ProviderContainer(
+      overrides: [
+        anyaRepositoryProvider.overrideWithValue(MemoryAnyaRepository()),
+        planRepairPortProvider.overrideWithValue(
+          const _ScriptedPlanRepairPort(['not-json']),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(anyaSessionProvider.notifier).hydrate();
+    await container
+        .read(anyaSessionProvider.notifier)
+        .importPastedText(title: 'Clinic', text: _splitGreenTeaPaste);
+    final session = container.read(anyaSessionProvider);
+    expect(session.repairStatus, RepairStatus.failed);
+    expect(session.pendingProgram!.id, startsWith('import_'));
+    expect(session.pendingProgram!.allDays.single.meals.single.items, [
+      const FoodItem(name: 'Green tea', quantityRaw: '1 cup'),
+    ]);
+  });
+
+  test(
+    'valid JSON port completes and keeps id, source, and quantityRaw',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          anyaRepositoryProvider.overrideWithValue(MemoryAnyaRepository()),
+          planRepairPortProvider.overrideWithValue(
+            const _ClearingPlanRepairPort(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(anyaSessionProvider.notifier).hydrate();
+      await container
+          .read(anyaSessionProvider.notifier)
+          .importPastedText(title: 'Clinic', text: _splitGreenTeaPaste);
+      final session = container.read(anyaSessionProvider);
+      expect(session.repairStatus, RepairStatus.complete);
+      final program = session.pendingProgram!;
+      expect(program.id, startsWith('import_'));
+      expect(program.source, ProgramSource.imported);
+      expect(
+        program.allDays.single.meals.single.items.single,
+        const FoodItem(name: 'Green tea', quantityRaw: '1 cup'),
+      );
+    },
+  );
 
   test('toggles grocery checks on the snapshot', () async {
     final container = ProviderContainer(
@@ -470,6 +550,66 @@ void main() {
     expect(find.text('Import pasted text'), findsOneWidget);
   });
 
+  testWidgets('review shows Green tea after heuristic repair', (tester) async {
+    await tester.pumpWidget(_anyaHarness(location: '/import/review'));
+    await tester.pump();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MaterialApp)),
+    );
+    await container
+        .read(anyaSessionProvider.notifier)
+        .importPastedText(title: 'Clinic', text: _splitGreenTeaPaste);
+    await tester.pump();
+    expect(find.text('Green tea'), findsOneWidget);
+    expect(find.text('1 cup'), findsOneWidget);
+    expect(find.text('Dinner'), findsNothing);
+    expect(find.text('Cleaning with on-device model…'), findsNothing);
+  });
+
+  testWidgets('review shows cleaning then hides it when a port completes', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _anyaHarness(
+        location: '/import/review',
+        repairPort: const _DelayedPlanRepairPort(),
+      ),
+    );
+    await tester.pump();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MaterialApp)),
+    );
+    final pending = container
+        .read(anyaSessionProvider.notifier)
+        .importPastedText(title: 'Clinic', text: _splitGreenTeaPaste);
+    await tester.pump();
+    expect(find.text('Cleaning with on-device model…'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 60));
+    await pending;
+    await tester.pump();
+    expect(find.text('Cleaning with on-device model…'), findsNothing);
+    expect(find.text('Green tea'), findsOneWidget);
+  });
+
+  testWidgets('review shows fallback copy when the port fails', (tester) async {
+    await tester.pumpWidget(
+      _anyaHarness(
+        location: '/import/review',
+        repairPort: const _ScriptedPlanRepairPort(['not-json']),
+      ),
+    );
+    await tester.pump();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MaterialApp)),
+    );
+    await container
+        .read(anyaSessionProvider.notifier)
+        .importPastedText(title: 'Clinic', text: _splitGreenTeaPaste);
+    await tester.pump();
+    expect(find.text('Could not refine. Showing parsed plan.'), findsOneWidget);
+    expect(find.text('Green tea'), findsOneWidget);
+  });
+
   test(
     'SecureAnyaRepository migrates plaintext prefs then deletes them',
     () async {
@@ -511,10 +651,71 @@ class _EmptyExtractor implements AnyaPdfTextExtractor {
   }
 }
 
+class _ScriptedPlanRepairPort implements PlanRepairPort {
+  const _ScriptedPlanRepairPort(this.tokens);
+
+  final List<String> tokens;
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Stream<String> repair(DietProgram draft) => Stream.fromIterable(tokens);
+}
+
+class _ClearingPlanRepairPort implements PlanRepairPort {
+  const _ClearingPlanRepairPort();
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Stream<String> repair(DietProgram draft) {
+    final cleared = draft.copyWith(
+      id: 'llm',
+      source: ProgramSource.generated,
+      phases: [
+        for (final phase in draft.phases)
+          phase.copyWith(
+            days: [
+              for (final day in phase.days)
+                day.copyWith(
+                  meals: [
+                    for (final slot in day.meals)
+                      slot.copyWith(
+                        items: [
+                          for (final item in slot.items)
+                            item.copyWith(quantityRaw: ''),
+                        ],
+                      ),
+                  ],
+                ),
+            ],
+          ),
+      ],
+    );
+    return Stream.value('```json\n${jsonEncode(cleared.toJson())}\n```');
+  }
+}
+
+class _DelayedPlanRepairPort implements PlanRepairPort {
+  const _DelayedPlanRepairPort();
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Stream<String> repair(DietProgram draft) async* {
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    yield jsonEncode(draft.toJson());
+  }
+}
+
 Widget _anyaHarness({
   AnyaRepository? repository,
   String location = '/',
   DateTime? now,
+  PlanRepairPort? repairPort,
 }) {
   final module = AnyaModule();
   final router = GoRouter(
@@ -527,6 +728,9 @@ Widget _anyaHarness({
         repository ?? MemoryAnyaRepository(),
       ),
       anyaNowProvider.overrideWithValue(now ?? DateTime(2026, 9, 11, 11, 0)),
+      planRepairPortProvider.overrideWithValue(
+        repairPort ?? const NoopPlanRepairPort(),
+      ),
     ],
     child: MaterialApp.router(routerConfig: router),
   );

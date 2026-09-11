@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/anya_providers.dart';
+import '../../repair/plan_repair_port.dart';
 
 class ImportReviewScreen extends ConsumerWidget {
   const ImportReviewScreen({super.key});
@@ -42,6 +43,16 @@ class ImportReviewScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          if (session.repairStatus == RepairStatus.cleaning) ...[
+            const SizedBox(height: AiroSpacing.md),
+            const AppCard(child: Text('Cleaning with on-device model…')),
+          ],
+          if (session.repairStatus == RepairStatus.failed) ...[
+            const SizedBox(height: AiroSpacing.md),
+            const AppCard(
+              child: Text('Could not refine. Showing parsed plan.'),
+            ),
+          ],
           const SizedBox(height: AiroSpacing.md),
           if (program.rules.allowedFoods.isNotEmpty) ...[
             Text(
