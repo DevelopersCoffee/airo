@@ -7,7 +7,18 @@ import 'package:platform_streams/platform_streams.dart';
 
 import '../../../application/providers/channel_filters_provider.dart';
 
-const _cardWidth = 172.0;
+const _cardWidth = 155.0;
+// _ChannelTile builds MediaCard without a `variant`, so it always renders at
+// MediaCardVariant.standard's fixed 104px thumbnail regardless of this grid's
+// own card-width constant (a grid cell's width is flexible — the Sliver
+// divides available width evenly across columns — but its height is a hard,
+// non-scrollable constraint). MediaCard.railHeightFor(MediaCardVariant.standard)
+// is 169; shrinking this below that overflows the card's name/subtitle
+// column by a few pixels every frame (verified: widget tests below fail with
+// a real `RenderFlex overflowed` exception at 155). Left at 169 so only
+// _cardWidth (which drives _columnCountFor, and is layout-flexible) does the
+// column-gaining work; revisit together with a smaller MediaCardVariant if
+// the tile needs to shrink vertically too.
 const _cardHeight = 169.0; // MediaCard.railHeightFor(MediaCardVariant.standard)
 const _gridSpacing = 14.0;
 const _preloadRowsBeforeViewport = 2;
@@ -40,6 +51,8 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.onMultiviewToggle,
     this.favoriteChannelIds = const {},
     this.onFavoriteToggle,
+    this.notForMeChannelIds = const {},
+    this.onNotForMeToggle,
     this.onClearFilters,
     this.viewMode = ChannelViewMode.list,
     this.onViewModeChanged,
@@ -57,6 +70,8 @@ class ChannelLibraryGrid extends StatefulWidget {
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel>? onFavoriteToggle;
+  final Set<String> notForMeChannelIds;
+  final ValueChanged<IPTVChannel>? onNotForMeToggle;
 
   /// Phone-width layout choice. Ignored above [_phoneBreakpoint], which
   /// always gets the dynamic tile grid. Null [onViewModeChanged] hides the
@@ -147,7 +162,9 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
         // alternative to, so the toggle (and this widget's viewMode) has no
         // effect there.
         final usePhoneList = isPhone && widget.viewMode == ChannelViewMode.list;
-        final columns = usePhoneList ? 1 : _columnCountFor(constraints.maxWidth);
+        final columns = usePhoneList
+            ? 1
+            : _columnCountFor(constraints.maxWidth);
         final rowExtent = usePhoneList ? _horizontalCardHeight : _cardHeight;
         final rowSpacing = usePhoneList ? _horizontalRowSpacing : _gridSpacing;
         if (columns != _lastColumnCount || rowExtent != _lastRowExtent) {
@@ -211,6 +228,10 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                             channel.id,
                           ),
                           onFavoriteToggle: widget.onFavoriteToggle,
+                          isNotForMe: widget.notForMeChannelIds.contains(
+                            channel.id,
+                          ),
+                          onNotForMeToggle: widget.onNotForMeToggle,
                           horizontal: usePhoneList,
                         ),
                       );
@@ -350,7 +371,9 @@ class _LibrarySortRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
-                    onTap: onSort == null ? null : () => _showSortSheet(context),
+                    onTap: onSort == null
+                        ? null
+                        : () => _showSortSheet(context),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -462,6 +485,8 @@ class _ChannelTile extends StatefulWidget {
     this.onMultiviewToggle,
     required this.isFavorite,
     this.onFavoriteToggle,
+    required this.isNotForMe,
+    this.onNotForMeToggle,
     this.horizontal = false,
   });
 
@@ -474,6 +499,8 @@ class _ChannelTile extends StatefulWidget {
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
   final bool isFavorite;
   final ValueChanged<IPTVChannel>? onFavoriteToggle;
+  final bool isNotForMe;
+  final ValueChanged<IPTVChannel>? onNotForMeToggle;
 
   /// Renders the premium horizontal media card (logo left, name/metadata
   /// right, LIVE trailing) used below the phone breakpoint, instead of the
@@ -528,7 +555,8 @@ class _ChannelTileState extends State<_ChannelTile> {
   bool get _hasActions =>
       widget.onSelected != null ||
       widget.onMultiviewToggle != null ||
-      widget.onFavoriteToggle != null;
+      widget.onFavoriteToggle != null ||
+      widget.onNotForMeToggle != null;
 
   Future<void> _showActionsMenu(BuildContext context) {
     return showModalBottomSheet<void>(
@@ -545,6 +573,10 @@ class _ChannelTileState extends State<_ChannelTile> {
         onFavoriteToggle: widget.onFavoriteToggle == null
             ? null
             : () => widget.onFavoriteToggle!(widget.channel),
+        isNotForMe: widget.isNotForMe,
+        onNotForMeToggle: widget.onNotForMeToggle == null
+            ? null
+            : () => widget.onNotForMeToggle!(widget.channel),
       ),
     );
   }
@@ -589,39 +621,6 @@ class _ChannelTileState extends State<_ChannelTile> {
           left: 7,
           child: _AvailabilityDot(availability: widget.availability),
         ),
-        // Hidden on the horizontal phone card: its LIVE badge already sits
-        // in this corner, and stacking a second icon on top of it read as
-        // visual clutter (design feedback: reduce elements competing for
-        // attention). Still reachable there via the long-press actions
-        // sheet built above.
-        if (widget.onMultiviewToggle != null && !widget.horizontal)
-          Positioned(
-            top: 4,
-            right: 4,
-            child: ExcludeFocus(
-              child: Material(
-                key: ValueKey('channel-multiview-${widget.channel.id}'),
-                color: Colors.black.withValues(alpha: 0.68),
-                shape: const CircleBorder(),
-                child: IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: widget.inMultiview
-                      ? 'Remove from multiview'
-                      : 'Add to multiview',
-                  onPressed: () => widget.onMultiviewToggle!(widget.channel),
-                  icon: Icon(
-                    widget.inMultiview
-                        ? Icons.remove_from_queue
-                        : Icons.add_to_queue,
-                    size: 18,
-                    color: widget.inMultiview
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -799,6 +798,8 @@ class _ChannelActionsSheet extends StatelessWidget {
     required this.onMultiviewToggle,
     required this.isFavorite,
     required this.onFavoriteToggle,
+    required this.isNotForMe,
+    required this.onNotForMeToggle,
   });
 
   final IPTVChannel channel;
@@ -807,6 +808,8 @@ class _ChannelActionsSheet extends StatelessWidget {
   final VoidCallback? onMultiviewToggle;
   final bool isFavorite;
   final VoidCallback? onFavoriteToggle;
+  final bool isNotForMe;
+  final VoidCallback? onNotForMeToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -868,6 +871,17 @@ class _ChannelActionsSheet extends StatelessWidget {
                 isFavorite ? 'Remove from favorites' : 'Add to favorites',
               ),
               onTap: () => act(onFavoriteToggle),
+            ),
+          if (onNotForMeToggle != null)
+            ListTile(
+              key: const ValueKey('channel-actions-not-for-me'),
+              leading: Icon(
+                isNotForMe
+                    ? Icons.visibility_off
+                    : Icons.visibility_off_outlined,
+              ),
+              title: Text(isNotForMe ? 'Remove "not for me"' : 'Not for me'),
+              onTap: () => act(onNotForMeToggle),
             ),
           const SizedBox(height: 8),
         ],

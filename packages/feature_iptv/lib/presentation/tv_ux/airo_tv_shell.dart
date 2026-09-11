@@ -141,6 +141,11 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         ref.watch(favoriteChannelIdsProvider).value?.toSet() ??
         const <String>{};
     final favoriteToggler = ref.read(channelFavoriteTogglerProvider);
+    final favoriteIds =
+        ref.watch(favoriteChannelIdsProvider).value ?? const <String>[];
+    final notForMeIds =
+        ref.watch(notForMeChannelIdsProvider).value ?? const <String>{};
+    final notForMeToggler = ref.read(channelNotForMeTogglerProvider);
     final playbackStats = ref
         .watch(streamingStateProvider)
         .asData
@@ -173,6 +178,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       metadataByChannelId: metadata,
       filters: filters,
       sort: sort,
+      favoriteIds: favoriteIds,
+      notForMeIds: notForMeIds,
     );
     _maybeAskForCountry(
       filters: filters,
@@ -212,6 +219,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           : null,
       favoriteChannelIds: favoriteChannelIds,
       onFavoriteToggle: (channel) => favoriteToggler(channel.id),
+      notForMeChannelIds: notForMeIds,
+      onNotForMeToggle: (channel) => notForMeToggler(channel.id),
       onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
     );
     // Built per-branch (compact vs ten-foot) below, not once here: the
