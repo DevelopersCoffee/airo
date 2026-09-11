@@ -9,20 +9,25 @@ void main() {
       expect(result.any((app) => app.id == ShellId.mobile), isFalse);
     });
 
-    test('returns the other three shipped apps for a known shell', () {
+    test('returns the other shipped apps for a known shell', () {
       final result = siblingAppsFor(ShellId.tv);
 
       expect(
         result.map((app) => app.id),
-        containsAll(const [ShellId.mobile, ShellId.coins, ShellId.mind]),
+        containsAll(const [
+          ShellId.mobile,
+          ShellId.coins,
+          ShellId.mind,
+          ShellId.anya,
+        ]),
       );
-      expect(result, hasLength(3));
+      expect(result, hasLength(4));
     });
 
     test('returns all shipped apps for a shell not in the registry', () {
       final result = siblingAppsFor(const ShellId('unregistered'));
 
-      expect(result, hasLength(4));
+      expect(result, hasLength(5));
     });
   });
 
@@ -30,8 +35,14 @@ void main() {
     test('covers every shipped shell exactly once', () {
       final ids = siblingApps.map((app) => app.id).toSet();
 
-      expect(ids, {ShellId.mobile, ShellId.tv, ShellId.coins, ShellId.mind});
-      expect(siblingApps, hasLength(4));
+      expect(ids, {
+        ShellId.mobile,
+        ShellId.tv,
+        ShellId.coins,
+        ShellId.mind,
+        ShellId.anya,
+      });
+      expect(siblingApps, hasLength(5));
     });
   });
 
@@ -51,6 +62,7 @@ void main() {
         ShellId.tv,
         ShellId.coins,
         ShellId.mind,
+        ShellId.anya,
       ]) {
         expect(
           publishedSiblingAppsFor(shell).any((app) => app.id == shell),

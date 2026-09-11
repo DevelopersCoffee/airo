@@ -1,0 +1,13 @@
+name: feature_anya_core
+owner: Anya / Nutrition Agent
+reviewers:
+  - Chief Architect
+  - Chief QA Officer
+  - Chief Security Officer
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+  - core_ai
+  - feature_mind
+  - feature_anya
+quality_gates: {}

@@ -27,6 +27,9 @@ class ShellId {
   /// the assistant on its own without the super app's other tabs.
   static const mind = ShellId('mind');
 
+  /// The standalone Anya nutrition planner (`app/lib/main_anya.dart`).
+  static const anya = ShellId('anya');
+
   /// The iPad Air QA/UX qualification harness
   /// (`app/lib/main_qualification.dart`). Not a shippable product shell —
   /// exists so device-qualification testing goes through the same

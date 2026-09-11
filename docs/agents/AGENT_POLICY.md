@@ -104,6 +104,9 @@ just an index:
   `platform_coin_*` / coin plugin packages. `packages/airomoney` is retired;
   `app/lib/features/coins` is a legacy extraction source, not the home for new
   Airo Coin behavior.
+- Anya / Nutrition Agent — `feature_anya`, `feature_anya_core`. Standalone
+  nutrition product (`main_anya.dart` / `ShellId.anya`). Mind's `draft-diet-plan`
+  skill stays a chat addon, not this app.
 - Meeting Intelligence Agent — dormant, no packages yet
 - Agent Skills Agent, Memory Agent, Routine OS Agent — super-app-level,
   unchanged, no owned packages exist yet in this repo pass
