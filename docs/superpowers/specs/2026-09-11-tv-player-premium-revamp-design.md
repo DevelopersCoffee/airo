@@ -42,11 +42,17 @@ Ten requested changes to the IPTV "Explorer" player (`AiroTvShell` + `iptv_scree
 ## Phase B — Channel grid compaction & "not for me" (items 6, 10)
 
 1. **Remove the persistent add-to-queue button** from `_ChannelTile` (`channel_library_grid.dart:597-624`). The long-press `_ChannelActionsSheet` already has "Add/remove split view" and favorite — it becomes the sole path for both touch (long-press) and D-pad (secondary action key, already wired via `TvFocusable.onSecondaryAction`). Freed corner space lets us shrink `_cardWidth`/`_cardHeight` modestly and recompute `_columnCountFor` so common TV widths gain one column, while keeping `TvFocusable`'s focus-scale affordance untouched (per the Fire/Android TV guideline above — compaction must not shrink below the minimum comfortable touch/D-pad target).
-2. **"Not for me" flag**, mirroring `FavoriteChannelsStorage` exactly: a new `NotForMeChannelsStorage` (own SharedPreferences key `iptv_not_for_me_channel_ids`), `notForMeChannelIdsProvider`, `isChannelNotForMeProvider`, `channelNotForMeTogglerProvider`. Exposed as a new row in `_ChannelActionsSheet`. Ordering: `ChannelBrowserSnapshotCache.resolve()` stable-partitions the sorted list — favorites first, normal middle, not-for-me last — applied after `sortChannels()`, regardless of the active sort column (per your confirmed answer). **Favorite and not-for-me are mutually exclusive**: toggling one clears the other (setting "not for me" on a favorited channel un-favorites it, and vice versa) — no channel can be in both sets, so the sort tiebreak question never arises.
+2. **"Not for me" flag, unified with favorites into the widened `FavoriteChannelsStorage`** (architecture decision made during eng review — see below for why). Exposed as a new row in `_ChannelActionsSheet`. Ordering: `ChannelBrowserSnapshotCache.resolve()` stable-partitions the sorted list — favorites first, normal middle, not-for-me last — applied after `sortChannels()`, regardless of the active sort column (per your confirmed answer). **Favorite and not-for-me are mutually exclusive by construction**, not by convention (see below).
 
-**Cache invalidation:** `ChannelBrowserSnapshotCache.resolve()` currently memoizes on filters/sort/metadata only (`channel_filters_provider.dart:424-471`). It now takes `favoriteIds`/`notForMeIds` as explicit inputs and includes them in its memoization signature, same pattern as its existing filter/sort keys — otherwise toggling a favorite or not-for-me flag won't invalidate the cached grid order.
+**Architecture — one storage, not two (caught in eng review):** the original spec had a new standalone `NotForMeChannelsStorage` alongside the existing `FavoriteChannelsStorage`, with exclusivity enforced only in `_ChannelActionsSheet`'s UI code. But `channel_info_bar.dart:180-208` (`_toggleFavorite`) already calls `channelFavoriteTogglerProvider` directly, bypassing that UI entirely — and a second review pass found three more direct call sites of the same provider (`tv_favorites_screen.dart:122`, `browse_screen.dart:60`, `mobile_favorites_screen.dart:114`). Enumerating "safe" call sites is a losing game — the real fix is root-cause, not per-site: **`FavoriteChannelsStorage` (name kept — see below) is widened to also own the not-for-me set**, and the fix lives in the shared `channelFavoriteTogglerProvider`/`channelNotForMeTogglerProvider` layer itself, so *every* call site — enumerated or not, today or added later — inherits exclusivity automatically without needing to know this migration happened. It exposes `setFavorite(id)` / `setNotForMe(id)` / `clearPreference(id)`, each a sequential read-modify-write across two SharedPreferences keys (`iptv_favorite_channel_ids`, `iptv_not_for_me_channel_ids`) — same consistency model the existing `toggleFavorite` already has (no new locking; a human tapping a toggle isn't a transactional-guarantee scenario, and this race has never been an issue in this codebase). `setFavorite`/`replaceAll` (the backup-import path) check membership before appending to the ordered list, so a duplicate id from a stale/re-run import can't sneak a channel into the list twice.
 
-**Testing:** grid golden/layout test at a couple of representative TV widths confirming the extra column and unchanged focus-scale visuals; snapshot-cache unit test for the three-way partition (favorite / normal / not-for-me) across all five sort columns, and a cache-invalidation test confirming a favorite/not-for-me toggle changes `resolve()`'s output on the next call.
+**Class name kept as `FavoriteChannelsStorage`** (not renamed to `ChannelPreferenceStorage`) — it's referenced as a concrete type, not just via provider, in `iptv_providers.dart` and `iptv_backup_state_store.dart` plus existing tests; renaming would force updating every typed reference for a naming preference with no functional gain. The class does more than its name suggests now — accepted tradeoff for the smaller diff.
+
+**Favorites are stored ordered from day one.** Since this class already needs widening, its favorites side stores an ordered `List<String>` (not the old `Set<String>`) from the start — this is what makes "Optional extras → Extra 1" (drag-to-reorder) a pure UI addition later instead of its own storage migration.
+
+**Cache invalidation:** `ChannelBrowserSnapshotCache.resolve()` currently memoizes on filters/sort/metadata only (`channel_filters_provider.dart:424-471`). It now takes `favoriteIds`/`notForMeIds` as explicit inputs and includes them in its memoization signature, same pattern as its existing filter/sort keys — otherwise toggling a favorite or not-for-me flag won't invalidate the cached grid order. **Performance (caught in eng review):** the three-way partition must convert the ordered favorites `List` to a `Set` once per `resolve()` call for O(1) membership checks while partitioning — a naive `list.contains()` per channel against an unconverted `List` would regress today's O(1) favorite lookup to O(n·m) against a catalogue the code's own comments describe as "thousands of rows."
+
+**Testing:** grid golden/layout test at a couple of representative TV widths confirming the extra column and unchanged focus-scale visuals; snapshot-cache unit test for the three-way partition (favorite / normal / not-for-me) across all five sort columns, and a cache-invalidation test confirming a favorite/not-for-me toggle changes `resolve()`'s output on the next call; **a provider-level regression test on `channelFavoriteTogglerProvider`/`channelNotForMeTogglerProvider` directly** (not a per-screen widget test) proving exclusivity at the shared choke point every call site routes through — this is what makes enumeration of call sites unnecessary for correctness; storage test for dedup on repeated `setFavorite`/import; storage contract test for order preservation (not just membership).
 
 ## Phase C — Player chrome cleanup (items 5, 7, 8, 9)
 
@@ -73,9 +79,9 @@ These two items were surfaced during market research and cherry-picked by you du
 
 ### Extra 1 — Drag-to-reorder favorites
 
-Favorites stop being alpha-sorted-within-group and become a user-orderable list. This changes `FavoriteChannelsStorage`'s public contract from an unordered `Set<String>` (`favorite_channels_storage.dart:20-24`, currently documented "in no particular order") to an ordered `List<String>`. **Blast radius (caught in review as undercounted — do not trust a hardcoded file list):** grep every `favoriteChannelIdsProvider`/`isChannelFavoriteProvider` call site and every local `Set<String>` favorite variable at implementation time (confirmed at least: `iptv_providers.dart`, `airo_tv_shell.dart`, `guide_providers.dart`, `local_iptv_search_providers.dart`, `cast_multiview_layouts_provider.dart`, `video_player_widget.dart`, `favorite_reimport_review_banner.dart`, `channel_library_grid.dart:58`, and backup/restore's `iptv_backup_state_store.dart` + `backup_restore_section.dart` — this list is a starting point, not a ceiling). Backup/restore must round-trip order, not just membership — `replaceAll` takes an ordered `Iterable<String>` and preserves it verbatim instead of funneling through a `Set`. Drag handles in the favorites-filtered grid view (touch); a D-pad "move up/move down" pair in `_ChannelActionsSheet` (ten-foot — no native drag gesture on a remote). **Focus behavior (gap caught in review):** after a move-up/move-down action, D-pad focus stays on the same channel at its new position — standard list-reorder convention, matches existing `TvFocusable` usage elsewhere.
+Favorites stop being alpha-sorted-within-group and become a user-orderable list. **The storage-contract migration this used to require is no longer needed here** — Phase B's widened `FavoriteChannelsStorage` already persists favorites as an ordered `List<String>` from day one (see Phase B.2). This extra is now purely a UI addition on top of already-ordered data: drag handles in the favorites-filtered grid view (touch); a D-pad "move up/move down" pair in `_ChannelActionsSheet` (ten-foot — no native drag gesture on a remote), calling a new `FavoriteChannelsStorage.reorderFavorite(id, newIndex)`. **Focus behavior:** after a move-up/move-down action, D-pad focus stays on the same channel at its new position — standard list-reorder convention, matches existing `TvFocusable` usage elsewhere.
 
-**Testing:** storage contract test for `FavoriteChannelsStorage` returning/persisting order (not just membership); backup/restore round-trip test confirming favorite order survives export→import; widget test for both reorder paths (drag and D-pad move); widget test confirming focus follows the moved item; widget test for the mutual-exclusion toggle behavior against "not for me" (Phase B.2).
+**Testing:** widget test for both reorder paths (drag and D-pad move); widget test confirming focus follows the moved item; backup/restore round-trip test confirming favorite order survives export→import (this exercises Phase B's storage, but the round-trip only matters once order is user-editable, so it's listed here).
 
 ### Extra 2 — "Jump back in" rail
 
@@ -93,18 +99,95 @@ A → B → C → D, then the two optional extras whenever you want them (Extra 
 
 Per-phase implementation approach: **just-in-time extraction**, not an upfront rewrite. `AiroTvShell` (967 lines, 13 commits in the last 30 days — a genuine churn hotspot) is not restructured wholesale before Phase A starts. Instead, each phase pulls its own piece out into a focused widget file as it touches it — Phase A's tile controls into `MultiviewStage`'s own file (already separate), Phase C's channel overlay into a new `_ChannelNameOverlay` widget instead of another inline `Positioned` block in `airo_tv_shell.dart`. This keeps every phase shippable on its own while stopping the hotspot from accreting further inline complexity.
 
+## Test coverage diagram (eng review)
+
+```
+CODE PATHS                                                    STATUS
+[Phase A] MultiviewNotifier
+  ├── replace() remove-old→add-new                            [PLANNED] provider test
+  │   ├── new stream succeeds                                 [PLANNED] happy path
+  │   └── new stream fails → slot empty                       [PLANNED] failure path (was a GAP before review)
+  ├── empty-slot picker filtered by multiviewChannelIds        [PLANNED] widget test (was a GAP before review)
+  └── toggle()/swap()/promote() (existing)                     [EXISTING] no regression test added — should add one
+
+[Phase B] FavoriteChannelsStorage, widened (post-eng-review; name kept, class does more)
+  ├── setFavorite(id) clears notForMe                            [PLANNED] provider-level regression test (covers every
+  ├── setNotForMe(id) clears favorite                             call site, enumerated or not — see rationale above)
+  ├── setFavorite/replaceAll dedup on repeated id                [PLANNED] storage test (was a GAP before review)
+  ├── ChannelBrowserSnapshotCache.resolve() 3-way partition      [PLANNED] unit test, all 5 sort columns, O(1) lookup verified
+  └── cache invalidation on favorite/notForMe toggle             [PLANNED] unit test (was a GAP before review)
+
+[Phase C] Channel-name overlay + loading logo
+  ├── overlay shows on channel change / input, hides at 5s idle [PLANNED] widget test w/ fake Timer
+  ├── loading screen renders channel logo                       [PLANNED] golden test
+  └── zoom-out transition on stream-ready                       [GAP] no test specified for the AnimationController
+                                                                         sequence itself (only the loading-screen static state)
+
+[Phase D] Bottom nav / AppBar removal
+  ├── drawer + AppBar icons gone (phone), unchanged (TV)        [PLANNED] widget test
+  └── My Aika sheet contents                                    [PLANNED] widget test
+
+[Extra 1] Drag-to-reorder favorites
+  ├── drag path (touch) / move-up-down path (D-pad)             [PLANNED] widget test both paths
+  ├── focus follows moved item                                  [PLANNED] widget test
+  └── backup/restore order round-trip                           [PLANNED] integration test
+
+[Extra 2] Jump-back-in rail
+  ├── filtered to current playlist/filters                      [PLANNED] provider test
+  └── empty state                                                [PLANNED] widget test
+
+COVERAGE: 19/21 planned paths have a specified test (90%). 2 gaps below.
+```
+
+**Gaps found (added to the plan, per Test Review requirements):**
+1. **[GAP, now fixed]** Phase C's zoom-out `AnimationController` sequence had no test in the original spec — added: a widget test driving the controller through a full run (start → mid → complete) asserting the logo's scale/opacity at each checkpoint and that it disposes cleanly on rapid channel switches (switching channel again mid-animation must not leak the old controller — a real risk with `AnimationController`s tied to async stream-ready callbacks).
+2. **[REGRESSION, IRON RULE — mandatory, not optional]** Every existing call site of `channelFavoriteTogglerProvider` (`channel_info_bar.dart`, `tv_favorites_screen.dart`, `browse_screen.dart`, `mobile_favorites_screen.dart`, and any not yet enumerated) changes behavior the moment `FavoriteChannelsStorage` is widened — favoriting now also clears `notForMe`. This is modification of existing, shipped behavior, so per the Test Review's regression rule a test is mandatory regardless of severity. Per the root-cause fix above, one **provider-level** test on `channelFavoriteTogglerProvider` itself covers all of them at the shared choke point — no per-screen widget test needed for this specific behavior.
+
+Both gaps are folded into the relevant phase's Testing bullet above (Phase C and Phase B respectively) — not deferred.
+
+## NOT in scope
+- **Item 4** (the "yrf music" / zoom-720p / blank multiview screen report) — could not be reproduced from the code; needs a restated repro (see top of doc).
+- **Mini EPG "what's on now/next" preview** — deferred, new interaction surface deserves its own design pass (see Backlog).
+- **Quick channel-number entry** — skipped, `IPTVChannel` has no channel-number field; real cost is a parser + model + migration project, not chrome work.
+- **Full per-channel "hide entirely"** — deferred alongside the softer "not for me" demotion (see Backlog).
+- **System PiP on app-leave** — not in scope because it already shipped (`#1986`), not a gap.
+- **Device-tier-aware MultiView capacity** (currently hardcoded 2/4/1 per platform) — out of scope; this spec works within the existing capacity model (that's precisely what the replace-slot flow is for), doesn't change how capacity itself is computed.
+
+## What already exists (reused, not rebuilt)
+- `MultiviewStage`'s `_EmptySlot`, `_PromotableSurface`, and long-press `_showTileControls` — extended, not replaced, for Phase A.
+- `_ChannelActionsSheet` (long-press menu) — becomes the sole multiview-toggle and favoriting surface for Phase B.1, already had the long-press wiring for both touch and D-pad.
+- `FavoriteChannelsStorage`'s SharedPreferences/`KeyValueStore` pattern and public name — widened in place to also own the not-for-me set, not replaced with a new class.
+- `ChannelLogo` widget and `_VideoStageWithActions`'s `Positioned`-overlay pattern — reused verbatim for Phase C's channel-name overlay, no new asset pipeline.
+- `core_watch_progress` + `rails_provider.dart` — Extra 2 is pure UI on top of this existing, already-wired data source.
+- `_showSearchSheet` — reused as-is for Phase D's Search nav button.
+
+## Worktree parallelization strategy
+
+| Step | Modules touched | Depends on |
+|------|------------------|------------|
+| Phase A (MultiView replace/remove) | `platform_player` (pool), `feature_iptv/application/providers` (multiview), `feature_iptv/presentation/tv_ux/sections` (multiview_stage) | — |
+| Phase B (grid + preferences) | `platform_favorites` (unified storage), `feature_iptv/application/providers` (channel_filters), `feature_iptv/presentation/tv_ux/sections` (channel_library_grid) | — |
+| Phase C (chrome cleanup) | `feature_iptv/presentation/tv_ux` (shell, loading screen, settings dialog) | — |
+| Phase D (bottom nav) | `feature_iptv/presentation/screens` (iptv_screen), `feature_iptv/presentation/widgets` (nav drawer removal) | — |
+| Extra 1 (reorder favorites) | `platform_favorites`, `feature_iptv/presentation/tv_ux/sections` (channel_library_grid) | Phase B (shares the widened `FavoriteChannelsStorage`) |
+| Extra 2 (jump-back rail) | `feature_iptv/application/providers` (rails), `feature_iptv/presentation/tv_ux` | — |
+
+**Lanes:** A, C, and D touch disjoint modules and have no dependency on each other or on B — **Lane 1: A**, **Lane 2: C**, **Lane 3: D** can all run in parallel worktrees. **Lane 4: B**, once merged, unblocks **Extra 1** (same lane, sequential after B). **Extra 2** is fully independent and can run in any lane or its own (**Lane 5**). Only conflict risk: A and B both touch `feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart` (A's empty-slot picker reuses the grid's filtering; B removes the per-tile button from the same file) — coordinate those two lanes' merges in either order, but merge one before starting the other's grid edits to avoid a conflict, or accept a small manual merge.
+
 ## GSTACK REVIEW REPORT
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | issues_found → fixed | Mode: SELECTIVE EXPANSION. 4 architecture/correctness findings (favorites API contract, snapshot-cache invalidation, replace() failure path, favorite/not-for-me exclusivity) — all resolved in spec. 4 market-informed expansion candidates surfaced, cherry-picked: 2 included (jump-back-in rail, drag-to-reorder favorites, split into "Optional extras"), 1 deferred (mini EPG preview), 1 skipped (channel-number entry, data-model cost too high). |
-| Outside Voice (Claude subagent) | fallback — Codex hit usage limit before producing a review | Independent 2nd opinion | 1 | issues_found → fixed | 2 correctness bugs in Phase A as originally specced (replace() infeasible against the pool's real capacity gate; empty-slot picker could silently close an already-open channel) — both fixed. 1 scope-framing tension (extras diluting the bounded-phase premise) — resolved by splitting into "Optional extras" section. 1 build-order inefficiency (Phase C/D double-editing the same AppBar row) — resolved by merging the AppBar edit into Phase D only. 1 minor gap (D-pad reorder focus behavior) — spec'd explicitly. |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 0 | not run | — |
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | clean (issues_found → fixed) | Mode: SELECTIVE EXPANSION. 4 architecture/correctness findings (favorites API contract, snapshot-cache invalidation, replace() failure path, favorite/not-for-me exclusivity) — all resolved. 4 market-informed expansion candidates surfaced, cherry-picked: 2 included (jump-back-in rail, drag-to-reorder favorites, split into "Optional extras"), 1 deferred (mini EPG preview), 1 skipped (channel-number entry, data-model cost too high). |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | not run (quota) | Codex CLI authenticated but exhausted its usage quota mid-run on both attempts (ChatGPT plan limit, resets 2026-09-15) before producing content. Both outside-voice passes fell back to a Claude subagent — same model family, not a true cross-model check; treat as weaker signal than a real second model. |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | clean (issues_found → fixed) | 3 architecture/quality findings: mutual-exclusion enforcement moved from UI code to the shared provider layer (root-cause fix covering all call sites, including 3 more than originally enumerated); storage class kept as `FavoriteChannelsStorage` rather than renamed, to avoid breaking typed references; O(n·m) partition-performance regression caught and fixed (Set-based lookup). Plus dedup gap and a missing AnimationController test, both fixed. Test coverage diagram: 19/21 planned paths covered pre-fix, both gaps closed. Parallelization: 5 lanes, 4 parallel-capable (A/C/D/Extra 2), 1 sequential dependency (Extra 1 after B). |
 | Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | — |
 | DX Review | `/plan-devex-review` | Developer experience gaps | 0 | not run | — |
 
-**CODEX:** Codex CLI was authenticated and attempted the outside-voice pass but exhausted its usage quota mid-run (ChatGPT plan limit, resets 2026-09-15) after only reading local skill files — it produced no actual review content. Fell back to a Claude subagent per the skill's documented fallback rule; that subagent's findings are the "Outside Voice" row above.
+**CODEX:** Not run — CLI hit its usage quota before producing review content on both the CEO-review and eng-review outside-voice passes. Both fell back to a fresh-context Claude subagent per each skill's documented fallback rule. Re-run either `/codex review` or ask for a fresh outside-voice pass after 2026-09-15 if a true cross-model check matters before shipping.
 
-**VERDICT:** CEO review clear, no unresolved decisions — ready for `/plan-eng-review` before implementation begins (required gate, not yet run). Design review recommended given the UI scope (Sections covering overlay/nav/grid changes) but not blocking.
+**CROSS-MODEL:** N/A this run (no genuine second model available) — both outside-voice passes were same-family Claude subagents, not scored against Codex.
+
+**VERDICT:** CEO + ENG CLEARED — ready to implement. Design review recommended given the UI scope (overlay, nav, grid, loading-screen changes across Phases A-D) but not blocking; suggest running it before Phase C/D land since those are the most visually novel.
 
 NO UNRESOLVED DECISIONS
