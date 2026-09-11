@@ -1,0 +1,21 @@
+[package]
+name = "m3u_parser"
+version = "0.1.0"
+edition = "2021"
+description = "M3U/M3U8 playlist parser — Rust core with an identical pure-Dart fallback"
+license = "MIT"
+
+[lib]
+name = "m3u_parser"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+flutter_rust_bridge = "=2.11.1"
+memchr = "2"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "m3u_parser"
+harness = false
