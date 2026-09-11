@@ -930,8 +930,14 @@ void main() {
     expect(find.text('Sort: Name'), findsOneWidget);
     expect(find.text('City News Live'), findsWidgets);
     expect(find.text('News'), findsWidgets);
-    expect(find.text('LIVE'), findsWidgets);
-    expect(find.byIcon(Icons.live_tv), findsWidgets);
+    // The LIVE pill and the live_tv logo placeholder both came from
+    // AiroTvShell's always-visible ChannelInfoBar row. That row is gone:
+    // live identity now lives in ChannelNameOverlay on the shell's own
+    // video stage, which this layout (a real VideoPlayerWidget, so
+    // `videoStageHasOwnActions`) does not draw. What this test still
+    // guards -- that the selected channel's name and group stay legible in
+    // the grid -- is asserted above; the badge itself is covered by
+    // channel_name_overlay_test.dart and airo_tv_shell_test.dart.
     expect(find.text('Play on TV'), findsNothing);
     expect(
       find.text('Send this channel to a Chromecast-enabled TV.'),

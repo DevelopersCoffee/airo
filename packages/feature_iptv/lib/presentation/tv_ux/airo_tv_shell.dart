@@ -21,8 +21,8 @@ import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/multiview_provider.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import '../../application/channel_warmup_policy.dart';
-import 'sections/channel_info_bar.dart';
 import 'sections/channel_library_grid.dart';
+import 'sections/channel_name_overlay.dart';
 import 'sections/filter_dialogs.dart';
 import 'sections/filter_row.dart';
 import 'sections/hotbar.dart';
@@ -82,7 +82,13 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// point here.
   final VoidCallback? onFullscreenToggle;
 
-  /// Opens the fit/full/floating/Cast chooser from the LIVE info bar.
+  /// Opens the capability-aware fit/full/floating/Cast chooser from the
+  /// stage's own action row (re-homed there from the removed LIVE info bar).
+  /// Null hides the action.
+  ///
+  /// This only reaches layouts that actually draw a stage: the grid-first
+  /// ten-foot layout (`showVideoStage: false`) renders no action row, so it
+  /// currently has no Ways to Watch entry point at all.
   final VoidCallback? onWaysToWatchTap;
 
   /// Host-owned delivery for a frame-only PNG capture.
@@ -113,6 +119,19 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   Timer? _visibleScanDebounce;
   String _visibleScanSignature = '';
   final _videoCaptureKey = GlobalKey();
+
+  /// True while one of the stage action row's sheets (Settings / Help /
+  /// MultiView layout) owns the screen. Feeds [ChannelNameOverlay]'s
+  /// `dismissRequested` so the two never float over the stage at once.
+  bool _sheetOpen = false;
+
+  /// Holds [_sheetOpen] true for as long as [sheet] is on screen.
+  void _whileSheetOpen(Future<void> sheet) {
+    setState(() => _sheetOpen = true);
+    sheet.whenComplete(() {
+      if (mounted) setState(() => _sheetOpen = false);
+    });
+  }
 
   @override
   void dispose() {
@@ -157,7 +176,6 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       ...widget.availabilityByChannelId,
       ...autoScanState.availabilityByChannelId,
     };
-    final showChannel = rowVisibility.isVisible(AiroTvControlRow.channel);
     final showStats =
         rowVisibility.isVisible(AiroTvControlRow.stats) &&
         widget.currentChannel != null &&
@@ -169,11 +187,15 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final showPlaylist = rowVisibility.isVisible(AiroTvControlRow.playlist);
     // The first visible ten-foot chrome row seeds D-pad focus (stats is a
     // read-only bar, never a focus target). Without this, cold-launch and
-    // filter/EPG round trips left focus nowhere, and the LIVE bar / filter
-    // chip row were a D-pad journey away with no reliable path back up from
-    // the grid (#reported: "unreachable strips of options").
-    final infoBarAutofocus = showChannel;
-    final filterRowAutofocus = !showChannel && !showHotbar && showFilter;
+    // filter/EPG round trips left focus nowhere, and the filter chip row was
+    // a D-pad journey away with no reliable path back up from the grid
+    // (#reported: "unreachable strips of options"). The LIVE bar used to be
+    // the first candidate in this chain; now that it is gone (replaced by
+    // [ChannelNameOverlay] on the stage), the filter row is the topmost
+    // focusable chrome row whenever the hotbar is absent — which is the
+    // default on a fresh install, since the hotbar only renders once a
+    // channel has been pinned.
+    final filterRowAutofocus = !showHotbar && showFilter;
     final snapshot = _snapshotCache.resolve(
       channels: widget.channels,
       metadataByChannelId: metadata,
@@ -224,29 +246,6 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       onNotForMeToggle: (channel) => notForMeToggler(channel.id),
       onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
     );
-    // Built per-branch (compact vs ten-foot) below, not once here: the
-    // phone-width touch/cursor layout gets the dense editorial treatment
-    // (`compact: true`), the ten-foot D-pad layout keeps its original,
-    // larger-text presentation — shrinking text to fit a second line would
-    // cut against 10ft legibility, and that flavor was never in scope of
-    // the editorial redesign feedback this parameter was added for.
-    ChannelInfoBar infoBarFor(bool compact) => ChannelInfoBar(
-      channel: widget.currentChannel,
-      // Same grid-first signal `onHelpTap` keys off: no video stage means
-      // the ten-foot layout, where `share_plus` is stubbed and the share
-      // falls back to a clipboard a remote cannot reach.
-      showShareAction: widget.showVideoStage,
-      onHelpTap: widget.showVideoStage
-          ? null
-          : () => showAiroTvShellHelpDialog(context),
-      onPlaylistSourceTap: widget.onPlaylistSourceTap,
-      onWaysToWatchTap: widget.onWaysToWatchTap,
-      onScreenshotTap: widget.onShareVideoFrame == null
-          ? null
-          : () => _captureVideoFrame(context),
-      autofocus: infoBarAutofocus,
-      compact: compact,
-    );
     final hotbar = Hotbar(
       channels: widget.channels,
       onChannelSelected: widget.onChannelSelected,
@@ -268,8 +267,17 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         multiview.sessions.isNotEmpty || !widget.videoStageHasOwnActions;
     final videoStage = needsShellVideoActions
         ? _VideoStageWithActions(
-            onSettings: () => showAiroTvShellSettingsDialog(context),
-            onHelp: () => showAiroTvShellHelpDialog(context),
+            // Transient channel identity, in the same Stack as the action
+            // row (and outside the capture RepaintBoundary below, so a
+            // shared video frame never carries shell chrome). Hidden for as
+            // long as one of the three sheets this row opens is up.
+            channelOverlay: ChannelNameOverlay(
+              channel: widget.currentChannel,
+              dismissRequested: _sheetOpen,
+            ),
+            onSettings: () =>
+                _whileSheetOpen(showAiroTvShellSettingsDialog(context)),
+            onHelp: () => _whileSheetOpen(showAiroTvShellHelpDialog(context)),
             // Available whenever there is something to show fullscreen: a
             // single playing channel, or a live MultiView session (primary
             // playback is paused while MultiView is active, so
@@ -281,7 +289,13 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                 : widget.onFullscreenToggle,
             onLayout: multiview.sessions.isEmpty
                 ? null
-                : () => _showMultiviewLayoutPicker(context, multiview),
+                : () => _whileSheetOpen(
+                    _showMultiviewLayoutPicker(context, multiview),
+                  ),
+            onScreenshot: widget.onShareVideoFrame == null
+                ? null
+                : () => _captureVideoFrame(context),
+            onWaysToWatch: widget.onWaysToWatchTap,
             child: KeyedSubtree(
               key: const ValueKey('airo-tv-video-capture-scope'),
               child: RepaintBoundary(
@@ -336,12 +350,6 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       builder: (context, constraints) {
         final chrome = [
           const _OfflineBanner(),
-          if (showChannel)
-            _ExplorerSection(
-              label: 'LIVE',
-              height: 60,
-              child: infoBarFor(false),
-            ),
           if (showStats)
             _ExplorerSection(
               label: 'STATS',
@@ -359,7 +367,6 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         ];
         final compactChrome = [
           const _OfflineBanner(),
-          if (showChannel) infoBarFor(true),
           if (showStats)
             SizedBox(height: 48, child: PlaybackStatsBar(stats: playbackStats)),
           if (showHotbar) hotbar,
@@ -730,6 +737,9 @@ class _VideoStageWithActions extends StatelessWidget {
     required this.onHelp,
     this.onLayout,
     this.onFullscreen,
+    this.onScreenshot,
+    this.onWaysToWatch,
+    this.channelOverlay,
     required this.child,
   });
 
@@ -738,6 +748,14 @@ class _VideoStageWithActions extends StatelessWidget {
   final VoidCallback onHelp;
   final VoidCallback? onLayout;
   final VoidCallback? onFullscreen;
+  final VoidCallback? onScreenshot;
+  final VoidCallback? onWaysToWatch;
+
+  /// Transient channel identity ([ChannelNameOverlay]), layered between the
+  /// video and the action row. It must sit *below* the row so a remote or
+  /// finger aiming at Help/Settings hits the button, not the overlay's
+  /// stage-wide activity surface.
+  final Widget? channelOverlay;
 
   @override
   Widget build(BuildContext context) {
@@ -745,6 +763,7 @@ class _VideoStageWithActions extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         child,
+        ?channelOverlay,
         Positioned(
           top: 8,
           right: 8,
@@ -766,6 +785,29 @@ class _VideoStageWithActions extends StatelessWidget {
                   icon: Icons.grid_view,
                   tooltip: 'MultiView layout',
                   onPressed: onLayout!,
+                ),
+                const SizedBox(width: 4),
+              ],
+              // Re-homed from the removed LIVE info bar, where these were
+              // the only entry points on the layouts that draw a stage.
+              // Both are stage-scoped actions anyway: capture reads the
+              // stage's RepaintBoundary, and fit/full/floating describes how
+              // the stage presents itself.
+              if (onWaysToWatch != null) ...[
+                _StageAction(
+                  key: const ValueKey('airo-tv-shell-ways-to-watch-action'),
+                  icon: Icons.monitor_outlined,
+                  tooltip: 'Ways to Watch',
+                  onPressed: onWaysToWatch!,
+                ),
+                const SizedBox(width: 4),
+              ],
+              if (onScreenshot != null) ...[
+                _StageAction(
+                  key: const ValueKey('airo-tv-shell-screenshot-action'),
+                  icon: Icons.photo_camera_outlined,
+                  tooltip: 'Share video frame',
+                  onPressed: onScreenshot!,
                 ),
                 const SizedBox(width: 4),
               ],

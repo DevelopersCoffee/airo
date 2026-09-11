@@ -3,8 +3,14 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import 'iptv_providers.dart' show sharedPreferencesProvider;
 
+/// The chrome rows the Explorer-rows settings dialog can toggle.
+///
+/// There is deliberately no `channel` row any more: the LIVE identity strip
+/// was replaced by `ChannelNameOverlay`, a transient badge on the video stage
+/// itself, so there is nothing left below the stage for a toggle to hide.
+/// Its old `iptv_row_channel_visible` preference key is simply ignored on
+/// load — [_load] only reads keys derived from live enum values.
 enum AiroTvControlRow {
-  channel('channel', 'Channel'),
   stats('stats', 'Stats'),
   filter('filter', 'Filters'),
   hotbar('hotbar', 'Hotbar'),

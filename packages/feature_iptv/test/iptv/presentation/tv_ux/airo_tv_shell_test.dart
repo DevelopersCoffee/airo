@@ -7,8 +7,9 @@ import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/multiview_provider.dart';
 import 'package:feature_iptv/application/services/wifi_settings_launcher.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
-import 'package:feature_iptv/presentation/tv_ux/sections/channel_info_bar.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/channel_name_overlay.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/filter_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -213,7 +214,6 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({
       channelCountryPromptCompletedStorageKey: true,
-      'iptv_row_channel_visible': false,
       'iptv_row_filter_visible': false,
       'iptv_row_playlist_visible': false,
     });
@@ -222,7 +222,6 @@ void main() {
 
     expect(find.byKey(const ValueKey('airo-tv-channel-library')), findsNothing);
     expect(find.text('FILTER'), findsNothing);
-    expect(find.text('LIVE'), findsNothing);
     expect(
       find.byKey(const ValueKey('airo-tv-shell-settings-action')),
       findsOneWidget,
@@ -305,7 +304,9 @@ void main() {
       find.byKey(const ValueKey('airo-tv-explorer-panel')),
       findsOneWidget,
     );
-    expect(find.text('LIVE'), findsWidgets);
+    // No LIVE chrome row any more — channel identity moved onto the stage
+    // as ChannelNameOverlay, and this case has no channel playing.
+    expect(find.text('LIVE'), findsNothing);
     expect(find.text('HOTBAR'), findsNothing);
     expect(find.text('FILTER'), findsOneWidget);
 
@@ -371,31 +372,111 @@ void main() {
     );
   });
 
-  testWidgets('grid-first TV layout hides the unusable Share action', (
+  testWidgets('channel name overlay is mounted with the current channel', (
     tester,
   ) async {
-    // share_plus is stubbed on TV, so the share always fell back to the
-    // clipboard and announced "share message copied" — for a clipboard a
-    // remote has no way to open.
+    await pumpAt(tester, 1280, currentChannel: channels.first);
+    await tester.pump();
+
+    final overlay = tester.widget<ChannelNameOverlay>(
+      find.byType(ChannelNameOverlay),
+    );
+    expect(overlay.channel, channels.first);
+    expect(overlay.dismissRequested, isFalse);
+    // It lives in the stage's Stack, not in the chrome column below it.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('airo-tv-explorer-video-stage')),
+        matching: find.byType(ChannelNameOverlay),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('One'), findsWidgets);
+  });
+
+  testWidgets('grid-first TV layout has no channel chrome row at all', (
+    tester,
+  ) async {
+    // The LIVE strip is gone entirely; with no video stage there is also no
+    // overlay to replace it, which is what reclaims the row of grid height.
     await pumpAt(tester, 1280, showVideoStage: false);
+
+    expect(find.byType(ChannelNameOverlay), findsNothing);
+    expect(find.text('LIVE'), findsNothing);
+  });
+
+  testWidgets('Explorer rows settings no longer offers a Channel toggle', (
+    tester,
+  ) async {
+    await pumpAt(tester, 1280, currentChannel: channels.first);
+    await tester.tap(
+      find.byKey(const ValueKey('airo-tv-shell-settings-action')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-row-toggle-channel')),
+      findsNothing,
+    );
+    expect(find.text('Channel'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('airo-tv-row-toggle-filter')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('opening the settings dialog dismisses the overlay immediately', (
+    tester,
+  ) async {
+    await pumpAt(tester, 1280, currentChannel: channels.first);
+    await tester.pump();
     expect(
       tester
-          .widget<ChannelInfoBar>(find.byType(ChannelInfoBar))
-          .showShareAction,
+          .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+          .dismissRequested,
+      isFalse,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('airo-tv-shell-settings-action')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+          .dismissRequested,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('airo-tv-shell-settings-done')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+          .dismissRequested,
       isFalse,
     );
   });
 
-  testWidgets('Share stays available where the share sheet works', (
+  testWidgets('the filter row seeds D-pad focus now the LIVE bar is gone', (
     tester,
   ) async {
+    // The LIVE bar used to be the first candidate in the focus-seeding
+    // chain. With it removed, the topmost focusable chrome row on a fresh
+    // install (no pinned hotbar channels) is the filter chip row — cold
+    // launch must not leave focus nowhere.
     await pumpAt(tester, 1280);
+    await tester.pumpAndSettle();
+
     expect(
       tester
-          .widget<ChannelInfoBar>(find.byType(ChannelInfoBar))
-          .showShareAction,
-      isTrue,
+          .widgetList<FilterRow>(find.byType(FilterRow))
+          .map((r) => r.autofocus),
+      everyElement(isTrue),
     );
+    expect(tester.binding.focusManager.primaryFocus?.hasPrimaryFocus, isTrue);
   });
 
   testWidgets('multiview toggle stays wired where the stage does render', (
