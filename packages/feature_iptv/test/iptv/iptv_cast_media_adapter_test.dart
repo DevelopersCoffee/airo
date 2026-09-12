@@ -106,6 +106,22 @@ void main() {
     expect(result.request!.imageUrl, isNull);
   });
 
+  test('rejects Google DAI stream-request URLs with a clear error', () {
+    final result = adapter.toCastRequest(
+      channel(
+        streamUrl:
+            'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+      ),
+    );
+
+    expect(result.isCastable, false);
+    expect(result.error!.code, AiroCastErrorCode.unsupportedStream);
+    expect(
+      result.error!.message,
+      contains('ad-insertion support we do not provide'),
+    );
+  });
+
   test('rejects unknown stream formats', () {
     final result = adapter.toCastRequest(
       channel(streamUrl: 'https://example.com/playlist.ts'),

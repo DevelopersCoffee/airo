@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 
 /// Maps a raw playback exception/message from [VideoPlayerController] or the
@@ -22,7 +23,17 @@ AiroPlaybackDiagnostic mapStreamingErrorToDiagnostic(Object error) {
     );
   }
 
-  final message = error.toString().toLowerCase();
+  final raw = error.toString();
+  if (AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(raw) ||
+      raw.toLowerCase().contains('ad_insertion_unsupported')) {
+    return mapper.map(
+      const AiroPlaybackFailureEvent(
+        overrideCode: AiroPlaybackDiagnosticCode.adInsertionUnsupported,
+      ),
+    );
+  }
+
+  final message = raw.toLowerCase();
 
   if (_containsCodecSignal(message)) {
     return mapper.map(

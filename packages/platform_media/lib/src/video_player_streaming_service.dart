@@ -203,6 +203,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       )..start(preferredSourceId: _preferredSourceId(channel));
     }
 
+    if (_failoverController!.state.currentSource == null) {
+      await _handleError(
+        'ad_insertion_unsupported',
+        overrideCode: AiroPlaybackDiagnosticCode.adInsertionUnsupported,
+      );
+      return;
+    }
+
     // F7.1: preserveFailover means this call continues an in-progress
     // session (stall-triggered switch, or retry() advancing to the next
     // source) — the existing collector keeps accumulating. A fresh call
@@ -330,6 +338,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       ..sort(compareChannelStreamSources);
     for (var index = 0; index < rankedSources.length; index++) {
       final stream = rankedSources[index];
+      if (AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(stream.url)) {
+        continue;
+      }
       if (!seenUrls.add(stream.url)) continue;
       sources.add(
         AiroFailoverSource(
@@ -355,7 +366,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         ),
       );
     }
-    if (seenUrls.add(channel.streamUrl)) {
+    if (!AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(channel.streamUrl) &&
+        seenUrls.add(channel.streamUrl)) {
       sources.add(
         AiroFailoverSource(
           sourceId: 'default',
@@ -373,6 +385,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       var rank = 1;
       for (final entry in qualityUrls.entries) {
         if (entry.value == channel.streamUrl) continue;
+        if (AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(entry.value)) {
+          continue;
+        }
         if (!seenUrls.add(entry.value)) continue;
         sources.add(
           AiroFailoverSource(
@@ -713,8 +728,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// advance to the next source) and [_handleError] (which renders it).
   AiroPlaybackDiagnostic _diagnosticFor(
     String message,
-    AiroPlaybackError? engineError,
-  ) {
+    AiroPlaybackError? engineError, {
+    AiroPlaybackDiagnosticCode? overrideCode,
+  }) {
+    if (overrideCode != null) {
+      return const AiroPlaybackDiagnosticMapper().map(
+        AiroPlaybackFailureEvent(overrideCode: overrideCode),
+      );
+    }
     return engineError != null
         ? const AiroPlaybackDiagnosticMapper().map(
             AiroPlaybackFailureEvent(
@@ -728,6 +749,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> _handleError(
     String message, {
     AiroPlaybackError? engineError,
+    AiroPlaybackDiagnosticCode? overrideCode,
   }) async {
     if (_isHandlingError || _state.playbackState == PlaybackState.error) {
       return;
@@ -737,9 +759,6 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     final newRetryCount = _state.retryCount + 1;
 
     final retriesExhausted = newRetryCount > _config.maxRetries;
-    final userMessage = retriesExhausted
-        ? _deadStreamTerminalMessage
-        : 'Playback failed: $message';
 
     // CV-001: structured, user-safe diagnostic alongside the legacy
     // errorMessage. UI prefers this when present; retry stays manual here
@@ -755,8 +774,19 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     // this, every engine code except codec_unsupported (which happens to
     // match the 'codec' substring check) fell through to a generic
     // `unknown` diagnostic.
-    final diagnostic = _diagnosticFor(message, engineError);
-    final terminalDiagnostic = retriesExhausted
+    final diagnostic = _diagnosticFor(
+      message,
+      engineError,
+      overrideCode: overrideCode,
+    );
+    final keepDiagnosticCopy =
+        diagnostic.code == AiroPlaybackDiagnosticCode.adInsertionUnsupported;
+    final userMessage = keepDiagnosticCopy
+        ? diagnostic.userMessage
+        : retriesExhausted
+        ? _deadStreamTerminalMessage
+        : 'Playback failed: $message';
+    final terminalDiagnostic = retriesExhausted && !keepDiagnosticCopy
         ? AiroPlaybackDiagnostic(
             code: diagnostic.code,
             severity: diagnostic.severity,
