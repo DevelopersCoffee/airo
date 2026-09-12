@@ -69,6 +69,7 @@ export "presentation/tv/settings/tv_source_management_section.dart";
 export "presentation/tv_ux/iptv_resume_gate.dart";
 export "presentation/tv_ux/iptv_resume_splash.dart";
 export "presentation/tv_ux/airo_tv_shell.dart";
+export "presentation/tv_ux/sections/bottom_nav_bar.dart";
 export "presentation/tv/tv_favorites_screen.dart";
 export "presentation/tv/vod_tv_screen.dart";
 export "presentation/widgets/cast_device_picker_sheet.dart";

@@ -2,7 +2,6 @@ import 'package:airo_app/core/app/tv_router.dart';
 import 'package:airo_app/core/platform/device_form_factor.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
-import 'package:feature_iptv/presentation/tv_ux/sections/bottom_nav_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
