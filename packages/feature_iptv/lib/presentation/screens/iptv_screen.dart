@@ -1027,8 +1027,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               // the remote-only Android TV and Fire TV player surfaces.
               showPictureInPicture: !widget.tenFootMode,
               useTvTransportBar: widget.tenFootMode,
-              onOpenSettings: () =>
-                  showAiroTvShellSettingsDialog(context),
+              onOpenSettings: () => showAiroTvShellSettingsDialog(
+                context,
+                onPlaylistSourceTap: _showPlaylistSheet,
+                onGuideSourceTap: _showGuideSourceSheet,
+              ),
               onShowHelp: () => showAiroTvShellHelpDialog(context),
             );
       return guardRouteBack(
@@ -1056,6 +1059,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               onChannelTap: _playChannelFullscreen,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
+              onGuideSourceTap: _showGuideSourceSheet,
               onScanWithPhoneTap: _showQrPlaylist,
               onWaysToWatchTap: _showWaysToWatch,
               onShareVideoFrame: widget.onShareVideoFrame,
@@ -1122,6 +1126,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                   onChannelTap: _playChannel,
                   onFullscreenToggle: _toggleFullscreen,
                   onPlaylistSourceTap: _showPlaylistSheet,
+                  onGuideSourceTap: _showGuideSourceSheet,
                   onScanWithPhoneTap: _showQrPlaylist,
                   onWaysToWatchTap: _showWaysToWatch,
                   onShareVideoFrame: widget.onShareVideoFrame,
@@ -1525,8 +1530,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                     onBack: _exitFullscreen,
                     onFullscreenToggle: _toggleFullscreen,
                     enableSwipeChannelChange: true,
-                    onOpenSettings: () =>
-                        showAiroTvShellSettingsDialog(context),
+                    onOpenSettings: () => showAiroTvShellSettingsDialog(
+                      context,
+                      onPlaylistSourceTap: _showPlaylistSheet,
+                    ),
                     onShowHelp: () => showAiroTvShellHelpDialog(context),
                   ),
                 ),
@@ -1559,6 +1566,7 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    this.onGuideSourceTap,
     required this.onScanWithPhoneTap,
     required this.onWaysToWatchTap,
     this.onShareVideoFrame,
@@ -1568,6 +1576,11 @@ class _StreamTabContent extends ConsumerWidget {
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+
+  /// Opens the XMLTV guide-source sheet from the video stage's settings
+  /// dialog. Null hides that row — not every host (e.g. `IPTVScreenBody`)
+  /// has a guide-source entry point of its own.
+  final VoidCallback? onGuideSourceTap;
   final VoidCallback onScanWithPhoneTap;
   final VoidCallback onWaysToWatchTap;
   final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
@@ -1657,8 +1670,11 @@ class _StreamTabContent extends ConsumerWidget {
                     onFullscreenToggle: onFullscreenToggle,
                     showPictureInPicture: !playlistSourceInInfoBar,
                     showFullscreenButton: true,
-                    onOpenSettings: () =>
-                        showAiroTvShellSettingsDialog(context),
+                    onOpenSettings: () => showAiroTvShellSettingsDialog(
+                      context,
+                      onPlaylistSourceTap: onPlaylistSourceTap,
+                      onGuideSourceTap: onGuideSourceTap,
+                    ),
                     onShowHelp: () => showAiroTvShellHelpDialog(context),
                   ),
                   const Positioned(
@@ -1699,7 +1715,10 @@ class _StreamTabContent extends ConsumerWidget {
 /// live in a top action row instead of on the tiles themselves, since
 /// fullscreen has no info bar to host them.
 class _FullscreenMultiviewStage extends ConsumerWidget {
-  const _FullscreenMultiviewStage({required this.multiview, required this.onExit});
+  const _FullscreenMultiviewStage({
+    required this.multiview,
+    required this.onExit,
+  });
 
   final MultiviewState multiview;
   final VoidCallback onExit;
