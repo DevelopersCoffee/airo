@@ -40,6 +40,16 @@ class FlutterChromeCastController implements AiroCastController {
     defaultValue: GoogleCastDiscoveryCriteria.kDefaultApplicationId,
   );
 
+  /// Last-resort guard if a DAI URL reaches [load] without going through
+  /// [IptvCastMediaAdapter].
+  static AiroCastError? adInsertionUnsupportedError(Uri url) {
+    if (!AiroPlaylistUrlPolicy.isAdInsertionApiUrl(url)) return null;
+    return const AiroCastError(
+      code: AiroCastErrorCode.unsupportedStream,
+      message: AiroPlaylistUrlPolicy.adInsertionUnsupportedUserMessage,
+    );
+  }
+
   final _discoveryController =
       StreamController<AiroCastDiscoveryState>.broadcast();
   final _sessionController =
@@ -281,6 +291,12 @@ class FlutterChromeCastController implements AiroCastController {
           ),
         ),
       );
+      return;
+    }
+
+    final adInsertionError = adInsertionUnsupportedError(request.url);
+    if (adInsertionError != null) {
+      _setSession(AiroCastSessionSnapshot.failed(adInsertionError));
       return;
     }
 

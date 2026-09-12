@@ -4,6 +4,11 @@ class AiroPlaylistUrlPolicy {
 
   static const int maxShareStreamUrlLength = 2048;
 
+  /// TV-safe copy when a playlist URL is a DAI/SSAI stream-request API,
+  /// not a playable HLS/DASH manifest. Keep this at or under 80 characters.
+  static const String adInsertionUnsupportedUserMessage =
+      'This source needs ad-insertion support we do not provide.';
+
   static const Set<String> _sensitiveShareQueryKeys = {
     'accesstoken',
     'apikey',
@@ -114,6 +119,37 @@ class AiroPlaylistUrlPolicy {
       allowPrivateHosts: allowPrivateHosts,
     );
   }
+
+  /// Google DAI and similar hosts are stream-request APIs, not manifests.
+  ///
+  /// Aika Stream is bring-your-own-playlist and does not run IMA/DAI
+  /// stitching. Callers should skip these URLs or surface
+  /// [adInsertionUnsupportedUserMessage] instead of handing them to a player
+  /// or Cast receiver.
+  static bool isAdInsertionApiUrl(Uri uri) {
+    final host = uri.host.trim().toLowerCase();
+    return host == 'dai.google.com' || host.endsWith('.dai.google.com');
+  }
+
+  /// [isAdInsertionApiUrl] for a raw playlist string, including exception
+  /// text that embeds the URL.
+  static bool isAdInsertionApiUrlString(String? value) {
+    final raw = value?.trim();
+    if (raw == null || raw.isEmpty) return false;
+
+    final parsed = Uri.tryParse(raw);
+    if (parsed != null &&
+        parsed.host.isNotEmpty &&
+        isAdInsertionApiUrl(parsed)) {
+      return true;
+    }
+
+    return _adInsertionHostInText.hasMatch(raw.toLowerCase());
+  }
+
+  static final RegExp _adInsertionHostInText = RegExp(
+    r'(?:^|[^a-z0-9.-])(?:[a-z0-9-]+\.)*dai\.google\.com(?:[^a-z0-9.-]|$)',
+  );
 
   /// Returns true for localhost, link-local, RFC1918, and other non-public
   /// address ranges that must not be fetched from playlist-derived data unless

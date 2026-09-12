@@ -115,6 +115,26 @@ void main() {
       },
     );
 
+    test('maps Google DAI source URIs to a fatal ad-insertion diagnostic', () {
+      final diagnostic = mapper.map(
+        AiroPlaybackFailureEvent(
+          httpStatusCode: 404,
+          sourceUri: Uri.parse(
+            'https://dai.google.com/linear/v1/hls/event/test/stream',
+          ),
+        ),
+      );
+
+      expect(
+        diagnostic.code,
+        AiroPlaybackDiagnosticCode.adInsertionUnsupported,
+      );
+      expect(diagnostic.severity, AiroPlaybackDiagnosticSeverity.fatal);
+      expect(diagnostic.retryEligible, isFalse);
+      expect(diagnostic.userMessage, isNot(contains('dai.google')));
+      expect(diagnostic.userMessage.length, lessThanOrEqualTo(80));
+    });
+
     test('redacts credentials and query strings from technical detail', () {
       final diagnostic = mapper.map(
         AiroPlaybackFailureEvent(

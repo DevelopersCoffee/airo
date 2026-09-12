@@ -52,6 +52,31 @@ void main() {
     );
   });
 
+  test('rejects a DAI channel without connecting to Cast', () async {
+    final fake = FakeAiroCastController(devices: const [tv]);
+    final container = containerWith(fake);
+
+    await container
+        .read(iptvCastProvider.notifier)
+        .castChannelToDevice(
+          channel: channel().copyWith(
+            streamUrl:
+                'https://dai.google.com/linear/v1/hls/event/c-rArva4ShKVIAkNfy6HUQ/stream',
+          ),
+          device: tv,
+        );
+
+    expect(fake.recordedActions, isEmpty);
+    expect(
+      container.read(iptvCastProvider).lastError?.code,
+      AiroCastErrorCode.unsupportedStream,
+    );
+    expect(
+      container.read(iptvCastProvider).lastError?.message,
+      contains('ad-insertion support we do not provide'),
+    );
+  });
+
   test('stores unsupported stream error without connecting', () async {
     final fake = FakeAiroCastController(devices: const [tv]);
     final container = containerWith(fake);

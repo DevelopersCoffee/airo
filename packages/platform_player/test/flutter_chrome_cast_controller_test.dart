@@ -26,6 +26,27 @@ void main() {
     });
   });
 
+  test('rejects Google DAI URLs before the receiver is probed', () {
+    final error = FlutterChromeCastController.adInsertionUnsupportedError(
+      Uri.parse(
+        'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+      ),
+    );
+
+    expect(error, isNotNull);
+    expect(error!.code, AiroCastErrorCode.unsupportedStream);
+    expect(error.message, contains('ad-insertion'));
+  });
+
+  test('allows ordinary HLS hosts through the DAI guard', () {
+    expect(
+      FlutterChromeCastController.adInsertionUnsupportedError(
+        Uri.parse('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'),
+      ),
+      isNull,
+    );
+  });
+
   test('maps live HLS request to Google Cast media information', () {
     final request = AiroCastMediaRequest(
       url: Uri.parse('https://example.com/channel.m3u8'),
