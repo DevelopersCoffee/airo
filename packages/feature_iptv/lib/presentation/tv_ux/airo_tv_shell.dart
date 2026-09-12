@@ -65,8 +65,11 @@ class AiroTvShell extends ConsumerStatefulWidget {
   final Map<String, StreamAvailability> availabilityByChannelId;
   final bool enrichMetadata;
 
-  /// Opens the playlist-source sheet from the LIVE bar. Wired on TV where
-  /// the phone app bar is suppressed; null hides the entry.
+  /// Opens the playlist-source sheet from the LIVE bar. Consumed by
+  /// [ChannelInfoBar] on the grid-first ten-foot layout (`!showVideoStage`);
+  /// wired on TV where the phone app bar is suppressed. Null hides the
+  /// entry. The Explorer-rows settings dialog offers an equivalent
+  /// "Playlist source" row, wired independently from `iptv_screen.dart`.
   final VoidCallback? onPlaylistSourceTap;
 
   /// Enters the fullscreen player. Lives on the stage's own action row (not
