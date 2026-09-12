@@ -467,6 +467,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  core_completion:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_completion"
+      relative: true
+    source: path
+    version: "0.0.1"
   core_data:
     dependency: "direct main"
     description:

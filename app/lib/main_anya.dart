@@ -8,6 +8,9 @@
 /// cd app
 /// cp pubspec_anya.yaml pubspec.yaml && flutter pub get
 /// flutter run -d chrome -t lib/main_anya.dart --dart-define=APP_VARIANT=anya
+/// # Pixel with a local GGUF:
+/// flutter run -d <pixel> -t lib/main_anya.dart --dart-define=APP_VARIANT=anya \
+///   --dart-define=ANYA_GGUF_PATH=/path/to/model.gguf
 /// ```
 library;
 
@@ -20,6 +23,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'anya/anya_plan_repair_factory_stub.dart'
+    if (dart.library.io) 'anya/anya_plan_repair_factory_io.dart'
+    as anya_repair;
 import 'core/pro/pro_bootstrap_runner.dart';
 
 void main() {
@@ -41,12 +47,14 @@ void main() {
     composeApp: () async {
       registry = buildAnyaModuleRegistry();
       final prefs = await SharedPreferences.getInstance();
+      final repairPort = await anya_repair.createAnyaPlanRepairPort();
       return AiroAnyaApp(
         registry: registry,
         repository: SecureAnyaRepository(
           secrets: FlutterAnyaSecretStore(),
           plaintextFallback: prefs,
         ),
+        planRepairPort: repairPort,
       );
     },
     afterRunApp: () {
@@ -71,10 +79,12 @@ class AiroAnyaApp extends StatefulWidget {
     super.key,
     required this.registry,
     required this.repository,
+    this.planRepairPort = const NoopPlanRepairPort(),
   });
 
   final ModuleRegistry registry;
   final AnyaRepository repository;
+  final PlanRepairPort planRepairPort;
 
   @override
   State<AiroAnyaApp> createState() => _AiroAnyaAppState();
@@ -98,7 +108,7 @@ class _AiroAnyaAppState extends State<AiroAnyaApp> {
       overrides: [
         ...widget.registry.allProviderOverrides,
         anyaRepositoryProvider.overrideWithValue(widget.repository),
-        planRepairPortProvider.overrideWithValue(const NoopPlanRepairPort()),
+        planRepairPortProvider.overrideWithValue(widget.planRepairPort),
       ],
       child: MaterialApp.router(
         title: 'Anya',

@@ -27,6 +27,10 @@ dependencies:
     path: ../packages/core_product_shell
   core_workers:
     path: ../packages/core_workers
+  core_completion:
+    path: ../packages/core_completion
+  llama_flutter_android: ^0.2.6
+  path_provider: ^2.1.6
   feature_anya:
     path: ../packages/feature_anya
   feature_anya_core:

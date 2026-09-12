@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:airo_app/main_anya.dart';
 import 'package:core_product_shell/core_product_shell.dart';
-import 'package:feature_anya/feature_anya.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -29,5 +28,19 @@ void main() {
     expect(registry.moduleIds, ['anya']);
     final paths = registry.allRoutes.whereType<GoRoute>().map((r) => r.path);
     expect(paths, contains('/'));
+  });
+
+  test('feature_anya stays free of completion and Mind', () {
+    final pubspec = File(
+      '../packages/feature_anya/pubspec.yaml',
+    ).readAsStringSync();
+    final core = File(
+      '../packages/feature_anya_core/pubspec.yaml',
+    ).readAsStringSync();
+    for (final body in [pubspec, core]) {
+      expect(body, isNot(contains('core_completion')));
+      expect(body, isNot(contains('llama_flutter_android')));
+      expect(body, isNot(contains('feature_mind')));
+    }
   });
 }

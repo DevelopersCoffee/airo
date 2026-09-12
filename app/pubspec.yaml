@@ -84,6 +84,10 @@ dependencies:
     path: ../packages/core_ui
   core_ai:
     path: ../packages/core_ai
+  # Phone analyze compiles lib/main_anya.dart. The Anya flavor is what
+  # actually loads a GGUF; llama is already on this graph via Mind.
+  core_completion:
+    path: ../packages/core_completion
   core_workers:
     path: ../packages/core_workers
   core_auth:
