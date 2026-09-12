@@ -782,4 +782,40 @@ void main() {
       expect(delegate.crossAxisCount, greaterThan(1));
     },
   );
+
+  testWidgets('inserts a browse ad card at index 4', (tester) async {
+    const manyChannels = [
+      IPTVChannel(id: 'c0', name: 'C0', streamUrl: 'https://c0', group: 'A'),
+      IPTVChannel(id: 'c1', name: 'C1', streamUrl: 'https://c1', group: 'A'),
+      IPTVChannel(id: 'c2', name: 'C2', streamUrl: 'https://c2', group: 'A'),
+      IPTVChannel(id: 'c3', name: 'C3', streamUrl: 'https://c3', group: 'A'),
+      IPTVChannel(id: 'c4', name: 'C4', streamUrl: 'https://c4', group: 'A'),
+      IPTVChannel(id: 'c5', name: 'C5', streamUrl: 'https://c5', group: 'A'),
+    ];
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: manyChannels,
+              metadataByChannelId: {},
+              browseAdCard: SizedBox(
+                key: ValueKey('test-browse-ad'),
+                height: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(ChannelLibraryGrid.browseAdSlotKey), findsOneWidget);
+    expect(find.byKey(const ValueKey('test-browse-ad')), findsOneWidget);
+    expect(find.byKey(const ValueKey('channel-tile-c0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('channel-tile-c5')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

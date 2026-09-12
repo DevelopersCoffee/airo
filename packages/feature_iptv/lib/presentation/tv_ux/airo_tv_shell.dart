@@ -17,6 +17,7 @@ import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/connectivity_provider.dart';
 import '../../application/providers/control_row_visibility_provider.dart';
 import '../../application/providers/hotbar_channels_provider.dart';
+import '../../application/providers/iptv_ad_placements.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/multiview_provider.dart';
 import '../../application/channel_metadata_enrichment.dart';
@@ -263,6 +264,12 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       notForMeChannelIds: notForMeIds,
       onNotForMeToggle: (channel) => notForMeToggler(channel.id),
       onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
+      // Ten-foot is grid-first (`showVideoStage: false`). Native mobile
+      // layouts break on leanback, and Cast must never carry an ad tile.
+      browseAdCard:
+          widget.showVideoStage && !ref.watch(iptvCastProvider).isCasting
+          ? ref.watch(iptvAdPlacementsProvider).browseCard
+          : null,
     );
     // Only ever built for the `!showVideoStage` (grid-first ten-foot) case --
     // see `showInfoBar` above. `share_plus` is stubbed on that layout, so

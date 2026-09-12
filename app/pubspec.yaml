@@ -75,6 +75,11 @@ dependencies:
   intl: ^0.20.3
   uuid: ^4.5.3
 
+  # Phone flavor never ships AdMob. This stub lets `main_tv.dart` analyze.
+  # `pubspec_tv.yaml` resolves the real google_mobile_ads package.
+  google_mobile_ads:
+    path: ../packages/stubs/google_mobile_ads_stub
+
   # Local packages - Core
   core_domain:
     path: ../packages/core_domain

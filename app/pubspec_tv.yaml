@@ -112,6 +112,9 @@ dependencies:
   # TV-specific
   package_info_plus: 10.2.0
 
+  # In-app AdMob Native Advanced (phone/tablet only at runtime).
+  google_mobile_ads: 6.0.0
+
   # Dependencies with stub overrides (required for compilation but using lightweight stubs)
   # These are overridden by dependency_overrides section below
   stockfish: 1.8.1

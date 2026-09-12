@@ -1,0 +1,12 @@
+name: google_mobile_ads
+description: Phone-flavor stub so Aika Stream ads code analyzes without shipping AdMob.
+version: 6.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.12.2 <4.0.0'
+  flutter: '>=3.44.4'
+
+dependencies:
+  flutter:
+    sdk: flutter

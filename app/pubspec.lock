@@ -1240,6 +1240,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.16.0"
+  google_mobile_ads:
+    dependency: "direct main"
+    description:
+      path: "../packages/stubs/google_mobile_ads_stub"
+      relative: true
+    source: path
+    version: "6.0.0"
   google_sign_in:
     dependency: "direct main"
     description:

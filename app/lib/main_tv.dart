@@ -43,6 +43,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'aika_ads/aika_ads.dart';
 import 'core/app/airo_tv_app.dart';
 import 'core/audio/tv_audio_service.dart';
 import 'core/config/firebase_status.dart';
@@ -192,6 +193,7 @@ void main() {
       } else {
         scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
       }
+      scheduleAikaAdsInitialization();
     },
   );
 }
@@ -241,6 +243,12 @@ List<Override> buildTvProviderOverrides({
     realIptvCastControllerOverride(),
     realCastMultiviewSenderOverride(),
     realCastMultiviewReceiverOverride(),
+    iptvAdPlacementsProvider.overrideWithValue(
+      const IptvAdPlacements(
+        browseCard: AikaNativeAdCard(placement: AikaAdPlacement.browse),
+        pauseCard: AikaNativeAdCard(placement: AikaAdPlacement.pause),
+      ),
+    ),
     if (debugPlaylistUrl.isNotEmpty)
       iptvChannelsProvider.overrideWith((ref) {
         return (debugPlaylistLoader ?? loadTvDebugPlaylistForWeb)(
@@ -357,6 +365,19 @@ Future<void> configureTvSystemChrome({
 
   await applyOrientations([]);
   await applySystemUiMode(SystemUiMode.edgeToEdge);
+}
+
+@visibleForTesting
+void scheduleAikaAdsInitialization({
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+}) {
+  scheduleDeferredStartupTask(
+    debugName: 'aika_admob_native',
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () => AikaAdManager.instance.initialize(),
+  );
 }
 
 @visibleForTesting

@@ -37,6 +37,8 @@ const _horizontalRowSpacing = 10.0;
 /// (Claude Design project 02b0b312): tiles instead of rows, sort collapsed
 /// to a compact chip row instead of clickable column headers.
 class ChannelLibraryGrid extends StatefulWidget {
+  static const browseAdSlotKey = ValueKey<String>('browse-ad-slot');
+
   const ChannelLibraryGrid({
     super.key,
     required this.channels,
@@ -56,6 +58,7 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.onClearFilters,
     this.viewMode = ChannelViewMode.list,
     this.onViewModeChanged,
+    this.browseAdCard,
   });
 
   final List<IPTVChannel> channels;
@@ -82,6 +85,10 @@ class ChannelLibraryGrid extends StatefulWidget {
   /// Resets every filter from the "no matches" state. Null hides that
   /// action, leaving the explanation without a shortcut.
   final VoidCallback? onClearFilters;
+
+  /// Optional in-app native ad tile. Inserted at index 4 (or at the end
+  /// when the library is shorter). Null keeps the grid channel-only.
+  final Widget? browseAdCard;
 
   @override
   State<ChannelLibraryGrid> createState() => _ChannelLibraryGridState();
@@ -119,6 +126,32 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
       ..removeListener(_reportVisibleChannels)
       ..dispose();
     super.dispose();
+  }
+
+  static const _browseAdIndex = 4;
+
+  int get _adIndex {
+    if (widget.browseAdCard == null || widget.channels.isEmpty) {
+      return -1;
+    }
+    return widget.channels.length < _browseAdIndex
+        ? widget.channels.length
+        : _browseAdIndex;
+  }
+
+  int get _childCount {
+    if (_adIndex < 0) {
+      return widget.channels.length;
+    }
+    return widget.channels.length + 1;
+  }
+
+  int _channelIndexForChild(int index) {
+    final adIndex = _adIndex;
+    if (adIndex < 0 || index < adIndex) {
+      return index;
+    }
+    return index - 1;
   }
 
   int _columnCountFor(double width) {
@@ -210,7 +243,15 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final channel = widget.channels[index];
+                      final adIndex = _adIndex;
+                      if (adIndex >= 0 && index == adIndex) {
+                        return KeyedSubtree(
+                          key: ChannelLibraryGrid.browseAdSlotKey,
+                          child: widget.browseAdCard!,
+                        );
+                      }
+                      final channel =
+                          widget.channels[_channelIndexForChild(index)];
                       return RepaintBoundary(
                         key: ValueKey('channel-tile-${channel.id}'),
                         child: _ChannelTile(
@@ -236,17 +277,26 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                         ),
                       );
                     },
-                    childCount: widget.channels.length,
+                    childCount: _childCount,
                     addAutomaticKeepAlives: false,
                     findChildIndexCallback: (key) {
                       if (key is! ValueKey<String>) return null;
                       final value = key.value;
+                      if (value == ChannelLibraryGrid.browseAdSlotKey.value) {
+                        final adIndex = _adIndex;
+                        return adIndex < 0 ? null : adIndex;
+                      }
                       if (!value.startsWith('channel-tile-')) return null;
                       final channelId = value.substring('channel-tile-'.length);
-                      final index = widget.channels.indexWhere(
+                      final channelIndex = widget.channels.indexWhere(
                         (channel) => channel.id == channelId,
                       );
-                      return index < 0 ? null : index;
+                      if (channelIndex < 0) return null;
+                      final adIndex = _adIndex;
+                      if (adIndex >= 0 && channelIndex >= adIndex) {
+                        return channelIndex + 1;
+                      }
+                      return channelIndex;
                     },
                   ),
                 ),
