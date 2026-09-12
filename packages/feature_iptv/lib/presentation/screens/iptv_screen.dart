@@ -1631,7 +1631,7 @@ class _StreamTabContent extends ConsumerWidget {
   /// has a guide-source entry point of its own.
   final VoidCallback? onGuideSourceTap;
   final VoidCallback onScanWithPhoneTap;
-  final VoidCallback onWaysToWatchTap;
+  final Future<void> Function() onWaysToWatchTap;
   final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
 
   /// True on TV (no app bar): surfaces the playlist-source entry in the
