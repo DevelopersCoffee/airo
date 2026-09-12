@@ -3,6 +3,7 @@ import "package:feature_iptv/application/channel_metadata_enrichment.dart";
 import "package:feature_iptv/application/providers/multiview_provider.dart"
     show multiviewDecoderBudgetProvider;
 import "package:feature_iptv/feature_iptv.dart";
+import 'package:feature_iptv/presentation/tv_ux/sections/bottom_nav_bar.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -152,29 +153,24 @@ void main() {
     );
   }
 
-  Future<void> openIptvDrawer(WidgetTester tester) async {
-    final scaffoldState = tester
-        .stateList<ScaffoldState>(find.byType(Scaffold))
-        .firstWhere((state) => state.widget.drawer != null);
-    scaffoldState.openDrawer();
-    await tester.pumpAndSettle();
-  }
-
-  Future<void> selectDrawerTile(
+  Future<void> tapBottomNavDestination(
     WidgetTester tester,
-    ValueKey<String> key,
+    String label,
   ) async {
-    tester.widget<ListTile>(find.byKey(key)).onTap?.call();
-    await tester.pumpAndSettle();
-  }
-
-  Future<void> activateAppBarAction(WidgetTester tester, String tooltip) async {
-    final action = tester.widget<IconButton>(
-      find.byWidgetPredicate(
-        (widget) => widget is IconButton && widget.tooltip == tooltip,
+    await tester.tap(
+      find.descendant(
+        of: find.byType(IptvBottomNavBar),
+        matching: find.text(label),
       ),
     );
-    action.onPressed?.call();
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openMyAikaSheet(WidgetTester tester) =>
+      tapBottomNavDestination(tester, 'My Aika');
+
+  Future<void> selectMyAikaTile(WidgetTester tester, ValueKey<String> key) async {
+    tester.widget<ListTile>(find.byKey(key)).onTap?.call();
     await tester.pumpAndSettle();
   }
 
@@ -186,9 +182,12 @@ void main() {
       await tester.pumpWidget(createWidget());
       await tester.pumpAndSettle();
 
-      expect(find.byTooltip('Search channels'), findsOneWidget);
-      expect(find.byTooltip('Playlist source'), findsOneWidget);
-      expect(find.byTooltip('Guide URL'), findsOneWidget);
+      expect(find.byTooltip('Search channels'), findsNothing);
+      expect(find.byTooltip('Playlist source'), findsNothing);
+      expect(find.byTooltip('Guide URL'), findsNothing);
+      expect(find.byTooltip('Movies & Shows'), findsNothing);
+      expect(find.byType(Drawer), findsNothing);
+      expect(find.byType(IptvBottomNavBar), findsOneWidget);
       expect(find.byTooltip('Cast'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('filter-chip-category')),
@@ -207,6 +206,36 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  testWidgets(
+    'ten-foot width: no bottom nav, no app bar, no drawer regression',
+    (tester) async {
+      await tester.pumpWidget(createWidget(tenFootMode: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(IptvBottomNavBar), findsNothing);
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(Drawer), findsNothing);
+    },
+  );
+
+  testWidgets('Home resets active filters to their default state', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(IPTVScreen)),
+    );
+    container.read(channelFiltersProvider.notifier).setCategory('News');
+    await tester.pump();
+    expect(container.read(channelFiltersProvider).isActive, isTrue);
+
+    await tapBottomNavDestination(tester, 'Home');
+
+    expect(container.read(channelFiltersProvider).isActive, isFalse);
   });
 
   testWidgets('hides Cast action on macOS', (tester) async {
@@ -545,41 +574,47 @@ void main() {
   });
 
   testWidgets(
-    'hamburger menu opens the drawer and Guide pushes the guide screen',
+    'My Aika sheet Favorites entry pushes the mobile favorites screen',
     (tester) async {
       await tester.pumpWidget(createWidget());
       await tester.pumpAndSettle();
 
-      await openIptvDrawer(tester);
-
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Guide'), findsOneWidget);
-
-      await selectDrawerTile(tester, const ValueKey('iptv-drawer-guide'));
-
-      // The pushed guide screen owns its own search field, distinct from the
-      // Stream screen's playlist search sheet.
-      expect(find.text('Search the guide'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'hamburger menu Favorites entry pushes the mobile favorites screen',
-    (tester) async {
-      await tester.pumpWidget(createWidget());
-      await tester.pumpAndSettle();
-
-      await openIptvDrawer(tester);
+      await openMyAikaSheet(tester);
 
       expect(find.text('Favorites'), findsOneWidget);
 
-      await selectDrawerTile(tester, const ValueKey('iptv-drawer-favorites'));
+      await selectMyAikaTile(
+        tester,
+        const ValueKey('iptv-my-aika-favorites'),
+      );
 
       expect(find.widgetWithText(AppBar, 'Favorites'), findsOneWidget);
     },
   );
 
-  testWidgets('hamburger menu Settings entry invokes the app callback', (
+  testWidgets(
+    'My Aika sheet lists Settings, Movies & Shows, Favorites, and Play '
+    'local file on TV when every callback is provided',
+    (tester) async {
+      await tester.pumpWidget(
+        createWidget(
+          onSettings: () {},
+          onOpenVod: () {},
+          onPickLocalMediaForTv: () async => null,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await openMyAikaSheet(tester);
+
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Movies & Shows'), findsOneWidget);
+      expect(find.text('Favorites'), findsOneWidget);
+      expect(find.text('Play local file on TV'), findsOneWidget);
+    },
+  );
+
+  testWidgets('My Aika sheet Settings entry invokes the app callback', (
     tester,
   ) async {
     var openedSettings = false;
@@ -588,20 +623,31 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await openIptvDrawer(tester);
+    await openMyAikaSheet(tester);
 
     expect(find.text('Settings'), findsOneWidget);
 
-    await selectDrawerTile(tester, const ValueKey('iptv-drawer-settings'));
+    await selectMyAikaTile(tester, const ValueKey('iptv-my-aika-settings'));
 
     expect(openedSettings, isTrue);
   });
 
-  testWidgets('opens search sheet from app bar action', (tester) async {
+  testWidgets('My Aika sheet hides Settings when onSettings is not provided', (
+    tester,
+  ) async {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
 
-    await activateAppBarAction(tester, 'Search channels');
+    await openMyAikaSheet(tester);
+
+    expect(find.text('Settings'), findsNothing);
+  });
+
+  testWidgets('opens search sheet from the bottom nav', (tester) async {
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
+
+    await tapBottomNavDestination(tester, 'Search');
 
     expect(find.text('Search channels'), findsOneWidget);
     expect(
@@ -610,110 +656,6 @@ void main() {
     );
     expect(find.text('Play'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
-  });
-
-  testWidgets(
-    'playlist source sheet action row renders without overflow at phone '
-    'width',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 844));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      await tester.pumpWidget(createWidget());
-      await tester.pumpAndSettle();
-
-      await activateAppBarAction(tester, 'Playlist source');
-
-      expect(find.text('Playlist sources'), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('playlist-source-add-button')),
-        findsOneWidget,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets('opens XMLTV source sheet from the Guide URL app bar action', (
-    tester,
-  ) async {
-    await tester.pumpWidget(createWidget());
-    await tester.pumpAndSettle();
-
-    await activateAppBarAction(tester, 'Guide URL');
-
-    // XmltvSourceSheet now leads with the guide catalog picker ("Browse
-    // guides"); the raw-URL paste flow (previously this sheet's only
-    // content) moved under a collapsed "Advanced" section and has its own
-    // dedicated coverage in xmltv_source_sheet_test.dart. This assertion
-    // only needs to confirm the app bar action opens the right sheet.
-    expect(find.text('Browse guides'), findsOneWidget);
-  });
-
-  testWidgets('playlist manager adds a named source from the app bar', (
-    tester,
-  ) async {
-    await tester.pumpWidget(createWidget());
-    await tester.pumpAndSettle();
-
-    await activateAppBarAction(tester, 'Playlist source');
-    await tester.tap(find.byKey(const ValueKey('playlist-source-add-button')));
-    await tester.pump();
-    await tester.enterText(
-      find.byKey(const ValueKey('playlist-source-label-field')),
-      'India',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey('playlist-source-url-field')),
-      'https://iptv-org.github.io/iptv/countries/in.m3u',
-    );
-    final saveButton = find.byKey(
-      const ValueKey('playlist-source-save-button'),
-    );
-    await tester.ensureVisible(saveButton);
-    await tester.pump();
-    await tester.tap(saveButton);
-    await tester.pumpAndSettle();
-
-    expect(find.text('India'), findsOneWidget);
-    expect(find.text('1 playlist source'), findsOneWidget);
-  });
-
-  testWidgets('adding a playlist preserves existing favorites', (tester) async {
-    await tester.pumpWidget(
-      createWidget(
-        initialPreferences: const {
-          'iptv_favorite_channel_ids': ['news-1'],
-        },
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await activateAppBarAction(tester, 'Playlist source');
-    await tester.tap(find.byKey(const ValueKey('playlist-source-add-button')));
-    await tester.pump();
-    await tester.enterText(
-      find.byKey(const ValueKey('playlist-source-label-field')),
-      'Country list',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey('playlist-source-url-field')),
-      'https://example.com/country.m3u',
-    );
-    final saveButton = find.byKey(
-      const ValueKey('playlist-source-save-button'),
-    );
-    await tester.ensureVisible(saveButton);
-    await tester.pump();
-    await tester.tap(saveButton);
-    await tester.pumpAndSettle();
-
-    final scope = ProviderScope.containerOf(
-      tester.element(find.byType(IPTVScreen)),
-    );
-    expect(
-      await scope.read(favoriteChannelsStorageProvider).getFavoriteChannelIds(),
-      {'news-1'},
-    );
   });
 
   testWidgets('fresh install shows bring-your-own playlist state', (
@@ -725,7 +667,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Aika Stream'), findsOneWidget);
-    expect(find.byTooltip('Playlist source'), findsOneWidget);
+    expect(find.byTooltip('Playlist source'), findsNothing);
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(
       find.textContaining(
@@ -945,16 +887,19 @@ void main() {
     );
   });
 
-  testWidgets('hides Movies & Shows action when onOpenVod is not provided', (
-    tester,
-  ) async {
-    await tester.pumpWidget(createWidget());
-    await tester.pumpAndSettle();
+  testWidgets(
+    'My Aika sheet hides Movies & Shows when onOpenVod is not provided',
+    (tester) async {
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Movies & Shows'), findsNothing);
-  });
+      await openMyAikaSheet(tester);
 
-  testWidgets('opens VOD via the Movies & Shows app bar action', (
+      expect(find.text('Movies & Shows'), findsNothing);
+    },
+  );
+
+  testWidgets('My Aika sheet opens VOD via the Movies & Shows entry', (
     tester,
   ) async {
     var openVodCalled = false;
@@ -963,29 +908,31 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Movies & Shows'), findsOneWidget);
+    await openMyAikaSheet(tester);
 
-    await activateAppBarAction(tester, 'Movies & Shows');
+    expect(find.text('Movies & Shows'), findsOneWidget);
+
+    await selectMyAikaTile(tester, const ValueKey('iptv-my-aika-movies'));
 
     expect(openVodCalled, isTrue);
   });
 
   testWidgets(
-    'hides Play file on TV drawer entry when onPickLocalMediaForTv is not '
-    'provided',
+    'My Aika sheet hides Play local file on TV when onPickLocalMediaForTv is '
+    'not provided',
     (tester) async {
       await tester.pumpWidget(createWidget());
       await tester.pumpAndSettle();
 
-      await openIptvDrawer(tester);
+      await openMyAikaSheet(tester);
 
-      expect(find.text('Play file on TV'), findsNothing);
+      expect(find.text('Play local file on TV'), findsNothing);
     },
   );
 
   testWidgets(
-    'Play file on TV drawer entry opens the handoff sheet for the picked '
-    'file',
+    'My Aika sheet Play local file on TV entry opens the handoff sheet for '
+    'the picked file',
     (tester) async {
       const item = PhoneLocalMediaItem(
         filePath: '/tmp/movie.mp4',
@@ -1004,11 +951,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await openIptvDrawer(tester);
+      await openMyAikaSheet(tester);
 
-      expect(find.text('Play file on TV'), findsOneWidget);
+      expect(find.text('Play local file on TV'), findsOneWidget);
 
-      await selectDrawerTile(tester, const ValueKey('iptv-drawer-play-on-tv'));
+      await selectMyAikaTile(
+        tester,
+        const ValueKey('iptv-my-aika-play-on-tv'),
+      );
 
       expect(find.text('Movie Night'), findsOneWidget);
       expect(
@@ -1020,15 +970,19 @@ void main() {
   );
 
   testWidgets(
-    'Play file on TV entry does nothing when the picker is cancelled',
+    'My Aika sheet Play local file on TV entry does nothing when the picker '
+    'is cancelled',
     (tester) async {
       await tester.pumpWidget(
         createWidget(onPickLocalMediaForTv: () async => null),
       );
       await tester.pumpAndSettle();
 
-      await openIptvDrawer(tester);
-      await selectDrawerTile(tester, const ValueKey('iptv-drawer-play-on-tv'));
+      await openMyAikaSheet(tester);
+      await selectMyAikaTile(
+        tester,
+        const ValueKey('iptv-my-aika-play-on-tv'),
+      );
 
       expect(find.text('Play on TV'), findsNothing);
     },
@@ -1056,7 +1010,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await activateAppBarAction(tester, 'Search channels');
+      await tapBottomNavDestination(tester, 'Search');
 
       await tester.enterText(find.byType(TextField).last, 'City News');
       await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -1095,7 +1049,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await activateAppBarAction(tester, 'Search channels');
+    await tapBottomNavDestination(tester, 'Search');
 
     await tester.enterText(find.byType(TextField).last, 'City News');
     await tester.pumpAndSettle();
@@ -1132,7 +1086,7 @@ void main() {
       castNotifier.setCasting(true, device: tv);
       await tester.pump();
 
-      await activateAppBarAction(tester, 'Search channels');
+      await tapBottomNavDestination(tester, 'Search');
       await tester.enterText(find.byType(TextField).last, 'City News');
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(ListTile, 'City News Live'));
@@ -1168,7 +1122,7 @@ void main() {
         castNotifier.setCasting(true, device: tv);
         await tester.pump();
 
-        await activateAppBarAction(tester, 'Search channels');
+        await tapBottomNavDestination(tester, 'Search');
         await tester.enterText(find.byType(TextField).last, 'City News');
         await tester.pumpAndSettle();
         await tester.tap(find.widgetWithText(ListTile, 'City News Live'));
