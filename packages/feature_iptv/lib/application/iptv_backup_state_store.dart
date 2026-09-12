@@ -84,7 +84,7 @@ class SharedPreferencesIptvBackupSettingsStore
 }
 
 typedef FavoriteChannelResolver =
-    Future<List<IPTVChannel>> Function(Set<String> channelIds);
+    Future<List<IPTVChannel>> Function(Iterable<String> channelIds);
 
 class IptvBackupStateStore implements AiroBackupStateStore {
   const IptvBackupStateStore({

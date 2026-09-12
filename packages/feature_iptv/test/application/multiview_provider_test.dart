@@ -89,6 +89,92 @@ void main() {
     expect(controller.state.sessions, isEmpty);
   });
 
+  test('replace tears down the old session then opens the new one', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 2,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('old1'));
+    await controller.toggle(channel('old2'));
+    expect(controller.state.sessions, hasLength(2));
+
+    final result = await controller.replace('old1', channel('newX'));
+
+    expect(result, MultiviewToggleResult.added);
+    final ids = controller.state.sessions.map((s) => s.id).toList();
+    expect(ids, containsAll(['newX', 'old2']));
+    expect(ids, isNot(contains('old1')));
+    expect(ids, hasLength(2));
+    expect(sessions['old1']!.closed, isTrue);
+  });
+
+  test(
+    'replace leaves the slot empty, not the old session, when the new stream fails',
+    () async {
+      final primary = _FakePrimaryService();
+      final oldSessions = <String, _FakeMultiviewSession>{};
+      final controller = MultiviewController(
+        decoderBudget: 2,
+        primaryService: primary,
+        sessionFactory: (item) async {
+          if (item.id == 'newX') throw StateError('open failed');
+          return oldSessions.putIfAbsent(
+            item.id,
+            () => _FakeMultiviewSession(item),
+          );
+        },
+      );
+      addTearDown(controller.close);
+
+      await controller.toggle(channel('old1'));
+      await controller.toggle(channel('old2'));
+      expect(primary.pauseCalls, 1);
+
+      final result = await controller.replace('old1', channel('newX'));
+
+      expect(result, MultiviewToggleResult.failed);
+      final ids = controller.state.sessions.map((s) => s.id).toList();
+      expect(ids, isNot(contains('old1')));
+      expect(ids, isNot(contains('newX')));
+      expect(ids, hasLength(1));
+      expect(ids, contains('old2'));
+      expect(oldSessions['old1']!.closed, isTrue);
+      // replace() must not touch _primaryPausedByMultiview bookkeeping --
+      // one session (old2) is still active, so primary stays paused.
+      expect(primary.resumeCalls, 0);
+    },
+  );
+
+  test(
+    'replace still attempts the add when oldChannelId is not in the pool',
+    () async {
+      final controller = MultiviewController(
+        decoderBudget: 2,
+        primaryService: _FakePrimaryService(),
+        sessionFactory: (item) async => _FakeMultiviewSession(item),
+      );
+      addTearDown(controller.close);
+
+      await controller.toggle(channel('old1'));
+      await controller.toggle(channel('old2'));
+
+      final result = await controller.replace('not-present', channel('newX'));
+
+      // 'not-present' isn't in the pool so nothing is torn down; the pool
+      // is still full (old1 + old2), so the real AiroMultiviewPool.add()
+      // reports capacityReached -- verified against airo_multiview_pool.dart.
+      expect(result, MultiviewToggleResult.capacityReached);
+      final ids = controller.state.sessions.map((s) => s.id).toList();
+      expect(ids, containsAll(['old1', 'old2']));
+      expect(ids, isNot(contains('newX')));
+    },
+  );
+
   test('close mutes and disposes every owned session', () async {
     final primary = _FakePrimaryService();
     final sessions = <_FakeMultiviewSession>[];

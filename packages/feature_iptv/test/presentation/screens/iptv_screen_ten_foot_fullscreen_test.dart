@@ -19,6 +19,24 @@ final _channels = [
   ),
 ];
 
+/// Answers every availability probe with a partial-content success.
+///
+/// Without this the shell's background channel scan issues real HTTP, which
+/// `TestWidgetsFlutterBinding` fails with status 400 — every channel then
+/// becomes `StreamAvailability.unavailable` and `_selectChannel` refuses to
+/// play it. Whether that landed before or after a tap used to depend purely
+/// on how many frames `pumpAndSettle` happened to pump, which made these
+/// tests quietly timing-dependent.
+class _FakeProbeTransport implements StreamProbeTransport {
+  @override
+  Future<StreamProbeHttpResponse> get(
+    StreamProbeRequest request, {
+    required StreamProbeCancellation cancellation,
+  }) async {
+    return const StreamProbeHttpResponse(statusCode: 206);
+  }
+}
+
 class _RecordingStreamingService extends VideoPlayerStreamingService {
   _RecordingStreamingService({required this.played})
     : super(engine: FakeAiroPlaybackEngine());
@@ -32,6 +50,15 @@ class _RecordingStreamingService extends VideoPlayerStreamingService {
 }
 
 void main() {
+  // Task 8 fix-up (TV player premium revamp): Ways to Watch briefly lost its
+  // only ten-foot entry point when the always-visible LIVE info bar was
+  // replaced by the transient ChannelNameOverlay -- the action was re-homed
+  // onto AiroTvShell's stage action row, which the grid-first ten-foot
+  // layout (showVideoStage: false) never renders. ChannelInfoBar is now
+  // restored specifically for that no-stage case (see `showInfoBar` in
+  // airo_tv_shell.dart), so this is reachable again. The "a remote-only TV
+  // must never offer Cast to another TV" invariant is enforced in
+  // IPTVScreen._showWaysToWatch (showCast: !tenFootMode).
   testWidgets('tenFootMode: Ways to Watch excludes Cast to another TV', (
     tester,
   ) async {
@@ -45,6 +72,7 @@ void main() {
       ProviderScope(
         overrides: [
           iptvChannelsProvider.overrideWith((ref) async => _channels),
+          streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
@@ -93,6 +121,9 @@ void main() {
         ProviderScope(
           overrides: [
             iptvChannelsProvider.overrideWith((ref) async => _channels),
+            streamProbeTransportProvider.overrideWithValue(
+              _FakeProbeTransport(),
+            ),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
@@ -235,6 +266,9 @@ void main() {
         ProviderScope(
           overrides: [
             iptvChannelsProvider.overrideWith((ref) async => _channels),
+            streamProbeTransportProvider.overrideWithValue(
+              _FakeProbeTransport(),
+            ),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
@@ -299,6 +333,9 @@ void main() {
         ProviderScope(
           overrides: [
             iptvChannelsProvider.overrideWith((ref) async => _channels),
+            streamProbeTransportProvider.overrideWithValue(
+              _FakeProbeTransport(),
+            ),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),

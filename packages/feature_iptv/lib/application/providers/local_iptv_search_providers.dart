@@ -33,7 +33,7 @@ final localIptvSearchIndexProvider = FutureProvider<LocalIptvSearchIndex>((
   return LocalIptvSearchIndex.build(
     channels: channels,
     programsByChannelId: programsByChannelId,
-    favoriteChannelIds: favoriteIds,
+    favoriteChannelIds: favoriteIds.toSet(),
     recentChannelIds: [for (final channel in recentChannels) channel.id],
     hiddenGroupIds: hiddenGroupIds,
   );

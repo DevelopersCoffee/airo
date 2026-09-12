@@ -147,8 +147,8 @@ class _FavoriteReimportReviewBannerState
     // write calls against the same underlying id set, so running them
     // concurrently risks the second overwriting the first's write with a
     // stale read.
-    await storage.addFavorite(candidate.candidate.id);
-    await storage.removeFavorite(candidate.oldChannel.id);
+    await storage.setFavorite(candidate.candidate.id);
+    await storage.clearPreference(candidate.oldChannel.id);
     ref.invalidate(favoriteChannelIdsProvider);
     _dismiss(ref, candidate);
   }

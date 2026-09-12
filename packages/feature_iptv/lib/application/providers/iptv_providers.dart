@@ -954,8 +954,8 @@ final favoriteChannelsStorageProvider = Provider<FavoriteChannelsStorage>((
   return FavoriteChannelsStorage(prefs);
 });
 
-/// The set of favorited channel ids.
-final favoriteChannelIdsProvider = FutureProvider<Set<String>>((ref) async {
+/// The favorited channel ids, in the user's chosen order.
+final favoriteChannelIdsProvider = FutureProvider<List<String>>((ref) async {
   final storage = ref.watch(favoriteChannelsStorageProvider);
   return storage.getFavoriteChannelIds();
 });
@@ -996,6 +996,42 @@ final channelFavoriteTogglerProvider = Provider<Future<bool> Function(String)>((
   };
 });
 
+/// The set of "not for me" channel ids.
+final notForMeChannelIdsProvider = FutureProvider<Set<String>>((ref) async {
+  final storage = ref.watch(favoriteChannelsStorageProvider);
+  return storage.getNotForMeChannelIds();
+});
+
+/// Whether a specific channel is marked "not for me".
+final isChannelNotForMeProvider = Provider.family<bool, String>((
+  ref,
+  channelId,
+) {
+  final notForMeIds = ref.watch(notForMeChannelIdsProvider);
+  return notForMeIds.value?.contains(channelId) ?? false;
+});
+
+/// Toggles a channel's "not for me" state (clearing favorite if setting).
+///
+/// A plain callable rather than a FutureProvider.family: a family instance
+/// caches its first result, so a second toggle of the same channel would
+/// silently no-op.
+final channelNotForMeTogglerProvider = Provider<Future<void> Function(String)>(
+  (ref) {
+    return (channelId) async {
+      final storage = ref.read(favoriteChannelsStorageProvider);
+      final isNowNotForMe = !await storage.isNotForMe(channelId);
+      if (isNowNotForMe) {
+        await storage.setNotForMe(channelId);
+      } else {
+        await storage.clearPreference(channelId);
+      }
+      ref.invalidate(notForMeChannelIdsProvider);
+      ref.invalidate(favoriteChannelIdsProvider);
+    };
+  },
+);
+
 /// Coordinator for CV-017's favorites-survive-reimport behavior.
 final favoriteReimportCoordinatorProvider =
     Provider<FavoriteReimportCoordinator>(
@@ -1020,8 +1056,9 @@ Future<List<FavoriteReviewCandidate>> applyFavoriteRemapOnReimport({
   final favoriteIds = await favoriteStorage.getFavoriteChannelIds();
   if (favoriteIds.isEmpty) return const [];
 
+  final favoriteIdsSet = favoriteIds.toSet();
   final result = coordinator.remapFavorites(
-    favoriteChannelIds: favoriteIds,
+    favoriteChannelIds: favoriteIdsSet,
     oldChannels: oldChannels,
     newChannels: newChannels,
   );
@@ -1031,14 +1068,14 @@ Future<List<FavoriteReviewCandidate>> applyFavoriteRemapOnReimport({
   final reviewIds = result.needsReview
       .map((candidate) => candidate.oldChannel.id)
       .toSet();
-  final toDrop = favoriteIds
+  final toDrop = favoriteIdsSet
       .difference(result.remappedFavoriteIds)
       .difference(reviewIds);
   for (final droppedId in toDrop) {
-    await favoriteStorage.removeFavorite(droppedId);
+    await favoriteStorage.clearPreference(droppedId);
   }
-  for (final newId in result.remappedFavoriteIds.difference(favoriteIds)) {
-    await favoriteStorage.addFavorite(newId);
+  for (final newId in result.remappedFavoriteIds.difference(favoriteIdsSet)) {
+    await favoriteStorage.setFavorite(newId);
   }
 
   return result.needsReview;

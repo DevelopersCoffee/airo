@@ -195,10 +195,11 @@ void main() {
     },
   );
 
-  testWidgets('TV action adds and removes channels from multiview', (
-    tester,
-  ) async {
-    IPTVChannel? toggled;
+  testWidgets('per-tile plus button is gone', (tester) async {
+    // Multiview toggling used to also live behind an always-visible
+    // per-tile icon button in the corner of the tile; that affordance is
+    // gone now — the long-press actions sheet (tested below) is the only
+    // way to reach it.
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -209,19 +210,17 @@ void main() {
               channels: channels,
               metadataByChannelId: const {},
               multiviewChannelIds: const {'two'},
-              onMultiviewToggle: (channel) => toggled = channel,
+              onMultiviewToggle: (_) {},
             ),
           ),
         ),
       ),
     );
 
-    expect(find.byTooltip('Add to multiview'), findsOneWidget);
-    expect(find.byTooltip('Remove from multiview'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('channel-multiview-one')));
-    await tester.pump();
-
-    expect(toggled?.id, 'one');
+    expect(find.byIcon(Icons.add_to_queue), findsNothing);
+    expect(find.byIcon(Icons.remove_from_queue), findsNothing);
+    expect(find.byTooltip('Add to multiview'), findsNothing);
+    expect(find.byTooltip('Remove from multiview'), findsNothing);
   });
 
   testWidgets(
@@ -267,6 +266,66 @@ void main() {
       expect(multiviewToggled, isNull);
       // The sheet closes after acting on an entry.
       expect(find.text('Play'), findsNothing);
+    },
+  );
+
+  testWidgets('long-press sheet shows Not for me and toggling it calls '
+      'onNotForMeToggle', (tester) async {
+    IPTVChannel? notForMeToggled;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: channels,
+              metadataByChannelId: const {},
+              onNotForMeToggle: (channel) => notForMeToggled = channel,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.text('One'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Not for me'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('channel-actions-not-for-me')));
+    await tester.pumpAndSettle();
+
+    expect(notForMeToggled?.id, 'one');
+    // The sheet closes after acting on an entry.
+    expect(find.text('Not for me'), findsNothing);
+  });
+
+  testWidgets(
+    'long-press sheet reflects an already-"not for me" channel and omits '
+    'the row when no callback is wired',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                notForMeChannelIds: const {'one'},
+                onNotForMeToggle: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.longPress(find.text('One'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remove "not for me"'), findsOneWidget);
     },
   );
 
@@ -583,6 +642,38 @@ void main() {
   SliverGrid gridSliver(WidgetTester tester) =>
       tester.widget<SliverGrid>(find.byType(SliverGrid));
 
+  testWidgets('grid gains a column at a representative TV width after the tile '
+      'compaction (172px cards fit 10 columns at 1920px, 155px cards fit 11)', (
+    tester,
+  ) async {
+    // The default test surface (800x600) is smaller than the 1920px width
+    // this test needs, so the SizedBox below would otherwise be squeezed
+    // down to the surface size instead of actually laying out at 1920.
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1920, 1080);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 1920,
+            height: 900,
+            child: ChannelLibraryGrid(
+              channels: channels,
+              metadataByChannelId: {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final delegate =
+        gridSliver(tester).gridDelegate
+            as SliverGridDelegateWithFixedCrossAxisCount;
+    expect(delegate.crossAxisCount, 11);
+  });
+
   testWidgets(
     'phone width defaults to a single-column list and hides the toggle '
     'when no callback is supplied',
@@ -629,8 +720,7 @@ void main() {
                   channels: channels,
                   metadataByChannelId: {},
                   viewMode: mode,
-                  onViewModeChanged: (next) =>
-                      setState(() => mode = next),
+                  onViewModeChanged: (next) => setState(() => mode = next),
                 ),
               ),
             ),
@@ -645,9 +735,7 @@ void main() {
       expect(delegate.crossAxisCount, 1);
       expect(find.byIcon(Icons.grid_view), findsOneWidget);
 
-      await tester.tap(
-        find.byKey(const ValueKey('channel-view-mode-toggle')),
-      );
+      await tester.tap(find.byKey(const ValueKey('channel-view-mode-toggle')));
       await tester.pump();
 
       // Same 360-wide viewport now uses the dynamic multi-column grid, and

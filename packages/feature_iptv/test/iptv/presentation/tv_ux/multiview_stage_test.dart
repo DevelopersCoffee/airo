@@ -24,6 +24,8 @@ void main() {
     ValueChanged<String>? onPromote,
     void Function(String, String)? onSwap,
     MultiviewLayoutKind? layout,
+    ValueChanged<String>? onDismiss,
+    VoidCallback? onEmptySlotTap,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -37,6 +39,8 @@ void main() {
               onPromote: onPromote ?? (_) {},
               onSwap: onSwap,
               layout: layout,
+              onDismiss: onDismiss,
+              onEmptySlotTap: onEmptySlotTap,
             ),
           ),
         ),
@@ -243,6 +247,57 @@ void main() {
       expect(sessions.first.volume, 0.4);
       // The other tile's volume is untouched by mixing this one in.
       expect(sessions.last.volume, 1);
+    },
+  );
+
+  testWidgets(
+    'active tile shows a dismiss control on focus that calls onDismiss',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      String? dismissed;
+      await pump(tester, sessions, onDismiss: (id) => dismissed = id);
+
+      // Not focused yet -- the dismiss control isn't in the tree at all.
+      expect(find.byKey(const ValueKey('multiview-dismiss-one')), findsNothing);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('multiview-dismiss-one')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('multiview-dismiss-one')));
+      await tester.pump();
+
+      expect(dismissed, 'one');
+    },
+  );
+
+  testWidgets(
+    'empty slot is focusable and calls onEmptySlotTap when selected',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      var tapCount = 0;
+      await pump(
+        tester,
+        sessions,
+        layout: MultiviewLayoutKind.spotlight,
+        onEmptySlotTap: () => tapCount++,
+      );
+
+      expect(
+        find.byKey(const ValueKey('multiview-empty-slot-2')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('multiview-empty-slot-2')));
+      await tester.pump();
+
+      expect(tapCount, 1);
     },
   );
 }

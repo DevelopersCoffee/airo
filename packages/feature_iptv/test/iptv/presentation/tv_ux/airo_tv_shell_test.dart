@@ -3,17 +3,22 @@ import 'package:feature_iptv/application/providers/channel_filters_provider.dart
 import 'package:feature_iptv/application/providers/channel_auto_scan_providers.dart';
 import 'package:feature_iptv/application/providers/connectivity_provider.dart';
 import 'package:feature_iptv/application/providers/control_row_visibility_provider.dart';
+import 'package:feature_iptv/application/providers/hotbar_channels_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
+import 'package:feature_iptv/application/providers/multiview_provider.dart';
 import 'package:feature_iptv/application/services/wifi_settings_launcher.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
-import 'package:feature_iptv/presentation/tv_ux/sections/channel_info_bar.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/channel_name_overlay.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/filter_row.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/hotbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:platform_streams/platform_streams.dart';
@@ -55,6 +60,7 @@ void main() {
     StreamingState? streamingState,
     Future<void> Function(Uint8List)? onShareVideoFrame,
     Future<Uint8List> Function(RenderRepaintBoundary)? videoFrameEncoder,
+    VoidCallback? onWaysToWatchTap,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
@@ -85,6 +91,7 @@ void main() {
                 onChannelSelected: (_) {},
                 onShareVideoFrame: onShareVideoFrame,
                 videoFrameEncoder: videoFrameEncoder,
+                onWaysToWatchTap: onWaysToWatchTap,
               ),
             ),
           ),
@@ -212,7 +219,6 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({
       channelCountryPromptCompletedStorageKey: true,
-      'iptv_row_channel_visible': false,
       'iptv_row_filter_visible': false,
       'iptv_row_playlist_visible': false,
     });
@@ -221,7 +227,6 @@ void main() {
 
     expect(find.byKey(const ValueKey('airo-tv-channel-library')), findsNothing);
     expect(find.text('FILTER'), findsNothing);
-    expect(find.text('LIVE'), findsNothing);
     expect(
       find.byKey(const ValueKey('airo-tv-shell-settings-action')),
       findsOneWidget,
@@ -304,7 +309,9 @@ void main() {
       find.byKey(const ValueKey('airo-tv-explorer-panel')),
       findsOneWidget,
     );
-    expect(find.text('LIVE'), findsWidgets);
+    // No LIVE chrome row any more — channel identity moved onto the stage
+    // as ChannelNameOverlay, and this case has no channel playing.
+    expect(find.text('LIVE'), findsNothing);
     expect(find.text('HOTBAR'), findsNothing);
     expect(find.text('FILTER'), findsOneWidget);
 
@@ -370,32 +377,219 @@ void main() {
     );
   });
 
-  testWidgets('grid-first TV layout hides the unusable Share action', (
+  testWidgets('channel name overlay is mounted with the current channel', (
     tester,
   ) async {
-    // share_plus is stubbed on TV, so the share always fell back to the
-    // clipboard and announced "share message copied" — for a clipboard a
-    // remote has no way to open.
-    await pumpAt(tester, 1280, showVideoStage: false);
+    await pumpAt(tester, 1280, currentChannel: channels.first);
+    await tester.pump();
+
+    final overlay = tester.widget<ChannelNameOverlay>(
+      find.byType(ChannelNameOverlay),
+    );
+    expect(overlay.channel, channels.first);
+    expect(overlay.dismissRequested, isFalse);
+    // It lives in the stage's Stack, not in the chrome column below it.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('airo-tv-explorer-video-stage')),
+        matching: find.byType(ChannelNameOverlay),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('One'), findsWidgets);
+  });
+
+  testWidgets(
+    'grid-first TV layout has no ChannelNameOverlay -- no stage to overlay',
+    (tester) async {
+      // showVideoStage: false renders no stage at all, so ChannelNameOverlay
+      // (which mounts inside the stage's Stack) correctly never appears
+      // there. See the next test for what *does* host Help/Ways-to-Watch on
+      // this layout.
+      await pumpAt(tester, 1280, showVideoStage: false);
+
+      expect(find.byType(ChannelNameOverlay), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'grid-first TV layout keeps the LIVE info bar as its Help/Ways-to-Watch '
+    'host',
+    (tester) async {
+      // Fix-up (TV player premium revamp, Task 8): the grid-first ten-foot
+      // layout (showVideoStage: false) never builds a video stage, so it
+      // never gets ChannelNameOverlay or the stage action row either --
+      // before this task, ChannelInfoBar was this layout's *only* host for
+      // Help and Ways to Watch. Restore it specifically for this case (see
+      // `showInfoBar` in airo_tv_shell.dart) so those two actions stay
+      // reachable for every Android TV / Fire TV user before they select a
+      // channel.
+      var waysToWatchTapped = false;
+      await pumpAt(
+        tester,
+        1280,
+        showVideoStage: false,
+        currentChannel: channels.first,
+        onWaysToWatchTap: () => waysToWatchTapped = true,
+      );
+      await tester.pumpAndSettle();
+
+      // One 'LIVE' from the _ExplorerSection row label, one from the
+      // ChannelInfoBar's own Chip.
+      expect(find.text('LIVE'), findsNWidgets(2));
+
+      await tester.tap(find.byKey(const ValueKey('airo-tv-shell-help-action')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('airo-tv-shell-help-dialog')),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const ValueKey('channel-info-ways-to-watch')),
+      );
+      await tester.pumpAndSettle();
+      expect(waysToWatchTapped, isTrue);
+    },
+  );
+
+  testWidgets('Explorer rows settings no longer offers a Channel toggle', (
+    tester,
+  ) async {
+    await pumpAt(tester, 1280, currentChannel: channels.first);
+    await tester.tap(
+      find.byKey(const ValueKey('airo-tv-shell-settings-action')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-row-toggle-channel')),
+      findsNothing,
+    );
+    expect(find.text('Channel'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('airo-tv-row-toggle-filter')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('opening the settings dialog dismisses the overlay immediately', (
+    tester,
+  ) async {
+    await pumpAt(tester, 1280, currentChannel: channels.first);
+    await tester.pump();
     expect(
       tester
-          .widget<ChannelInfoBar>(find.byType(ChannelInfoBar))
-          .showShareAction,
+          .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+          .dismissRequested,
+      isFalse,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('airo-tv-shell-settings-action')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+          .dismissRequested,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('airo-tv-shell-settings-done')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+          .dismissRequested,
       isFalse,
     );
   });
 
-  testWidgets('Share stays available where the share sheet works', (
+  testWidgets('the filter row seeds D-pad focus now the LIVE bar is gone', (
     tester,
   ) async {
+    // The LIVE bar used to be the first candidate in the focus-seeding
+    // chain. With it removed, the topmost focusable chrome row on a fresh
+    // install (no pinned hotbar channels) is the filter chip row — cold
+    // launch must not leave focus nowhere.
     await pumpAt(tester, 1280);
+    await tester.pumpAndSettle();
+
     expect(
       tester
-          .widget<ChannelInfoBar>(find.byType(ChannelInfoBar))
-          .showShareAction,
-      isTrue,
+          .widgetList<FilterRow>(find.byType(FilterRow))
+          .map((r) => r.autofocus),
+      everyElement(isTrue),
     );
+    expect(tester.binding.focusManager.primaryFocus?.hasPrimaryFocus, isTrue);
   });
+
+  testWidgets(
+    'the filter row still seeds D-pad focus when a hotbar channel is pinned',
+    (tester) async {
+      // `filterRowAutofocus` used to be gated behind `!showHotbar &&
+      // showFilter` — since `Hotbar` has no autofocus seam of its own, a
+      // pinned hotbar channel left D-pad focus nowhere on cold launch. That
+      // used to only affect users who had explicitly hidden the LIVE/channel
+      // row; with the channel row gone entirely, it became the default
+      // outcome for anyone with a pinned hotbar channel. Seed the hotbar
+      // storage key directly (mirrors saved_filters_provider_test.dart's
+      // round-trip) so `hasHotbar` is true without going through the pin UI.
+      SharedPreferences.setMockInitialValues({
+        channelCountryPromptCompletedStorageKey: true,
+        hotbarChannelsStorageKey: jsonEncode([
+          const HotbarChannelEntry(
+            channelId: 'one',
+            filters: ChannelFilters(),
+          ).toJson(),
+        ]),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+          isOnlineProvider.overrideWith((ref) => Stream.value(true)),
+        ],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: AiroTvShell(
+                  channels: channels,
+                  videoStage: const SizedBox(key: ValueKey('video-stage')),
+                  onChannelSelected: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Sanity check: the hotbar really is showing (otherwise this test
+      // would pass for the wrong reason).
+      expect(find.byType(Hotbar), findsOneWidget);
+      expect(
+        tester
+            .widgetList<FilterRow>(find.byType(FilterRow))
+            .map((r) => r.autofocus),
+        everyElement(isTrue),
+      );
+      expect(tester.binding.focusManager.primaryFocus?.hasPrimaryFocus, isTrue);
+    },
+  );
 
   testWidgets('multiview toggle stays wired where the stage does render', (
     tester,
@@ -408,6 +602,77 @@ void main() {
       isNotNull,
     );
   });
+
+  testWidgets(
+    'hitting multiview capacity opens the replace dialog, and picking a '
+    'slot swaps that session for the new channel',
+    (tester) async {
+      final primary = _FakeMultiviewPrimaryService();
+      final sessions = <String, _FakeMultiviewSession>{};
+      final controller = MultiviewController(
+        decoderBudget: 1,
+        primaryService: primary,
+        sessionFactory: (item) async =>
+            sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+      );
+      addTearDown(controller.close);
+      // Fill the single-stream capacity with 'one' before the shell mounts.
+      await controller.toggle(channels[0]);
+
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+          isOnlineProvider.overrideWith((ref) => Stream.value(true)),
+          multiviewProvider.overrideWith((ref) => controller),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: AiroTvShell(
+                  channels: channels,
+                  videoStage: const SizedBox(key: ValueKey('video-stage')),
+                  onChannelSelected: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Same call the grid's per-tile multiview button makes.
+      tester
+          .widget<ChannelLibraryGrid>(find.byType(ChannelLibraryGrid))
+          .onMultiviewToggle!(channels[1]);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('airo-tv-multiview-replace-dialog')),
+        findsOneWidget,
+      );
+      expect(find.text('Screen 1: One'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('multiview-replace-slot-one')),
+      );
+      await tester.pumpAndSettle();
+
+      final ids = controller.state.sessions.map((s) => s.id).toList();
+      expect(ids, ['two']);
+      expect(sessions['one']!.closed, isTrue);
+      expect(find.text('Two added to multiview'), findsOneWidget);
+    },
+  );
 
   testWidgets('first TV launch asks for country once', (tester) async {
     final container = await pumpWithCountryPrompt(tester);
@@ -652,4 +917,109 @@ class _FakeProbeTransport implements StreamProbeTransport {
   }) async {
     return const StreamProbeHttpResponse(statusCode: 206);
   }
+}
+
+class _FakeMultiviewSession implements IptvMultiviewSession {
+  _FakeMultiviewSession(this.channel);
+
+  @override
+  final IPTVChannel channel;
+  bool closed = false;
+  final _states = StreamController<StreamingState>.broadcast();
+
+  @override
+  String get id => channel.id;
+
+  @override
+  StreamingState get currentState => StreamingState(
+    currentChannel: channel,
+    playbackState: PlaybackState.playing,
+  );
+
+  @override
+  Stream<StreamingState> get states => _states.stream;
+
+  @override
+  Widget buildView() => const SizedBox();
+
+  @override
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind) async {}
+
+  @override
+  Future<void> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) async {}
+
+  @override
+  Future<void> setQuality(VideoQuality quality) async {}
+
+  @override
+  Future<void> setVolume(double value) async {}
+
+  @override
+  Future<void> close() async {
+    closed = true;
+    await _states.close();
+  }
+}
+
+class _FakeMultiviewPrimaryService implements IPTVStreamingService {
+  int pauseCalls = 0;
+  int resumeCalls = 0;
+  StreamingState _state = StreamingState(playbackState: PlaybackState.playing);
+
+  @override
+  StreamingState get currentState => _state;
+
+  @override
+  Stream<StreamingState> get stateStream => const Stream.empty();
+
+  @override
+  Future<void> pause() async {
+    pauseCalls++;
+    _state = _state.copyWith(playbackState: PlaybackState.paused);
+  }
+
+  @override
+  Future<void> resume() async {
+    resumeCalls++;
+    _state = _state.copyWith(playbackState: PlaybackState.playing);
+  }
+
+  @override
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind) async {}
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<void> goLive() async {}
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> playChannel(IPTVChannel channel) async {}
+
+  @override
+  Future<void> retry() async {}
+
+  @override
+  Future<void> seek(Duration position) async {}
+
+  @override
+  Future<void> setBackgroundAudioMode(bool enabled) async {}
+
+  @override
+  Future<void> setQuality(VideoQuality quality) async {}
+
+  @override
+  Future<void> setVolume(double volume) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> toggleMute() async {}
 }

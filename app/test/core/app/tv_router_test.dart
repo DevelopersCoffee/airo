@@ -2,6 +2,7 @@ import 'package:airo_app/core/app/tv_router.dart';
 import 'package:airo_app/core/platform/device_form_factor.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/bottom_nav_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -248,9 +249,10 @@ void main() {
 
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Live TV'), findsNothing);
-    await tester.tap(find.byIcon(Icons.menu));
+    expect(find.byType(IptvBottomNavBar), findsOneWidget);
+    await tester.tap(find.text('My Aika'));
     await tester.pumpAndSettle();
-    expect(find.text('Play file on TV'), findsOneWidget);
+    expect(find.text('Play local file on TV'), findsOneWidget);
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
 
@@ -270,7 +272,8 @@ void main() {
 
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Live TV'), findsNothing);
-    await tester.tap(find.byIcon(Icons.menu));
+    expect(find.byType(IptvBottomNavBar), findsOneWidget);
+    await tester.tap(find.text('My Aika'));
     await tester.pumpAndSettle();
     expect(find.text('Settings'), findsOneWidget);
   });
@@ -290,14 +293,10 @@ void main() {
         surfaceSize: const Size(960, 540),
       );
 
-      // Phone chrome must not leak onto a real TV: no hamburger drawer and
+      // Phone chrome must not leak onto a real TV: no bottom nav and
       // no Cast entry point (the TV is the receiver, not a sender).
-      expect(find.byIcon(Icons.menu), findsNothing);
+      expect(find.byType(IptvBottomNavBar), findsNothing);
       expect(find.byIcon(Icons.cast_connected), findsNothing);
-      expect(
-        find.byKey(const ValueKey('iptv-drawer-play-on-tv')),
-        findsNothing,
-      );
       debugDefaultTargetPlatformOverride = null;
     },
   );
@@ -314,7 +313,7 @@ void main() {
         surfaceSize: const Size(390, 844),
       );
 
-      expect(find.byIcon(Icons.menu), findsOneWidget);
+      expect(find.byType(IptvBottomNavBar), findsOneWidget);
     },
   );
 
@@ -334,7 +333,7 @@ void main() {
 
       await pumpTvRouter(tester, initialLocation: TvRouteNames.live);
 
-      expect(find.byIcon(Icons.menu), findsNothing);
+      expect(find.byType(IptvBottomNavBar), findsNothing);
     },
   );
 
@@ -354,10 +353,10 @@ void main() {
 
       await pumpTvRouter(tester, initialLocation: TvRouteNames.live);
 
-      expect(find.byIcon(Icons.menu), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.menu));
+      expect(find.byType(IptvBottomNavBar), findsOneWidget);
+      await tester.tap(find.text('My Aika'));
       await tester.pumpAndSettle();
-      expect(find.text('Play file on TV'), findsOneWidget);
+      expect(find.text('Play local file on TV'), findsOneWidget);
       debugDefaultTargetPlatformOverride = null;
     },
   );
@@ -414,7 +413,7 @@ void main() {
         findsOneWidget,
       );
       // No phone chrome on a television.
-      expect(find.byIcon(Icons.menu), findsNothing);
+      expect(find.byType(IptvBottomNavBar), findsNothing);
       expect(find.byIcon(Icons.cast_connected), findsNothing);
       // Removing the app bar must not strand playlist source — Settings has
       // no playlist entry, so it lives in the LIVE bar on TV.
