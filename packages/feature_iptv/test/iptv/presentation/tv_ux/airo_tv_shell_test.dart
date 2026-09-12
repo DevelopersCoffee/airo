@@ -60,7 +60,7 @@ void main() {
     StreamingState? streamingState,
     Future<void> Function(Uint8List)? onShareVideoFrame,
     Future<Uint8List> Function(RenderRepaintBoundary)? videoFrameEncoder,
-    VoidCallback? onWaysToWatchTap,
+    Future<void> Function()? onWaysToWatchTap,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
@@ -430,7 +430,9 @@ void main() {
         1280,
         showVideoStage: false,
         currentChannel: channels.first,
-        onWaysToWatchTap: () => waysToWatchTapped = true,
+        onWaysToWatchTap: () async {
+          waysToWatchTapped = true;
+        },
       );
       await tester.pumpAndSettle();
 
@@ -509,6 +511,94 @@ void main() {
       isFalse,
     );
   });
+
+  testWidgets(
+    'opening Ways to Watch dismisses the overlay for as long as the dialog '
+    'is open -- the same translucent-hit-test re-reveal bug Settings/Help/ '
+    'Layout already avoid',
+    (tester) async {
+      final waysToWatchOpen = Completer<void>();
+      await pumpAt(
+        tester,
+        1280,
+        currentChannel: channels.first,
+        onWaysToWatchTap: () => waysToWatchOpen.future,
+      );
+      await tester.pump();
+      expect(
+        tester
+            .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+            .dismissRequested,
+        isFalse,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('airo-tv-shell-ways-to-watch-action')),
+      );
+      await tester.pump();
+
+      expect(
+        tester
+            .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+            .dismissRequested,
+        isTrue,
+      );
+
+      waysToWatchOpen.complete();
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+            .dismissRequested,
+        isFalse,
+      );
+    },
+  );
+
+  testWidgets(
+    'opening the screenshot capture dismisses the overlay for as long as it '
+    'is in flight',
+    (tester) async {
+      final encoding = Completer<Uint8List>();
+      await pumpAt(
+        tester,
+        1280,
+        currentChannel: channels.first,
+        onShareVideoFrame: (_) async {},
+        videoFrameEncoder: (_) => encoding.future,
+      );
+      await tester.pump();
+      expect(
+        tester
+            .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+            .dismissRequested,
+        isFalse,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('airo-tv-shell-screenshot-action')),
+      );
+      await tester.pump();
+
+      expect(
+        tester
+            .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+            .dismissRequested,
+        isTrue,
+      );
+
+      encoding.complete(Uint8List(0));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<ChannelNameOverlay>(find.byType(ChannelNameOverlay))
+            .dismissRequested,
+        isFalse,
+      );
+    },
+  );
 
   testWidgets('the filter row seeds D-pad focus now the LIVE bar is gone', (
     tester,
@@ -671,6 +761,81 @@ void main() {
       expect(ids, ['two']);
       expect(sessions['one']!.closed, isTrue);
       expect(find.text('Two added to multiview'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'replace() returning capacityReached (the picked slot already freed '
+    'itself before the tap landed) still surfaces feedback instead of '
+    'silently doing nothing',
+    (tester) async {
+      final primary = _FakeMultiviewPrimaryService();
+      final sessions = <String, _FakeMultiviewSession>{};
+      final controller = _CapacityForcingMultiviewController(
+        decoderBudget: 1,
+        primaryService: primary,
+        sessionFactory: (item) async =>
+            sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+      );
+      addTearDown(controller.close);
+      // Fill the single-stream capacity with 'one' before the shell mounts,
+      // so the replace dialog has a slot to offer.
+      await controller.toggle(channels[0]);
+
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+          isOnlineProvider.overrideWith((ref) => Stream.value(true)),
+          multiviewProvider.overrideWith((ref) => controller),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: AiroTvShell(
+                  channels: channels,
+                  videoStage: const SizedBox(key: ValueKey('video-stage')),
+                  onChannelSelected: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      tester
+          .widget<ChannelLibraryGrid>(find.byType(ChannelLibraryGrid))
+          .onMultiviewToggle!(channels[1]);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('airo-tv-multiview-replace-dialog')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('multiview-replace-slot-one')),
+      );
+      await tester.pumpAndSettle();
+
+      // _CapacityForcingMultiviewController.replace() always answers
+      // capacityReached, simulating the freed-then-refilled-slot race the
+      // real replace() can hit. Before the fix this branch mapped to `null`
+      // and showed nothing at all.
+      expect(
+        find.text('Two could not be opened in multiview.'),
+        findsOneWidget,
+      );
     },
   );
 
@@ -962,6 +1127,24 @@ class _FakeMultiviewSession implements IptvMultiviewSession {
     closed = true;
     await _states.close();
   }
+}
+
+/// Real pool/session plumbing (so the replace dialog has real sessions to
+/// render), but [replace] always answers `capacityReached` -- standing in
+/// for the real race where `oldChannelId` already left the pool by itself
+/// before the tap landed, so no slot got freed and the pool is still full.
+class _CapacityForcingMultiviewController extends MultiviewController {
+  _CapacityForcingMultiviewController({
+    required super.decoderBudget,
+    required super.sessionFactory,
+    required super.primaryService,
+  });
+
+  @override
+  Future<MultiviewToggleResult> replace(
+    String oldChannelId,
+    IPTVChannel newChannel,
+  ) async => MultiviewToggleResult.capacityReached;
 }
 
 class _FakeMultiviewPrimaryService implements IPTVStreamingService {
