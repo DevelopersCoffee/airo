@@ -3,7 +3,6 @@ import "package:feature_iptv/application/channel_metadata_enrichment.dart";
 import "package:feature_iptv/application/providers/multiview_provider.dart"
     show multiviewDecoderBudgetProvider;
 import "package:feature_iptv/feature_iptv.dart";
-import 'package:feature_iptv/presentation/tv_ux/sections/bottom_nav_bar.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
