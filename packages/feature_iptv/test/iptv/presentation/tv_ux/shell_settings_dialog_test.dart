@@ -43,4 +43,69 @@ void main() {
       findsOneWidget,
     );
   });
+
+  Future<Widget> wrap(Widget child) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+    );
+    addTearDown(container.dispose);
+    return UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(home: Scaffold(body: child)),
+    );
+  }
+
+  testWidgets('no Channel row exists in the dialog', (tester) async {
+    await tester.pumpWidget(await wrap(const AiroTvShellSettingsDialog()));
+    expect(find.text('Channel'), findsNothing);
+  });
+
+  testWidgets(
+    'Playlist source row is hidden when onPlaylistSourceTap is null',
+    (tester) async {
+      await tester.pumpWidget(await wrap(const AiroTvShellSettingsDialog()));
+      expect(find.text('Playlist source'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Playlist source row appears and calls onPlaylistSourceTap when provided',
+    (tester) async {
+      var tapped = false;
+      await tester.pumpWidget(
+        await wrap(
+          AiroTvShellSettingsDialog(onPlaylistSourceTap: () => tapped = true),
+        ),
+      );
+      expect(find.text('Playlist source'), findsOneWidget);
+      await tester.tap(find.text('Playlist source'));
+      await tester.pump();
+      expect(tapped, isTrue);
+    },
+  );
+
+  testWidgets('Guide URL row is hidden when onGuideSourceTap is null', (
+    tester,
+  ) async {
+    await tester.pumpWidget(await wrap(const AiroTvShellSettingsDialog()));
+    expect(find.text('Guide URL'), findsNothing);
+  });
+
+  testWidgets(
+    'Guide URL row appears and calls onGuideSourceTap when provided',
+    (tester) async {
+      var tapped = false;
+      await tester.pumpWidget(
+        await wrap(
+          AiroTvShellSettingsDialog(onGuideSourceTap: () => tapped = true),
+        ),
+      );
+      expect(find.text('Guide URL'), findsOneWidget);
+      await tester.tap(find.text('Guide URL'));
+      await tester.pump();
+      expect(tapped, isTrue);
+    },
+  );
 }

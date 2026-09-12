@@ -282,18 +282,24 @@ void main() {
       metadataByChannelId: metadata,
       filters: const ChannelFilters(category: 'News'),
       sort: const ChannelSort(),
+      favoriteIds: const [],
+      notForMeIds: const {},
     );
     final second = cache.resolve(
       channels: channels,
       metadataByChannelId: metadata,
       filters: const ChannelFilters(category: 'News'),
       sort: const ChannelSort(),
+      favoriteIds: const [],
+      notForMeIds: const {},
     );
     final changed = cache.resolve(
       channels: channels,
       metadataByChannelId: metadata,
       filters: const ChannelFilters(category: 'Sports'),
       sort: const ChannelSort(),
+      favoriteIds: const [],
+      notForMeIds: const {},
     );
 
     expect(identical(first, second), isTrue);
@@ -303,6 +309,144 @@ void main() {
       'gamma',
     ]);
     expect(changed.visibleChannels.map((channel) => channel.id), ['beta']);
+  });
+
+  test(
+    'resolve stable-partitions favorites first, not-for-me last, regardless of sort column',
+    () {
+      final cache = ChannelBrowserSnapshotCache();
+      const partitionChannels = [
+        IPTVChannel(
+          id: 'a',
+          name: 'A Channel',
+          streamUrl: 'https://example.test/a',
+          group: 'News',
+        ),
+        IPTVChannel(
+          id: 'b',
+          name: 'B Channel',
+          streamUrl: 'https://example.test/b',
+          group: 'News',
+        ),
+        IPTVChannel(
+          id: 'c',
+          name: 'C Channel',
+          streamUrl: 'https://example.test/c',
+          group: 'News',
+        ),
+        IPTVChannel(
+          id: 'd',
+          name: 'D Channel',
+          streamUrl: 'https://example.test/d',
+          group: 'News',
+        ),
+      ];
+      for (final column in ChannelSortColumn.values) {
+        final snapshot = cache.resolve(
+          channels: partitionChannels,
+          metadataByChannelId: const {},
+          filters: const ChannelFilters(),
+          sort: ChannelSort(column: column),
+          favoriteIds: const ['c'],
+          notForMeIds: const {'a'},
+        );
+        final order = snapshot.visibleChannels
+            .map((channel) => channel.id)
+            .toList();
+        expect(
+          order.first,
+          'c',
+          reason: 'favorite must lead for sort column $column',
+        );
+        expect(
+          order.last,
+          'a',
+          reason: 'not-for-me must trail for sort column $column',
+        );
+      }
+    },
+  );
+
+  test('resolve returns a fresh snapshot when favoriteIds changes, even if '
+      'filters/sort are unchanged', () {
+    final cache = ChannelBrowserSnapshotCache();
+    const twoChannels = [
+      IPTVChannel(
+        id: 'a',
+        name: 'A Channel',
+        streamUrl: 'https://example.test/a',
+        group: 'News',
+      ),
+      IPTVChannel(
+        id: 'b',
+        name: 'B Channel',
+        streamUrl: 'https://example.test/b',
+        group: 'News',
+      ),
+    ];
+    const filters = ChannelFilters();
+    const sort = ChannelSort();
+
+    final first = cache.resolve(
+      channels: twoChannels,
+      metadataByChannelId: const {},
+      filters: filters,
+      sort: sort,
+      favoriteIds: const [],
+      notForMeIds: const {},
+    );
+    final second = cache.resolve(
+      channels: twoChannels,
+      metadataByChannelId: const {},
+      filters: filters,
+      sort: sort,
+      favoriteIds: const ['b'],
+      notForMeIds: const {},
+    );
+
+    expect(identical(first, second), isFalse);
+    expect(second.visibleChannels.first.id, 'b');
+  });
+
+  test('resolve reuses the cached snapshot when favoriteIds/notForMeIds are '
+      'unchanged', () {
+    final cache = ChannelBrowserSnapshotCache();
+    const twoChannels = [
+      IPTVChannel(
+        id: 'a',
+        name: 'A Channel',
+        streamUrl: 'https://example.test/a',
+        group: 'News',
+      ),
+      IPTVChannel(
+        id: 'b',
+        name: 'B Channel',
+        streamUrl: 'https://example.test/b',
+        group: 'News',
+      ),
+    ];
+    const filters = ChannelFilters();
+    const sort = ChannelSort();
+    final ids = ['a']; // same list instance reused below
+
+    final first = cache.resolve(
+      channels: twoChannels,
+      metadataByChannelId: const {},
+      filters: filters,
+      sort: sort,
+      favoriteIds: ids,
+      notForMeIds: const {},
+    );
+    final second = cache.resolve(
+      channels: twoChannels,
+      metadataByChannelId: const {},
+      filters: filters,
+      sort: sort,
+      favoriteIds: ids,
+      notForMeIds: const {},
+    );
+
+    expect(identical(first, second), isTrue);
   });
 
   test('filter state survives a fresh provider container', () async {

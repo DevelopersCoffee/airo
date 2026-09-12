@@ -17,9 +17,9 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final storage = FavoriteChannelsStorage(prefs);
 
-    await storage.addFavorite('news');
+    await storage.setFavorite('news');
 
-    expect(await storage.getFavoriteChannelIds(), {'news'});
+    expect(await storage.getFavoriteChannelIds(), ['news']);
     expect(await storage.isFavorite('news'), isTrue);
   });
 
@@ -28,10 +28,10 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final storage = FavoriteChannelsStorage(prefs);
 
-    await storage.addFavorite('news');
-    await storage.addFavorite('news');
+    await storage.setFavorite('news');
+    await storage.setFavorite('news');
 
-    expect(await storage.getFavoriteChannelIds(), {'news'});
+    expect(await storage.getFavoriteChannelIds(), ['news']);
   });
 
   test('removes a channel from favorites', () async {
@@ -39,11 +39,11 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final storage = FavoriteChannelsStorage(prefs);
 
-    await storage.addFavorite('news');
-    await storage.addFavorite('sports');
-    await storage.removeFavorite('news');
+    await storage.setFavorite('news');
+    await storage.setFavorite('sports');
+    await storage.clearPreference('news');
 
-    expect(await storage.getFavoriteChannelIds(), {'sports'});
+    expect(await storage.getFavoriteChannelIds(), ['sports']);
     expect(await storage.isFavorite('news'), isFalse);
   });
 
@@ -65,9 +65,67 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
-    await FavoriteChannelsStorage(prefs).addFavorite('news');
+    await FavoriteChannelsStorage(prefs).setFavorite('news');
 
     final reloaded = FavoriteChannelsStorage(prefs);
-    expect(await reloaded.getFavoriteChannelIds(), {'news'});
+    expect(await reloaded.getFavoriteChannelIds(), ['news']);
+  });
+
+  test('setFavorite clears an existing not-for-me flag on the same channel',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = FavoriteChannelsStorage(prefs);
+    await storage.setNotForMe('ch1');
+    expect(await storage.isNotForMe('ch1'), isTrue);
+
+    await storage.setFavorite('ch1');
+
+    expect(await storage.isFavorite('ch1'), isTrue);
+    expect(await storage.isNotForMe('ch1'), isFalse);
+  });
+
+  test('setNotForMe clears an existing favorite flag on the same channel',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = FavoriteChannelsStorage(prefs);
+    await storage.setFavorite('ch1');
+
+    await storage.setNotForMe('ch1');
+
+    expect(await storage.isNotForMe('ch1'), isTrue);
+    expect(await storage.isFavorite('ch1'), isFalse);
+  });
+
+  test('getFavoriteChannelIds preserves insertion order', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = FavoriteChannelsStorage(prefs);
+    await storage.setFavorite('ch3');
+    await storage.setFavorite('ch1');
+    await storage.setFavorite('ch2');
+
+    expect(await storage.getFavoriteChannelIds(), ['ch3', 'ch1', 'ch2']);
+  });
+
+  test('setFavorite is a no-op dedup when the channel is already favorited',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = FavoriteChannelsStorage(prefs);
+    await storage.setFavorite('ch1');
+    await storage.setFavorite('ch1');
+
+    expect(await storage.getFavoriteChannelIds(), ['ch1']);
+  });
+
+  test('replaceAll preserves the order of the provided iterable', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = FavoriteChannelsStorage(prefs);
+    await storage.replaceAll(['chB', 'chA', 'chC']);
+
+    expect(await storage.getFavoriteChannelIds(), ['chB', 'chA', 'chC']);
   });
 }

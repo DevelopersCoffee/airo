@@ -24,7 +24,7 @@ void main() {
 
   ProviderContainer containerWithDeadSource({
     required void Function() onFetch,
-    Set<String> favoriteIds = const {},
+    List<String> favoriteIds = const [],
   }) {
     return ProviderContainer(
       overrides: [
@@ -96,7 +96,7 @@ void main() {
       onFetch: () => fetchAttempts++,
       // A user with no favorites never reaches the channel list, so the error
       // state needs a stored favorite to be reachable at all.
-      favoriteIds: const {'kept'},
+      favoriteIds: const ['kept'],
     );
     addTearDown(container.dispose);
     await seedDeadSource(container);

@@ -412,7 +412,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          favoriteChannelIdsProvider.overrideWith((ref) async => const {'x'}),
+          favoriteChannelIdsProvider.overrideWith((ref) async => const ['x']),
           m3uSourceParserFactoryProvider.overrideWithValue(
             (sourceId) => _CountingSourceParser(
               prefs: prefs,

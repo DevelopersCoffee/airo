@@ -13,6 +13,7 @@ import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/multiview_provider.dart'
     show multiviewDecoderBudgetProvider, multiviewProvider, MultiviewState;
 import '../../application/wakelock_playback_coordinator.dart';
+import '../tv_ux/sections/bottom_nav_bar.dart';
 import '../tv_ux/sections/multiview_layout_picker.dart';
 import '../tv_ux/sections/multiview_stage.dart';
 import '../tv_ux/sections/shell_help_dialog.dart';
@@ -23,14 +24,12 @@ import "package:platform_player/platform_player.dart";
 import '../widgets/adaptive_iptv_sheet.dart';
 import '../widgets/cast_device_picker_sheet.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
-import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/offline_playback_banner.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/playlist_source_manager_sheet.dart';
 import '../widgets/tv_playlist_qr_dialog.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/xmltv_source_sheet.dart';
-import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
 import '../tv_ux/sections/ways_to_watch_dialog.dart';
@@ -53,21 +52,20 @@ class IPTVScreen extends ConsumerStatefulWidget {
   });
 
   /// When true (a detected TV behind the app's TvShell sidebar), the phone
-  /// chrome — app bar, drawer, cast entry — is suppressed: the sidebar
+  /// chrome — app bar, bottom nav, cast entry — is suppressed: the sidebar
   /// already owns navigation, TVs are receivers not cast senders, and
   /// browse-level actions live in the 10-foot shell itself. Touch devices
   /// keep the full phone chrome.
   final bool tenFootMode;
 
-  /// Invoked when the user taps the "Movies & Shows" action to navigate to
-  /// the VOD screen. Left as an optional callback (rather than a direct
-  /// `go_router` dependency) so this feature package doesn't need to depend
-  /// on the app's routing package; the app wires this in when constructing
-  /// [IPTVScreen] for the `/iptv` route (see [IptvGuideScreen.onChannelSelected]
-  /// for the same pattern).
+  /// Invoked when the user taps the "Movies & Shows" entry in the "My Aika"
+  /// sheet to navigate to the VOD screen. Left as an optional callback
+  /// (rather than a direct `go_router` dependency) so this feature package
+  /// doesn't need to depend on the app's routing package; the app wires this
+  /// in when constructing [IPTVScreen] for the `/iptv` route.
   final VoidCallback? onOpenVod;
 
-  /// Invoked when the compact Airo TV drawer opens Settings. App-owned
+  /// Invoked when the "My Aika" sheet's Settings entry is tapped. App-owned
   /// because the feature package does not depend on go_router or app routes.
   final VoidCallback? onSettings;
 
@@ -790,11 +788,68 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     await showPlaylistSourceSheet(context, ref, initialUrl: url);
   }
 
-  Future<void> _openGuide() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => IptvGuideScreen(
-          onChannelSelected: () => Navigator.of(context).pop(),
+  /// The bottom nav's Home destination: returns the browse grid to its
+  /// unfiltered state, mirroring the same "clear filters" affordance
+  /// `_NoMatchesView` already exposes when a filter empties the results
+  /// (see `airo_tv_shell.dart`'s identical `channelFiltersProvider.notifier
+  /// .clear()` call).
+  void _resetToTop() {
+    ref.read(channelFiltersProvider.notifier).clear();
+  }
+
+  /// The bottom nav's "My Aika" destination: an overflow sheet for the
+  /// destinations that used to live in the (now-deleted) hamburger drawer —
+  /// Home and Guide are gone from the set (Home is now its own bottom-nav
+  /// destination and Guide is not part of this revamp's navigation), but
+  /// Settings, Movies & Shows, Favorites, and Play local file on TV keep
+  /// the same conditional-null-hides-item visibility the drawer had.
+  Future<void> _showMyAikaSheet() {
+    return showAdaptiveIptvSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.onSettings != null)
+              ListTile(
+                key: const ValueKey('iptv-my-aika-settings'),
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  widget.onSettings?.call();
+                },
+              ),
+            if (widget.onOpenVod != null)
+              ListTile(
+                key: const ValueKey('iptv-my-aika-movies'),
+                leading: const Icon(Icons.movie_outlined),
+                title: const Text('Movies & Shows'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  widget.onOpenVod?.call();
+                },
+              ),
+            ListTile(
+              key: const ValueKey('iptv-my-aika-favorites'),
+              leading: const Icon(Icons.favorite_border),
+              title: const Text('Favorites'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _openFavorites();
+              },
+            ),
+            if (widget.onPickLocalMediaForTv != null)
+              ListTile(
+                key: const ValueKey('iptv-my-aika-play-on-tv'),
+                leading: const Icon(Icons.folder_open_outlined),
+                title: const Text('Play local file on TV'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _playLocalFileOnTv();
+                },
+              ),
+          ],
         ),
       ),
     );
@@ -1027,8 +1082,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               // the remote-only Android TV and Fire TV player surfaces.
               showPictureInPicture: !widget.tenFootMode,
               useTvTransportBar: widget.tenFootMode,
-              onOpenSettings: () =>
-                  showAiroTvShellSettingsDialog(context),
+              onOpenSettings: () => showAiroTvShellSettingsDialog(
+                context,
+                onPlaylistSourceTap: _showPlaylistSheet,
+                onGuideSourceTap: _showGuideSourceSheet,
+              ),
               onShowHelp: () => showAiroTvShellHelpDialog(context),
             );
       return guardRouteBack(
@@ -1056,6 +1114,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               onChannelTap: _playChannelFullscreen,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
+              onGuideSourceTap: _showGuideSourceSheet,
               onScanWithPhoneTap: _showQrPlaylist,
               onWaysToWatchTap: _showWaysToWatch,
               onShareVideoFrame: widget.onShareVideoFrame,
@@ -1069,41 +1128,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     return guardRouteBack(
       AiroResponsiveScaffold(
         padding: EdgeInsets.zero,
-        drawer: IptvNavigationDrawer(
-          showMovies: widget.onOpenVod != null,
-          onHome: () {},
-          onGuide: _openGuide,
-          onMovies: () => widget.onOpenVod?.call(),
-          onFavorites: _openFavorites,
-          onSettings: widget.onSettings,
-          onPlayLocalFileOnTv: widget.onPickLocalMediaForTv == null
-              ? null
-              : _playLocalFileOnTv,
-        ),
         appBar: AppBar(
           title: const Text('Aika Stream'),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.search),
-              tooltip: 'Search channels',
-              onPressed: _showSearchSheet,
-            ),
-            if (widget.onOpenVod != null)
-              IconButton(
-                icon: const Icon(Icons.movie_outlined),
-                tooltip: 'Movies & Shows',
-                onPressed: widget.onOpenVod,
-              ),
-            IconButton(
-              icon: const Icon(Icons.link),
-              tooltip: 'Playlist source',
-              onPressed: _showPlaylistSheet,
-            ),
-            IconButton(
-              icon: const Icon(Icons.calendar_month_outlined),
-              tooltip: 'Guide URL',
-              onPressed: _showGuideSourceSheet,
-            ),
             if (isGoogleCastSenderPlatform)
               IconButton(
                 icon: const Icon(Icons.cast_connected),
@@ -1111,6 +1138,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                 onPressed: _showCastSheet,
               ),
           ],
+        ),
+        bottomNavigationBar: IptvBottomNavBar(
+          onHome: _resetToTop,
+          onSearch: _showSearchSheet,
+          onMyAika: _showMyAikaSheet,
         ),
         body: IptvResumeGate(
           enabled: widget.effectiveDeepLinkChannelId == null,
@@ -1122,6 +1154,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                   onChannelTap: _playChannel,
                   onFullscreenToggle: _toggleFullscreen,
                   onPlaylistSourceTap: _showPlaylistSheet,
+                  onGuideSourceTap: _showGuideSourceSheet,
                   onScanWithPhoneTap: _showQrPlaylist,
                   onWaysToWatchTap: _showWaysToWatch,
                   onShareVideoFrame: widget.onShareVideoFrame,
@@ -1525,8 +1558,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                     onBack: _exitFullscreen,
                     onFullscreenToggle: _toggleFullscreen,
                     enableSwipeChannelChange: true,
-                    onOpenSettings: () =>
-                        showAiroTvShellSettingsDialog(context),
+                    onOpenSettings: () => showAiroTvShellSettingsDialog(
+                      context,
+                      onPlaylistSourceTap: _showPlaylistSheet,
+                    ),
                     onShowHelp: () => showAiroTvShellHelpDialog(context),
                   ),
                 ),
@@ -1559,6 +1594,7 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    this.onGuideSourceTap,
     required this.onScanWithPhoneTap,
     required this.onWaysToWatchTap,
     this.onShareVideoFrame,
@@ -1568,6 +1604,11 @@ class _StreamTabContent extends ConsumerWidget {
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+
+  /// Opens the XMLTV guide-source sheet from the video stage's settings
+  /// dialog. Null hides that row — not every host (e.g. `IPTVScreenBody`)
+  /// has a guide-source entry point of its own.
+  final VoidCallback? onGuideSourceTap;
   final VoidCallback onScanWithPhoneTap;
   final VoidCallback onWaysToWatchTap;
   final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
@@ -1595,7 +1636,8 @@ class _StreamTabContent extends ConsumerWidget {
       // screen. See AsyncValue.when's skipLoadingOnReload/isReloading docs.
       skipLoadingOnReload: true,
       data: (channels) => _buildContent(context, ref, channels, streamingState),
-      loading: () => const TvLoadingScreen(message: 'Loading channels...'),
+      loading: () =>
+          const TvLoadingScreen(message: 'Loading channels...', channel: null),
       error: (error, stack) => _buildError(context, ref, error.toString()),
     );
   }
@@ -1656,8 +1698,11 @@ class _StreamTabContent extends ConsumerWidget {
                     onFullscreenToggle: onFullscreenToggle,
                     showPictureInPicture: !playlistSourceInInfoBar,
                     showFullscreenButton: true,
-                    onOpenSettings: () =>
-                        showAiroTvShellSettingsDialog(context),
+                    onOpenSettings: () => showAiroTvShellSettingsDialog(
+                      context,
+                      onPlaylistSourceTap: onPlaylistSourceTap,
+                      onGuideSourceTap: onGuideSourceTap,
+                    ),
                     onShowHelp: () => showAiroTvShellHelpDialog(context),
                   ),
                   const Positioned(
@@ -1698,7 +1743,10 @@ class _StreamTabContent extends ConsumerWidget {
 /// live in a top action row instead of on the tiles themselves, since
 /// fullscreen has no info bar to host them.
 class _FullscreenMultiviewStage extends ConsumerWidget {
-  const _FullscreenMultiviewStage({required this.multiview, required this.onExit});
+  const _FullscreenMultiviewStage({
+    required this.multiview,
+    required this.onExit,
+  });
 
   final MultiviewState multiview;
   final VoidCallback onExit;

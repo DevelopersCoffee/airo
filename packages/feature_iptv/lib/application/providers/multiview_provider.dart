@@ -111,6 +111,38 @@ class MultiviewController extends StateNotifier<MultiviewState> {
     };
   }
 
+  /// Swaps out an already-open multiview session for a different channel.
+  ///
+  /// Used from the capacity-reached flow, where the user picks an existing
+  /// tile to replace instead of adding a new one. This is intentionally NOT
+  /// an atomic swap: [oldChannelId]'s session is torn down first (freeing a
+  /// pool slot), then the new channel is opened. If the new stream fails to
+  /// open, the freed slot stays empty -- the old session is not reopened.
+  ///
+  /// Does not touch `_primaryPausedByMultiview`: `replace()` only ever runs
+  /// while at least one multiview session is already active (that's how the
+  /// capacity-reached dialog gets triggered), so the primary-pause-on-first-
+  /// session bookkeeping in [toggle] never applies here.
+  Future<MultiviewToggleResult> replace(
+    String oldChannelId,
+    IPTVChannel newChannel,
+  ) async {
+    if (_pool.state.contains(oldChannelId)) {
+      await _pool.remove(oldChannelId);
+    }
+    final result = await _pool.add(
+      id: newChannel.id,
+      openSession: () => _sessionFactory(newChannel),
+    );
+    return switch (result) {
+      AiroMultiviewAddResult.added => MultiviewToggleResult.added,
+      AiroMultiviewAddResult.capacityReached =>
+        MultiviewToggleResult.capacityReached,
+      AiroMultiviewAddResult.alreadyPresent ||
+      AiroMultiviewAddResult.openFailed => MultiviewToggleResult.failed,
+    };
+  }
+
   Future<void> promote(String channelId) => _pool.promote(channelId);
 
   void swap(String firstChannelId, String secondChannelId) =>

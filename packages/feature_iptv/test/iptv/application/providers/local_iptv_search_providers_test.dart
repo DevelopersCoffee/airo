@@ -71,7 +71,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await container.read(favoriteChannelsStorageProvider).addFavorite('c2');
+    await container.read(favoriteChannelsStorageProvider).setFavorite('c2');
     container.invalidate(favoriteChannelIdsProvider);
 
     final index = await container.read(localIptvSearchIndexProvider.future);

@@ -5,15 +5,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../application/providers/control_row_visibility_provider.dart';
 import '../../widgets/backup_restore_section.dart';
 
-Future<void> showAiroTvShellSettingsDialog(BuildContext context) {
+Future<void> showAiroTvShellSettingsDialog(
+  BuildContext context, {
+  VoidCallback? onPlaylistSourceTap,
+  VoidCallback? onGuideSourceTap,
+}) {
   return showDialog<void>(
     context: context,
-    builder: (_) => const AiroTvShellSettingsDialog(),
+    builder: (_) => AiroTvShellSettingsDialog(
+      onPlaylistSourceTap: onPlaylistSourceTap,
+      onGuideSourceTap: onGuideSourceTap,
+    ),
   );
 }
 
 class AiroTvShellSettingsDialog extends ConsumerWidget {
-  const AiroTvShellSettingsDialog({super.key});
+  const AiroTvShellSettingsDialog({
+    super.key,
+    this.onPlaylistSourceTap,
+    this.onGuideSourceTap,
+  });
+
+  /// Opens the playlist-source sheet. Re-homed here from the phone app bar
+  /// / TV info bar (revamp Task 10) so it's reachable from the Explorer-rows
+  /// settings sheet too. Null hides the row, matching every other optional
+  /// entry point in this codebase.
+  final VoidCallback? onPlaylistSourceTap;
+
+  /// Opens the XMLTV guide-source sheet. Null hides the row.
+  final VoidCallback? onGuideSourceTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,6 +65,28 @@ class AiroTvShellSettingsDialog extends ConsumerWidget {
                     onChanged: (value) => ref
                         .read(controlRowVisibilityProvider.notifier)
                         .setVisible(row, value),
+                  ),
+                ),
+              if (onPlaylistSourceTap != null)
+                TvFocusable(
+                  key: const ValueKey('shell-settings-playlist-source'),
+                  semanticLabel: 'Playlist source',
+                  onSelect: onPlaylistSourceTap,
+                  child: ListTile(
+                    leading: const Icon(Icons.link),
+                    title: const Text('Playlist source'),
+                    onTap: onPlaylistSourceTap,
+                  ),
+                ),
+              if (onGuideSourceTap != null)
+                TvFocusable(
+                  key: const ValueKey('shell-settings-guide-source'),
+                  semanticLabel: 'Guide URL',
+                  onSelect: onGuideSourceTap,
+                  child: ListTile(
+                    leading: const Icon(Icons.calendar_month_outlined),
+                    title: const Text('Guide URL'),
+                    onTap: onGuideSourceTap,
                   ),
                 ),
               const Divider(height: 32),

@@ -13,6 +13,8 @@ class MultiviewStage extends StatelessWidget {
     required this.onPromote,
     this.onSwap,
     this.layout,
+    this.onDismiss,
+    this.onEmptySlotTap,
   });
 
   final List<IptvMultiviewSession> sessions;
@@ -23,6 +25,14 @@ class MultiviewStage extends StatelessWidget {
   /// Preferred mosaic. Ignored when it cannot fit every live session —
   /// see [resolveMultiviewLayout].
   final MultiviewLayoutKind? layout;
+
+  /// Removes an active tile from MultiView (by channel/session id). Null
+  /// hides the per-tile dismiss control entirely.
+  final ValueChanged<String>? onDismiss;
+
+  /// Invoked when an empty mosaic slot is selected/tapped — the caller opens
+  /// a channel picker to fill it. Null leaves empty slots inert.
+  final VoidCallback? onEmptySlotTap;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +47,7 @@ class MultiviewStage extends StatelessWidget {
     );
     Widget cell(int index) {
       if (index >= activeSessions.length) {
-        return _EmptySlot(index: index);
+        return _EmptySlot(index: index, onTap: onEmptySlotTap);
       }
       final session = activeSessions[index];
       if (kind == MultiviewLayoutKind.single) {
@@ -49,6 +59,7 @@ class MultiviewStage extends StatelessWidget {
         onPromote: onPromote,
         onSwap: onSwap,
         featuredChannelId: featuredChannelId,
+        onDismiss: onDismiss,
       );
     }
 
@@ -154,37 +165,49 @@ class MultiviewStage extends StatelessWidget {
 }
 
 class _EmptySlot extends StatelessWidget {
-  const _EmptySlot({required this.index});
+  const _EmptySlot({required this.index, this.onTap});
 
   final int index;
 
+  /// Opens a channel picker to fill this slot. Null leaves the slot inert
+  /// (e.g. a caller that doesn't support adding channels this way yet).
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
+    final content = DecoratedBox(
+      decoration: BoxDecoration(border: Border.all(color: Colors.white24)),
+      child: Center(
+        child: Text(
+          'Empty',
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: Colors.white54),
+        ),
+      ),
+    );
     return ColoredBox(
       key: ValueKey('multiview-empty-slot-$index'),
       color: Colors.black,
-      child: DecoratedBox(
-        decoration: BoxDecoration(border: Border.all(color: Colors.white24)),
-        child: Center(
-          child: Text(
-            'Empty',
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: Colors.white54),
-          ),
-        ),
-      ),
+      child: onTap == null
+          ? content
+          : TvFocusable(
+              semanticLabel: 'Add a channel to this slot',
+              onSelect: onTap,
+              child: content,
+            ),
     );
   }
 }
 
-class _PromotableSurface extends StatelessWidget {
+class _PromotableSurface extends StatefulWidget {
   const _PromotableSurface({
     required this.session,
     required this.featured,
     required this.onPromote,
     required this.onSwap,
     required this.featuredChannelId,
+    this.onDismiss,
   });
 
   final IptvMultiviewSession session;
@@ -193,23 +216,96 @@ class _PromotableSurface extends StatelessWidget {
   final void Function(String firstId, String secondId)? onSwap;
   final String? featuredChannelId;
 
+  /// Removes this tile from MultiView. Null hides the dismiss control.
+  final ValueChanged<String>? onDismiss;
+
+  @override
+  State<_PromotableSurface> createState() => _PromotableSurfaceState();
+}
+
+class _PromotableSurfaceState extends State<_PromotableSurface> {
+  // Tracks D-pad/keyboard focus so the dismiss control only occupies the
+  // tile's corner while that tile is actually focused, matching the
+  // "visible on focus" per-tile action convention used elsewhere in this
+  // shell (see _StageAction).
+  bool _isFocused = false;
+
   @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     return TvFocusable(
       key: ValueKey('multiview-promote-${session.id}'),
-      semanticLabel: featured
+      semanticLabel: widget.featured
           ? '${session.channel.name}, featured'
           : '${session.channel.name}, muted tile',
       semanticHint: 'Focus for audio. Press OK to swap. Press Menu for tracks.',
-      onFocus: () => onPromote(session.id),
-      onSelect: featuredChannelId == null || featured || onSwap == null
+      onFocus: () {
+        widget.onPromote(session.id);
+        setState(() => _isFocused = true);
+      },
+      onUnfocus: () => setState(() => _isFocused = false),
+      onSelect:
+          widget.featuredChannelId == null ||
+              widget.featured ||
+              widget.onSwap == null
           ? null
-          : () => onSwap?.call(featuredChannelId!, session.id),
+          : () => widget.onSwap?.call(widget.featuredChannelId!, session.id),
       onSecondaryAction: () => _showTileControls(context, session),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => onPromote(session.id),
-        child: _SessionSurface(session: session, featured: featured),
+        onTap: () => widget.onPromote(session.id),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _SessionSurface(session: session, featured: widget.featured),
+            if (_isFocused && widget.onDismiss != null)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: _DismissTileButton(
+                  key: ValueKey('multiview-dismiss-${session.id}'),
+                  channelName: session.channel.name,
+                  onPressed: () => widget.onDismiss!(session.id),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Per-tile "remove from MultiView" control — styled to match
+/// `_StageAction`'s circular-scrim button in `airo_tv_shell.dart` (a
+/// private widget in that library, so the look is mirrored here rather
+/// than shared).
+class _DismissTileButton extends StatelessWidget {
+  const _DismissTileButton({
+    super.key,
+    required this.channelName,
+    required this.onPressed,
+  });
+
+  final String channelName;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = 'Remove $channelName from multiview';
+    return TvFocusable(
+      semanticLabel: label,
+      onSelect: onPressed,
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.56),
+        shape: const CircleBorder(),
+        child: IconButton(
+          tooltip: label,
+          onPressed: onPressed,
+          iconSize: 16,
+          padding: const EdgeInsets.all(4),
+          constraints: const BoxConstraints(),
+          icon: const Icon(Icons.close, color: Colors.white),
+        ),
       ),
     );
   }
