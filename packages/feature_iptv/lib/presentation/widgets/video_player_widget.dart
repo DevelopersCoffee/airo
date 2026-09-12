@@ -1018,10 +1018,21 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final playerSurface = Stack(
       alignment: Alignment.center,
       children: [
+        // #1989 swapped the diagnostic error's inner Align(topCenter) for a
+        // SingleChildScrollView (to stop bottom overflow on compact
+        // players), but a scroll view shrink-wraps to its content instead
+        // of filling available space -- so the surrounding
+        // Stack(alignment: Alignment.center) started vertically centering
+        // the whole (now content-sized) error box instead of it spanning
+        // the full player height. Positioned.fill restores that full-height
+        // frame so the box's own top-anchored padding still lands in the
+        // upper band.
         if (hasPlaybackError)
-          state.diagnostic != null
-              ? _buildDiagnosticError(state)
-              : _buildError(state.errorMessage ?? 'Playback could not start.')
+          Positioned.fill(
+            child: state.diagnostic != null
+                ? _buildDiagnosticError(state)
+                : _buildError(state.errorMessage ?? 'Playback could not start.'),
+          )
         else if (state.isLoading)
           _buildLoading()
         else if (_isAudioOnly)
