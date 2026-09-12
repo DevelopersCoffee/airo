@@ -53,6 +53,20 @@ subprojects {
     }
 }
 
+// AGP's bundle packager rejects ZIP entries whose names contain `:`.
+// Flutter plugins compile Kotlin metadata as
+// `io.flutter.plugins.foo:plugin_android_release.kotlin_module` (Gradle
+// project path). Rewrite the module name before those files are created.
+subprojects {
+    pluginManager.withPlugin("org.jetbrains.kotlin.android") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            compilerOptions.moduleName.set(
+                project.path.trimStart(':').replace(':', '_'),
+            )
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
