@@ -30,9 +30,17 @@ class IptvBottomNavBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _Destination(icon: Icons.home_outlined, label: 'Home', onTap: onHome),
+            _Destination(
+              icon: Icons.home_outlined,
+              label: 'Home',
+              onTap: onHome,
+            ),
             _Destination(icon: Icons.search, label: 'Search', onTap: onSearch),
-            _Destination(icon: Icons.auto_awesome_outlined, label: 'My Aika', onTap: onMyAika),
+            _Destination(
+              icon: Icons.auto_awesome_outlined,
+              label: 'My Aika',
+              onTap: onMyAika,
+            ),
           ],
         ),
       ),
@@ -41,7 +49,11 @@ class IptvBottomNavBar extends StatelessWidget {
 }
 
 class _Destination extends StatelessWidget {
-  const _Destination({required this.icon, required this.label, required this.onTap});
+  const _Destination({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -63,7 +75,10 @@ class _Destination extends StatelessWidget {
             children: [
               Icon(icon, color: Colors.white, size: 22),
               const SizedBox(height: 2),
-              Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 11),
+              ),
             ],
           ),
         ),

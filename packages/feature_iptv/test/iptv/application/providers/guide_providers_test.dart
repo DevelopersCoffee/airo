@@ -188,9 +188,7 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => [channel, other]),
-          favoriteChannelIdsProvider.overrideWith(
-            (ref) async => ['channel-2'],
-          ),
+          favoriteChannelIdsProvider.overrideWith((ref) async => ['channel-2']),
         ],
       );
       addTearDown(container.dispose);
