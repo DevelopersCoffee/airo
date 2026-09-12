@@ -250,7 +250,8 @@ class _PromotableSurfaceState extends State<_PromotableSurface> {
               widget.onSwap == null
           ? null
           : () => widget.onSwap?.call(widget.featuredChannelId!, session.id),
-      onSecondaryAction: () => _showTileControls(context, session),
+      onSecondaryAction: () =>
+          _showTileControls(context, session, onDismiss: widget.onDismiss),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => widget.onPromote(session.id),
@@ -313,8 +314,9 @@ class _DismissTileButton extends StatelessWidget {
 
 Future<void> _showTileControls(
   BuildContext context,
-  IptvMultiviewSession session,
-) {
+  IptvMultiviewSession session, {
+  ValueChanged<String>? onDismiss,
+}) {
   return showDialog<void>(
     context: context,
     builder: (context) => StreamBuilder<StreamingState>(
@@ -404,6 +406,20 @@ Future<void> _showTileControls(
                 onPressed: () => session.setQuality(quality),
                 child: Text(quality.name),
               ),
+            if (onDismiss != null) ...[
+              const Divider(height: 24),
+              SimpleDialogOption(
+                key: ValueKey('multiview-remove-${session.id}'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  onDismiss(session.id);
+                },
+                child: Text(
+                  'Remove from MultiView',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ],
           ],
         );
       },
