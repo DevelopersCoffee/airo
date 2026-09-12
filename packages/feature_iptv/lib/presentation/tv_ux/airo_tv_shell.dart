@@ -21,6 +21,7 @@ import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/multiview_provider.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import '../../application/channel_warmup_policy.dart';
+import 'sections/channel_info_bar.dart';
 import 'sections/channel_library_grid.dart';
 import 'sections/channel_name_overlay.dart';
 import 'sections/filter_dialogs.dart';
@@ -185,17 +186,29 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         rowVisibility.isVisible(AiroTvControlRow.hotbar) && hasHotbar;
     final showFilter = rowVisibility.isVisible(AiroTvControlRow.filter);
     final showPlaylist = rowVisibility.isVisible(AiroTvControlRow.playlist);
+    // The grid-first ten-foot layout (`showVideoStage: false`) renders no
+    // video stage, and therefore no stage action row -- [ChannelNameOverlay]
+    // and the re-homed Help/Ways-to-Watch actions never mount there. Before
+    // this task, `ChannelInfoBar` was that layout's *only* host for those two
+    // actions (always rendered, regardless of `showVideoStage`), so it is
+    // restored here specifically for the no-stage case. Layouts with a video
+    // stage keep using `ChannelNameOverlay` on the stage instead; this row
+    // never renders alongside it.
+    final showInfoBar = !widget.showVideoStage;
     // The first visible ten-foot chrome row seeds D-pad focus (stats is a
     // read-only bar, never a focus target). Without this, cold-launch and
     // filter/EPG round trips left focus nowhere, and the filter chip row was
     // a D-pad journey away with no reliable path back up from the grid
-    // (#reported: "unreachable strips of options"). The LIVE bar used to be
-    // the first candidate in this chain; now that it is gone (replaced by
-    // [ChannelNameOverlay] on the stage), the filter row is the topmost
-    // focusable chrome row whenever the hotbar is absent — which is the
-    // default on a fresh install, since the hotbar only renders once a
-    // channel has been pinned.
-    final filterRowAutofocus = !showHotbar && showFilter;
+    // (#reported: "unreachable strips of options"). `ChannelInfoBar`, when
+    // present, is the topmost candidate (matching its role before this
+    // task); otherwise the filter row claims focus whenever it's visible.
+    // `Hotbar` deliberately has no autofocus seam of its own, so it is never
+    // part of this chain -- excluding it (rather than gating the filter row
+    // behind `!showHotbar`) is what lets the filter row seed focus for the
+    // default case of a fresh install with a pinned hotbar channel and no
+    // info bar (`showVideoStage: true`).
+    final infoBarAutofocus = showInfoBar;
+    final filterRowAutofocus = !showInfoBar && showFilter;
     final snapshot = _snapshotCache.resolve(
       channels: widget.channels,
       metadataByChannelId: metadata,
@@ -245,6 +258,22 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       notForMeChannelIds: notForMeIds,
       onNotForMeToggle: (channel) => notForMeToggler(channel.id),
       onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
+    );
+    // Only ever built for the `!showVideoStage` (grid-first ten-foot) case --
+    // see `showInfoBar` above. `share_plus` is stubbed on that layout, so
+    // sharing has nowhere for a remote to paste it; screenshot capture stays
+    // wired the same way the stage action row does.
+    ChannelInfoBar infoBarFor(bool compact) => ChannelInfoBar(
+      channel: widget.currentChannel,
+      showShareAction: false,
+      onHelpTap: () => showAiroTvShellHelpDialog(context),
+      onPlaylistSourceTap: widget.onPlaylistSourceTap,
+      onWaysToWatchTap: widget.onWaysToWatchTap,
+      onScreenshotTap: widget.onShareVideoFrame == null
+          ? null
+          : () => _captureVideoFrame(context),
+      autofocus: infoBarAutofocus,
+      compact: compact,
     );
     final hotbar = Hotbar(
       channels: widget.channels,
@@ -350,6 +379,12 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       builder: (context, constraints) {
         final chrome = [
           const _OfflineBanner(),
+          if (showInfoBar)
+            _ExplorerSection(
+              label: 'LIVE',
+              height: 60,
+              child: infoBarFor(false),
+            ),
           if (showStats)
             _ExplorerSection(
               label: 'STATS',
@@ -367,6 +402,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         ];
         final compactChrome = [
           const _OfflineBanner(),
+          if (showInfoBar) infoBarFor(true),
           if (showStats)
             SizedBox(height: 48, child: PlaybackStatsBar(stats: playbackStats)),
           if (showHotbar) hotbar,

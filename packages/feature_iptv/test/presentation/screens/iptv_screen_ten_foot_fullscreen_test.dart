@@ -50,16 +50,15 @@ class _RecordingStreamingService extends VideoPlayerStreamingService {
 }
 
 void main() {
-  // KNOWN GAP (TV player premium revamp, Task 8): Ways to Watch lost its
+  // Task 8 fix-up (TV player premium revamp): Ways to Watch briefly lost its
   // only ten-foot entry point when the always-visible LIVE info bar was
-  // replaced by the transient ChannelNameOverlay. The action was re-homed
+  // replaced by the transient ChannelNameOverlay -- the action was re-homed
   // onto AiroTvShell's stage action row, which the grid-first ten-foot
-  // layout (showVideoStage: false) never renders. The "a remote-only TV
-  // must never offer Cast to another TV" invariant this test guards is
-  // still enforced in IPTVScreen._showWaysToWatch (showCast: !tenFootMode);
-  // it is simply unreachable from the browse grid. Un-skip once Task 10
-  // re-homes this alongside Playlist source / Guide URL in the
-  // Explorer-rows settings sheet.
+  // layout (showVideoStage: false) never renders. ChannelInfoBar is now
+  // restored specifically for that no-stage case (see `showInfoBar` in
+  // airo_tv_shell.dart), so this is reachable again. The "a remote-only TV
+  // must never offer Cast to another TV" invariant is enforced in
+  // IPTVScreen._showWaysToWatch (showCast: !tenFootMode).
   testWidgets('tenFootMode: Ways to Watch excludes Cast to another TV', (
     tester,
   ) async {
@@ -106,7 +105,7 @@ void main() {
           'a remote-only Android TV or Fire TV should not offer to cast '
           'its playback to another television',
     );
-  }, skip: true);
+  });
 
   testWidgets(
     'tenFootMode: selecting a channel goes straight to fullscreen playback',
