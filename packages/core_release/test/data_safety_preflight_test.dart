@@ -99,11 +99,10 @@ void main() {
       expect(inScope.readyForConsoleEntry, isTrue);
     });
 
-    test('blocks when analytics, crash, or ads SDKs are present', () {
+    test('blocks when analytics or crash SDKs are present', () {
       final preflight = run(
         analyticsSdkPresent: true,
         crashlyticsSdkPresent: true,
-        advertisingSdkPresent: true,
       );
 
       expect(preflight.readyForConsoleEntry, isFalse);
@@ -112,9 +111,48 @@ void main() {
         containsAll(const {
           AiroDataSafetyFindingCode.analyticsSdkPresent,
           AiroDataSafetyFindingCode.crashlyticsSdkPresent,
-          AiroDataSafetyFindingCode.advertisingSdkPresent,
         }),
       );
+    });
+
+    test('declares AdMob Native without blocking console entry', () {
+      final preflight = run(
+        advertisingSdkPresent: true,
+        sensitiveAndroidPermissions: const {
+          AiroDataSafetyPreflightRunner.advertisingIdPermission,
+        },
+      );
+
+      expect(preflight.readyForConsoleEntry, isTrue);
+      expect(
+        preflight.findings.map((finding) => finding.code),
+        contains(AiroDataSafetyFindingCode.advertisingSdkPresent),
+      );
+      expect(
+        preflight.findings
+            .where(
+              (finding) =>
+                  finding.code ==
+                      AiroDataSafetyFindingCode.advertisingSdkPresent &&
+                  finding.blocking,
+            )
+            .toList(),
+        isEmpty,
+      );
+      expect(
+        preflight.findings.where(
+          (finding) =>
+              finding.code ==
+              AiroDataSafetyFindingCode.sensitivePermissionPresent,
+        ),
+        isEmpty,
+      );
+      final deviceIds = preflight.declarations.singleWhere(
+        (declaration) => declaration.dataType == 'Device or other IDs',
+      );
+      expect(deviceIds.collected, 'Yes');
+      expect(deviceIds.purpose, 'Advertising or marketing');
+      expect(deviceIds.shared, isTrue);
     });
 
     test('blocks sensitive TV permissions', () {

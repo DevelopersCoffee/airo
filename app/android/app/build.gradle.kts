@@ -326,6 +326,12 @@ android {
     }
 
     packaging {
+        resources {
+            // kotlin_module files are metadata only. Excluding them avoids
+            // AGP rejecting `package:plugin_release.kotlin_module` names
+            // that Flutter plugins emit (invalid ZIP entry characters).
+            excludes += "META-INF/*.kotlin_module"
+        }
         jniLibs {
             // Flutter's --target-platform filters only the libs Flutter itself
             // contributes (libflutter.so, libapp.so). Native libs that arrive
