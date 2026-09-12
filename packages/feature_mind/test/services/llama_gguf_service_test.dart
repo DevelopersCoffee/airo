@@ -1,14 +1,14 @@
 import 'dart:io';
 
 import 'package:core_ai/core_ai.dart';
+import 'package:core_completion/core_completion.dart';
+import 'package:feature_mind/src/services/desktop_gguf_backend.dart';
+import 'package:feature_mind/src/services/llama_gguf_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
 import 'package:llama_flutter_android/src/llama_api.dart' as llama_api;
-
-import 'package:feature_mind/src/services/desktop_gguf_backend.dart';
-import 'package:feature_mind/src/services/llama_gguf_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -221,6 +221,44 @@ void main() {
     expect(jniLoaded, isFalse);
     expect(service.isLoaded, isTrue);
   });
+
+  test('forwards grammar to an injected native completion backend', () async {
+    final native = _RecordingNativeBackend();
+    final service = LlamaGgufService(nativeBackend: native);
+    expect(
+      await service
+          .generate(prompt: 'repair', grammar: 'root ::= object', maxTokens: 32)
+          .toList(),
+      ['ok'],
+    );
+    expect(native.prompt, 'repair');
+    expect(native.grammar, 'root ::= object');
+    expect(native.maxTokens, 32);
+  });
+}
+
+class _RecordingNativeBackend implements GgufNativeBackend {
+  String? prompt;
+  String? grammar;
+  int? maxTokens;
+
+  @override
+  bool get isReady => true;
+
+  @override
+  Stream<String> generate({
+    required String prompt,
+    required int maxTokens,
+    String? grammar,
+  }) {
+    this.prompt = prompt;
+    this.grammar = grammar;
+    this.maxTokens = maxTokens;
+    return Stream.fromIterable(const ['ok']);
+  }
+
+  @override
+  Future<void> stop() async {}
 }
 
 class _FakeLlamaSession extends DesktopLlamaSession {

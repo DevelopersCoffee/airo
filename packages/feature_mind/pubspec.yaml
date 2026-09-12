@@ -32,6 +32,8 @@ dependencies:
   # source can change without touching MindService. See module.yaml.
   core_ai:
     path: ../core_ai
+  core_completion:
+    path: ../core_completion
   core_entitlements:
     path: ../core_entitlements
   # Below: brought in from feature_assistant on the Phase 2 merge

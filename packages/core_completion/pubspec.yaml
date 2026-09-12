@@ -1,0 +1,20 @@
+name: core_completion
+description: >
+  On-device completion seam: generate(prompt, {grammar, maxTokens}) as a token
+  stream. GGUF adapter with an injected native backend; no Mind UI, no cloud.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  llama_flutter_android: ^0.2.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0

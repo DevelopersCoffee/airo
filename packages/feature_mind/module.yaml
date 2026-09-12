@@ -26,6 +26,7 @@ allowed_dependencies:
   # moves onto core_ai's existing download pipeline rather than shipping model
   # weights in the APK (docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md).
   - core_ai
+  - core_completion
   # Pro Indic intelligence gates (Sarvam-1 optional generation, Profile settings).
   - core_entitlements
   # Dev-only: DownloadArtifactRequest/DownloadProgress, constructed directly by
