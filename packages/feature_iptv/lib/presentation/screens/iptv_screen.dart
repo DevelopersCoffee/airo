@@ -1595,7 +1595,8 @@ class _StreamTabContent extends ConsumerWidget {
       // screen. See AsyncValue.when's skipLoadingOnReload/isReloading docs.
       skipLoadingOnReload: true,
       data: (channels) => _buildContent(context, ref, channels, streamingState),
-      loading: () => const TvLoadingScreen(message: 'Loading channels...'),
+      loading: () =>
+          const TvLoadingScreen(message: 'Loading channels...', channel: null),
       error: (error, stack) => _buildError(context, ref, error.toString()),
     );
   }
