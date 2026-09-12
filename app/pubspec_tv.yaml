@@ -113,7 +113,9 @@ dependencies:
   package_info_plus: 10.2.0
 
   # In-app AdMob Native Advanced (phone/tablet only at runtime).
-  google_mobile_ads: 6.0.0
+  # 7.0.0 is the first release that configures on Gradle 9 (6.0.0 dies on
+  # `configurations.all`). Keep below 8.x unless we need a newer GMA SDK.
+  google_mobile_ads: 7.0.0
 
   # Dependencies with stub overrides (required for compilation but using lightweight stubs)
   # These are overridden by dependency_overrides section below
