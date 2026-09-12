@@ -1,13 +1,15 @@
 import 'dart:async';
 
+import 'package:core_ai/core_ai.dart';
+import 'package:core_completion/core_completion.dart';
 import 'package:flutter/foundation.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
-import 'package:core_ai/core_ai.dart';
 
 import '../model_bench/model_bench_protocol.dart';
 import 'desktop_gguf_backend.dart';
 import 'gguf_load_outcome.dart';
 import 'gguf_runtime_stats.dart';
+import 'mind_frb_gguf_backend.dart';
 
 export 'gguf_runtime_stats.dart';
 
@@ -22,13 +24,16 @@ class LlamaGgufService {
     LlamaController? nativeController,
     DesktopGgufBackend? desktopBackend,
     Future<bool> Function()? desktopAvailabilityOverride,
+    GgufNativeBackend? nativeBackend,
   }) : _controller = nativeController,
        _desktopBackend = desktopBackend ?? DesktopGgufBackend(),
-       _desktopAvailabilityOverride = desktopAvailabilityOverride;
+       _desktopAvailabilityOverride = desktopAvailabilityOverride,
+       _injectedNative = nativeBackend;
 
   LlamaController? _controller;
   final DesktopGgufBackend _desktopBackend;
   final Future<bool> Function()? _desktopAvailabilityOverride;
+  final GgufNativeBackend? _injectedNative;
   bool _loaded = false;
 
   /// Engine stats from the most recent FFI GGUF completion, if any.
@@ -47,6 +52,7 @@ class LlamaGgufService {
 
   /// True when this adapter (or the shared FRB llama slot) has a model.
   bool get isLoaded {
+    if (_injectedNative?.isReady == true) return true;
     if (_ffiEngineReady) return true;
     return _loaded;
   }
@@ -152,60 +158,33 @@ class LlamaGgufService {
     if (!isLoaded) {
       return Stream<String>.error(StateError('gguf_model_not_loaded'));
     }
-    if (_ffiEngineReady) {
-      return _desktopBackend.generate(
-        prompt: prompt,
-        maxTokens: maxTokens,
-        grammar: grammar,
-      );
-    }
-    if (isPlatformSupported) {
-      return _guardedGeneration(
-        prompt: prompt,
-        maxTokens: maxTokens,
-        temperature: temperature,
-        topP: topP,
-        topK: topK,
-      );
-    }
-    return Stream<String>.error(StateError('gguf_backend_unavailable'));
+    return _completionClient()
+        .generate(
+          prompt: prompt,
+          grammar: grammar,
+          maxTokens: maxTokens,
+          temperature: temperature,
+          topP: topP,
+          topK: topK,
+        )
+        .handleError((Object error, StackTrace stack) {
+          if (error is CompletionUnavailable) {
+            Error.throwWithStackTrace(StateError(error.code), stack);
+          }
+          Error.throwWithStackTrace(error, stack);
+        });
   }
 
-  /// The Android plugin normally closes its token stream with `onDone`.
-  /// Keep a bounded safety net around that platform boundary so a lost
-  /// terminal callback cannot leave a chat request awaiting forever.
-  Stream<String> _guardedGeneration({
-    required String prompt,
-    required int maxTokens,
-    required double temperature,
-    required double topP,
-    required int topK,
-  }) async* {
-    try {
-      await for (final token
-          in _nativeController
-              .generate(
-                prompt: prompt,
-                maxTokens: maxTokens,
-                temperature: temperature,
-                topP: topP,
-                topK: topK,
-              )
-              .timeout(const Duration(minutes: 2))) {
-        yield token;
-      }
-    } on TimeoutException {
-      await stop();
-      throw TimeoutException('GGUF generation timed out.');
-    }
+  GgufCompletionClient _completionClient() {
+    return GgufCompletionClient(
+      native: _injectedNative ?? MindFrbGgufBackend(_desktopBackend),
+      jni: isPlatformSupported ? _nativeController : null,
+      jniIsLoaded: () => _loaded && isPlatformSupported && !_ffiEngineReady,
+    );
   }
 
   Future<void> stop() async {
-    if (_ffiEngineReady) {
-      await _desktopBackend.stop();
-      return;
-    }
-    if (_controller?.isGenerating ?? false) await _nativeController.stop();
+    await _completionClient().stop();
   }
 
   Future<void> unload() async {

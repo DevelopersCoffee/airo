@@ -103,7 +103,7 @@ implementation detail — that's the domain agent's job.
 | --- | --- | --- |
 | Coins / Finance Agent | `feature_coin`, `platform_coin_vault`, future `platform_coin_*` and coin plugin packages | Airo Coin is package-first. `packages/airomoney` is retired; `app/lib/features/coins` is legacy super-app code to extract or delete, not a target for new behavior. |
 | Anya / Nutrition Agent | `feature_anya`, `feature_anya_core` | Standalone Anya diet/nutrition product (`ShellId.anya`). Package-first like Coins. Not a Mind chat plugin — `feature_mind`'s `draft-diet-plan` addon stays a generative skill, not this product. |
-| AI/Brain Agent | (none yet) | Owns product-layer Brain/chat journeys once built. Does **not** own `core_ai` — that runtime/model-routing package stays with Framework Agent per `AGENT_POLICY.md`'s Ownership Map, to avoid a two-owner conflict on the same package. (`core_ai_delegation` and `core_delegation` were deleted as orphan leaves with zero consumers — #1676.) |
+| Framework Agent | `core_ai`, `core_completion` | Runtime/model-routing (`core_ai`) and the shared on-device `generate(prompt, {grammar})` seam (`core_completion`). Anya/Airovia bind via product shells, not by depending on `feature_mind`. |
 | Meeting Intelligence Agent | (none yet) | Dormant — no packages exist for this sub-app yet |
 
 ### Package ownership — full retrofit (phase 2)

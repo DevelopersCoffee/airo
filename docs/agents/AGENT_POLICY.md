@@ -163,6 +163,7 @@ super-app-level areas not yet covered by COUNCIL.md:
 | Area | Primary Owner | Secondary Review |
 | --- | --- | --- |
 | `packages/core_ai`, model routing, LiteRT/HF contracts | Framework Agent | Security, QA |
+| `packages/core_completion`, on-device GGUF `generate` + GBNF helper | Framework Agent | Security, QA, Platform |
 | Agent Skills runtime, MCP, Google AI Edge compatibility | Agent Skills Agent | Framework, Security |
 | Memory Vault, entities, retrieval, retention | Memory Agent | Security, QA |
 | Scheduled automations, notifications, tool execution traces | Framework Agent | Agent Skills, Security |
