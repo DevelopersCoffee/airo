@@ -30,6 +30,7 @@ import '../widgets/playlist_source_manager_sheet.dart';
 import '../widgets/tv_playlist_qr_dialog.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/xmltv_source_sheet.dart';
+import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
 import '../tv_ux/sections/ways_to_watch_dialog.dart';
@@ -799,10 +800,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
 
   /// The bottom nav's "My Aika" destination: an overflow sheet for the
   /// destinations that used to live in the (now-deleted) hamburger drawer —
-  /// Home and Guide are gone from the set (Home is now its own bottom-nav
-  /// destination and Guide is not part of this revamp's navigation), but
-  /// Settings, Movies & Shows, Favorites, and Play local file on TV keep
-  /// the same conditional-null-hides-item visibility the drawer had.
+  /// Home is gone from the set (it is now its own bottom-nav destination),
+  /// but Guide, Settings, Movies & Shows, Favorites, and Play local file on
+  /// TV keep the same conditional-null-hides-item visibility the drawer had.
   Future<void> _showMyAikaSheet() {
     return showAdaptiveIptvSheet<void>(
       context: context,
@@ -810,6 +810,15 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              key: const ValueKey('iptv-my-aika-guide'),
+              leading: const Icon(Icons.grid_view_outlined),
+              title: const Text('Guide'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _openGuide();
+              },
+            ),
             if (widget.onSettings != null)
               ListTile(
                 key: const ValueKey('iptv-my-aika-settings'),
@@ -850,6 +859,18 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                 },
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Pushes the full-screen EPG program guide on this screen's own
+  /// Navigator, mirroring the pattern the deleted hamburger drawer used.
+  Future<void> _openGuide() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => IptvGuideScreen(
+          onChannelSelected: () => Navigator.of(context).pop(),
         ),
       ),
     );
