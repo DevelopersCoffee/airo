@@ -5,6 +5,7 @@ import "package:feature_iptv/application/providers/multiview_provider.dart"
 import "package:feature_iptv/feature_iptv.dart";
 import 'package:feature_iptv/presentation/tv_ux/sections/bottom_nav_bar.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -169,7 +170,10 @@ void main() {
   Future<void> openMyAikaSheet(WidgetTester tester) =>
       tapBottomNavDestination(tester, 'My Aika');
 
-  Future<void> selectMyAikaTile(WidgetTester tester, ValueKey<String> key) async {
+  Future<void> selectMyAikaTile(
+    WidgetTester tester,
+    ValueKey<String> key,
+  ) async {
     tester.widget<ListTile>(find.byKey(key)).onTap?.call();
     await tester.pumpAndSettle();
   }
@@ -583,10 +587,7 @@ void main() {
 
       expect(find.text('Favorites'), findsOneWidget);
 
-      await selectMyAikaTile(
-        tester,
-        const ValueKey('iptv-my-aika-favorites'),
-      );
+      await selectMyAikaTile(tester, const ValueKey('iptv-my-aika-favorites'));
 
       expect(find.widgetWithText(AppBar, 'Favorites'), findsOneWidget);
     },
@@ -657,6 +658,154 @@ void main() {
     expect(find.text('Play'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
   });
+
+  testWidgets(
+    'adding a second playlist source via the in-player Settings dialog and '
+    'reloading does not clobber an existing favorite',
+    (tester) async {
+      // The AppBar's dedicated "Playlist source" icon was removed by this
+      // task (relocated into AiroTvShellSettingsDialog by Task 10). The only
+      // surviving phone entry point once a channel is already playing is:
+      // in-player "more" sheet -> App settings -> Playlist source row. This
+      // test drives that real chain, then simulates the channel-list reload
+      // it triggers elsewhere (video_player_widget.dart's
+      // _refreshPlaylistFromContextMenu calls the same refreshChannelsProvider)
+      // and asserts the reload's favorite remap
+      // (applyFavoriteRemapOnReimport, iptv_providers.dart:608-640) does not
+      // wipe an already-persisted favorite.
+      //
+      // The fake M3U source parser below stands in for the real network
+      // fetch a newly-added source would trigger -- this suite already
+      // blocks real HTTP in the test binding (see _FakeProbeTransport above),
+      // and the point of this test is the reload/remap path, not playlist
+      // parsing.
+      SharedPreferences.setMockInitialValues({});
+      final parserPrefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        createWidget(
+          initialPreferences: const {
+            'iptv_favorite_channel_ids': ['news-1'],
+          },
+          streamingState: StreamingState(
+            playbackState: PlaybackState.playing,
+            isLiveStream: true,
+            liveDelay: const Duration(seconds: 1),
+            currentChannel: channels.first,
+          ),
+          extraOverrides: [
+            m3uSourceParserFactoryProvider.overrideWithValue(
+              (sourceId) => _ImmediateM3uSourceParser(
+                prefs: parserPrefs,
+                sourceId: sourceId,
+                channels: const [
+                  IPTVChannel(
+                    id: 'news-1',
+                    name: 'City News Live',
+                    streamUrl: 'https://example.com/news.m3u8',
+                    group: 'News',
+                    category: ChannelCategory.news,
+                  ),
+                  IPTVChannel(
+                    id: 'country-1',
+                    name: 'Country One',
+                    streamUrl: 'https://example.com/country-1.m3u8',
+                    group: 'Country',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(IPTVScreen)),
+      );
+      expect(
+        await container
+            .read(favoriteChannelsStorageProvider)
+            .getFavoriteChannelIds(),
+        {'news-1'},
+      );
+
+      // Open the in-player "more" sheet -> App settings -> Playlist source.
+      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      // The sheet's ListView overflows the default test surface height, so
+      // the "App settings" tile starts out below the visible viewport --
+      // scroll it into view before tapping (same pattern as
+      // video_player_widget_test.dart's other sheet-item taps).
+      // skipOffstage: false is required here because ensureVisible has to
+      // locate the (currently offstage) element before it can scroll it in.
+      final appSettingsTile = find.byKey(
+        const ValueKey('iptv-player-settings-menu-action'),
+        skipOffstage: false,
+      );
+      await tester.ensureVisible(appSettingsTile);
+      await tester.pump();
+      await tester.tap(appSettingsTile);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Playlist source'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('shell-settings-playlist-source')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Add a second, unrelated playlist source through the real sheet.
+      await tester.tap(
+        find.byKey(const ValueKey('playlist-source-add-button')),
+      );
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const ValueKey('playlist-source-label-field')),
+        'Country list',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('playlist-source-url-field')),
+        'https://example.com/country.m3u',
+      );
+      final saveButton = find.byKey(
+        const ValueKey('playlist-source-save-button'),
+      );
+      await tester.ensureVisible(saveButton);
+      await tester.pump();
+      await tester.tap(saveButton);
+      // Not pumpAndSettle: the streaming state above is actively "playing",
+      // which keeps periodic position/buffer timers running that never
+      // settle (see video_player_widget_test.dart's playChannel() comment).
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Country list'), findsOneWidget);
+
+      // Simulate the resulting channel-list reload (the same provider the
+      // in-player "Refresh playlist" context menu action calls).
+      final reloadedChannels = await container.read(
+        refreshChannelsProvider(true).future,
+      );
+      expect(
+        reloadedChannels.map((channel) => channel.id),
+        containsAll(['news-1', 'country-1']),
+      );
+
+      expect(
+        await container
+            .read(favoriteChannelsStorageProvider)
+            .getFavoriteChannelIds(),
+        {'news-1'},
+        reason:
+            'adding a second playlist source and reloading must not clobber '
+            'an already-persisted favorite',
+      );
+    },
+  );
 
   testWidgets('fresh install shows bring-your-own playlist state', (
     tester,
@@ -955,10 +1104,7 @@ void main() {
 
       expect(find.text('Play local file on TV'), findsOneWidget);
 
-      await selectMyAikaTile(
-        tester,
-        const ValueKey('iptv-my-aika-play-on-tv'),
-      );
+      await selectMyAikaTile(tester, const ValueKey('iptv-my-aika-play-on-tv'));
 
       expect(find.text('Movie Night'), findsOneWidget);
       expect(
@@ -979,10 +1125,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await openMyAikaSheet(tester);
-      await selectMyAikaTile(
-        tester,
-        const ValueKey('iptv-my-aika-play-on-tv'),
-      );
+      await selectMyAikaTile(tester, const ValueKey('iptv-my-aika-play-on-tv'));
 
       expect(find.text('Play on TV'), findsNothing);
     },
@@ -1354,4 +1497,33 @@ class _DeniedLocalMediaLibraryAdapter implements LocalMediaLibraryAdapter {
   Future<String?> requestRemovableStorageRoot() {
     throw const LocalMediaAccessException('permission_denied');
   }
+}
+
+/// Stands in for a real network fetch when a newly-added M3U source is
+/// reloaded (see configured_m3u_failure_test.dart's `_FakeSourceParser` for
+/// the same pattern). Every method that would otherwise touch the network or
+/// [prefs] is overridden, so [prefs] only exists to satisfy
+/// [M3UParserService]'s constructor.
+class _ImmediateM3uSourceParser extends M3UParserService {
+  _ImmediateM3uSourceParser({
+    required super.prefs,
+    required String sourceId,
+    required this.channels,
+  }) : super(dio: Dio(), sourceId: sourceId);
+
+  final List<IPTVChannel> channels;
+  String? _url;
+
+  @override
+  String? getPlaylistUrl() => _url;
+
+  @override
+  Future<void> setPlaylistUrl(String url) async {
+    _url = url;
+  }
+
+  @override
+  Future<PlaylistFetchOutcome> fetchPlaylistOutcome({
+    bool forceRefresh = false,
+  }) async => PlaylistFetchOutcome.loaded(channels);
 }
