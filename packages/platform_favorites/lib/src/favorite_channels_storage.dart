@@ -98,8 +98,12 @@ class FavoriteChannelsStorage {
   }
 
   /// Replaces the complete favorite list for an import/restore operation,
-  /// preserving the given order. Does not touch not-for-me state.
-  Future<void> replaceAll(Iterable<String> channelIds) {
+  /// preserving the given order. Also removes every (re)added id from the
+  /// not-for-me set, mirroring [setFavorite]'s single-id exclusion -- without
+  /// this, restoring a backup containing a channel the user has since marked
+  /// not-for-me would leave that channel in both sets at once, violating this
+  /// class's own mutually-exclusive-by-construction invariant.
+  Future<void> replaceAll(Iterable<String> channelIds) async {
     final normalized = <String>[];
     final seen = <String>{};
     for (final id in channelIds) {
@@ -107,7 +111,15 @@ class FavoriteChannelsStorage {
       if (trimmed.isEmpty || !seen.add(trimmed)) continue;
       normalized.add(trimmed);
     }
-    return _saveFavorites(normalized);
+    final notForMe = await getNotForMeChannelIds();
+    final notForMeChanged = normalized.fold(
+      false,
+      (changed, id) => notForMe.remove(id) || changed,
+    );
+    await Future.wait([
+      _saveFavorites(normalized),
+      if (notForMeChanged) _saveNotForMe(notForMe),
+    ]);
   }
 
   Future<void> _saveFavorites(List<String> ids) {
