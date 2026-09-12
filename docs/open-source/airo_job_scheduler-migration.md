@@ -44,3 +44,15 @@ cd packages/platform_worker_jobs
 flutter analyze  # 0 warnings
 flutter test     # 19/19 passed
 ```
+
+---
+
+## 4. Next Generation Roadmap: v2.0 Federated Architecture
+
+The approved v2.0 architecture specification is recorded in [`docs/superpowers/specs/2026-09-12-airo-job-scheduler-v2-design.md`](file:///Users/udaychauhan/workspace/airo/docs/superpowers/specs/2026-09-12-airo-job-scheduler-v2-design.md). Key milestones include:
+
+1. **Federated Plugin Split**: Splitting into `airo_job_scheduler_platform_interface`, `airo_job_scheduler_android` (WorkManager), `airo_job_scheduler_ios` (BGTaskScheduler), and `airo_job_scheduler_web`.
+2. **Persistent ACID Task Queue**: SQLite-backed job persistence surviving app restarts, low-memory OS terminations, and device reboots.
+3. **Exponential Backoff & Jitter**: Integrated `RetryPolicy` for failing network/I/O tasks.
+4. **Zero-GC Frame Yielding**: Cooperative scheduling for high-framerate interactive surfaces and Flutter game engine targets.
+
