@@ -277,6 +277,93 @@ void main() {
   );
 
   testWidgets(
+    'Menu key (D-pad) opens tile controls with a Remove option that calls '
+    'onDismiss',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      String? dismissed;
+      await pump(tester, sessions, onDismiss: (id) => dismissed = id);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('multiview-controls-one')),
+        findsOneWidget,
+      );
+      final removeOption = find.byKey(const ValueKey('multiview-remove-one'));
+      expect(removeOption, findsOneWidget);
+
+      // The dialog's option list overflows the default 800x600 test
+      // surface, so the Remove row starts out below the fold inside
+      // SimpleDialog's own scroll view -- scroll it into view before tapping.
+      await tester.ensureVisible(removeOption);
+      await tester.pumpAndSettle();
+      await tester.tap(removeOption);
+      await tester.pumpAndSettle();
+
+      expect(dismissed, 'one');
+      // The dialog closes after Remove is chosen.
+      expect(
+        find.byKey(const ValueKey('multiview-controls-one')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'long-press (touch) opens tile controls with a Remove option that calls '
+    'onDismiss -- proves the dismiss path works without D-pad focus',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      String? dismissed;
+      await pump(tester, sessions, onDismiss: (id) => dismissed = id);
+
+      // No keyboard/D-pad focus at all -- the corner dismiss button never
+      // renders for a touch-only user. Long-press is the touch equivalent
+      // of the remote's Menu key (TvFocusable wires onLongPress to the same
+      // onSecondaryAction callback as TvInputKey.menu).
+      expect(find.byKey(const ValueKey('multiview-dismiss-one')), findsNothing);
+
+      await tester.longPress(
+        find.byKey(const ValueKey('multiview-promote-one')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('multiview-controls-one')),
+        findsOneWidget,
+      );
+
+      final removeOption = find.byKey(const ValueKey('multiview-remove-one'));
+      await tester.ensureVisible(removeOption);
+      await tester.pumpAndSettle();
+      await tester.tap(removeOption);
+      await tester.pumpAndSettle();
+
+      expect(dismissed, 'one');
+    },
+  );
+
+  testWidgets(
+    'tile controls dialog omits Remove when onDismiss is not supplied',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      await pump(tester, sessions);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('multiview-remove-one')), findsNothing);
+    },
+  );
+
+  testWidgets(
     'empty slot is focusable and calls onEmptySlotTap when selected',
     (tester) async {
       final sessions = [session('one'), session('two')];
