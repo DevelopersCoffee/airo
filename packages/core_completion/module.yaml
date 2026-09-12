@@ -1,0 +1,15 @@
+name: core_completion
+owner: Framework Agent
+reviewers:
+  - Chief Architect
+  - Platform Architect
+  - Chief Security Officer
+  - Chief QA Officer
+  - Chief Open Source Officer
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+  - feature_mind
+  - feature_anya
+  - core_ai
+quality_gates: {}
