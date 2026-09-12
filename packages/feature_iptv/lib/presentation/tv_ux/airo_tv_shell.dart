@@ -90,7 +90,12 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// This only reaches layouts that actually draw a stage: the grid-first
   /// ten-foot layout (`showVideoStage: false`) renders no action row, so it
   /// currently has no Ways to Watch entry point at all.
-  final VoidCallback? onWaysToWatchTap;
+  ///
+  /// Typed as returning a `Future<void>` (rather than a plain [VoidCallback])
+  /// so the stage action row can wrap its invocation in [_whileSheetOpen] —
+  /// it opens a modal dialog just like Settings/Help/Layout, and needs the
+  /// same overlay-dismiss tracking for the same reason.
+  final Future<void> Function()? onWaysToWatchTap;
 
   /// Host-owned delivery for a frame-only PNG capture.
   final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
@@ -323,8 +328,10 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                   ),
             onScreenshot: widget.onShareVideoFrame == null
                 ? null
-                : () => _captureVideoFrame(context),
-            onWaysToWatch: widget.onWaysToWatchTap,
+                : () => _whileSheetOpen(_captureVideoFrame(context)),
+            onWaysToWatch: widget.onWaysToWatchTap == null
+                ? null
+                : () => _whileSheetOpen(widget.onWaysToWatchTap!()),
             child: KeyedSubtree(
               key: const ValueKey('airo-tv-video-capture-scope'),
               child: RepaintBoundary(
@@ -583,14 +590,17 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           if (!context.mounted) return;
           final replaceMessage = switch (replaceResult) {
             MultiviewToggleResult.added => '${channel.name} added to multiview',
-            MultiviewToggleResult.failed =>
+            // replace() only frees a slot if `oldChannelId` is still actually
+            // in the pool at call time. If that session already ended on its
+            // own while the dialog was open, no slot is freed and
+            // capacityReached is exactly what comes back -- give it the same
+            // feedback as failed rather than silently doing nothing.
+            MultiviewToggleResult.failed ||
+            MultiviewToggleResult.capacityReached =>
               '${channel.name} could not be opened in multiview.',
-            // added/failed are the only results replace() can return here:
-            // it never reports removed (replace never removes without also
-            // adding), and it can't recur into capacityReached since a slot
-            // was just freed before the add was attempted.
-            MultiviewToggleResult.removed ||
-            MultiviewToggleResult.capacityReached => null,
+            // replace() never reports removed: it never removes without also
+            // adding.
+            MultiviewToggleResult.removed => null,
           };
           if (replaceMessage == null) return;
           ScaffoldMessenger.of(context)
