@@ -152,9 +152,15 @@
   </url>
   <url>
     <loc>https://developerscoffee.github.io/airo/legal/privacy-policy/</loc>
-    <lastmod>2026-08-08</lastmod>
+    <lastmod>2026-09-15</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://developerscoffee.github.io/airo/legal/data-deletion/</loc>
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://developerscoffee.github.io/airo/legal/terms-conditions/</loc>
