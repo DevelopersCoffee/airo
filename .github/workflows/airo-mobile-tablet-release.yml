@@ -553,7 +553,9 @@ jobs:
             echo "| $aab_name | Store upload / draft release evidence | Google Play upload input |"
             echo "| SHA256SUMS | Public/internal verification | Checksum evidence after final renaming |"
             echo "| ${ARTIFACT_PREFIX}-${BUILD_NAME}-${BUILD_NUMBER}-Release-Manifest.json | Public/internal verification | Profile, package, source ref, workflow run, and checksum mapping |"
-            echo "| airo-mobile-tablet-debug-info-${PROFILE}-${RELEASE_VERSION} | Restricted internal artifact | Obfuscation symbol lookup |"
+            echo "| airo-mobile-tablet-debug-info-${PROFILE}-${RELEASE_VERSION} | Restricted internal artifact | Dart obfuscation symbol lookup |"
+            echo "| airo-mobile-tablet-r8-mapping-${PROFILE}-${RELEASE_VERSION} | Restricted internal artifact | R8/ProGuard mapping.txt for deobfuscating Play Console reports |"
+            echo "| airo-mobile-tablet-native-debug-symbols-${PROFILE}-${RELEASE_VERSION} | Restricted internal artifact | NDK crash symbolication upload for Play Console |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate signed build provenance
@@ -573,6 +575,33 @@ jobs:
         with:
           name: airo-mobile-tablet-debug-info-${{ env.PROFILE }}-${{ env.RELEASE_VERSION }}
           path: app/build/debug-info-${{ env.PROFILE }}/
+          retention-days: 90
+
+      # app/build/debug-info-* above is only Dart's --obfuscate symbol table
+      # (for Dart stack traces). The Play Console App Bundle Explorer's
+      # pre-launch report (e.g. "improve app with bitmap image optimization",
+      # "R8 optimization rate") names *Java/Kotlin* classes through R8's own
+      # renaming, and those obfuscated names are worthless without the R8
+      # mapping.txt this step retains -- without it, a report naming a class
+      # like "ar3.b0" can never be traced back to the real dependency that
+      # produced it, on this release or any future one.
+      - name: Upload R8/ProGuard mapping
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-mobile-tablet-r8-mapping-${{ env.PROFILE }}-${{ env.RELEASE_VERSION }}
+          path: app/build/app/outputs/mapping/release/mapping.txt
+          retention-days: 90
+
+      - name: Upload native debug symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-mobile-tablet-native-debug-symbols-${{ env.PROFILE }}-${{ env.RELEASE_VERSION }}
+          # Written by the AAB's bundleRelease task (ndk.debugSymbolLevel =
+          # FULL in app/android/app/build.gradle.kts). Attach this zip in
+          # Play Console under App bundle explorer > Downloads > Upload
+          # native debug symbols so NDK crashes symbolicate and the
+          # optimization score stops flagging the gap.
+          path: app/android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
           retention-days: 90
 
   play-upload:

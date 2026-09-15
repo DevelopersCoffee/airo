@@ -17,6 +17,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.telephony.TelephonyManager
+import androidx.activity.enableEdgeToEdge
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -55,6 +56,14 @@ class MainActivity : AudioServiceFragmentActivity() {
     private lateinit var mediaAssetAnalyzerPlugin: AiroMediaAssetAnalyzerPlugin
     private lateinit var localMediaPlugin: AiroLocalMediaPlugin
     private lateinit var castReceiverMultiviewPlugin: AiroCastReceiverMultiviewPlugin
+
+    // Android 15 (targetSdk 35) enforces edge-to-edge by default; calling this
+    // explicitly (rather than relying on the enforcement fallback) is what
+    // Play Console's pre-launch report checks for.
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+    }
 
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
