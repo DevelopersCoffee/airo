@@ -392,6 +392,11 @@ dependencies {
     // Core library desugaring for flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
+    // enableEdgeToEdge() for MainActivity/CoinsActivity/AnyaActivity (Android
+    // 15 / targetSdk 35 edge-to-edge enforcement -- Play Console pre-launch
+    // report flags this if not called explicitly).
+    implementation("androidx.activity:activity-ktx:1.9.3")
+
     testImplementation("junit:junit:4.13.2")
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
