@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Deletion — Aika Stream | DevelopersCoffee</title>
+  <meta name="description" content="How to delete Aika Stream data. Aika Stream by DevelopersCoffee stores playlist and preference data on your device. Request deletion by email or clear the app.">
+
+  <link rel="llms-txt" type="text/markdown" href="../../llms.txt">
+  <link rel="agent" type="text/markdown" href="../../llms.txt">
+
+  <meta name="theme-color" content="#071010">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://developerscoffee.github.io/airo/legal/data-deletion/">
+  <meta property="og:title" content="Data Deletion — Aika Stream">
+  <meta property="og:description" content="Delete Aika Stream local data, or email DevelopersCoffee to request deletion. The app does not create developer-hosted accounts.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/airo-tv/airo-icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/airo-tv/site.css">
+  <script defer src="../../assets/airo-tv/third-party/lucide.min.js"></script>
+  <script defer src="../../assets/airo-tv/site.js"></script>
+  <style>
+    .legal-hero {
+      padding: calc(var(--header) + 56px) 0 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .legal-hero .eyebrow { margin-bottom: 12px; }
+    .legal-hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      margin: 0 0 16px;
+      line-height: 1.1;
+    }
+    .legal-hero .meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .legal-body { padding: 64px 0 96px; }
+    .legal-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 48px 64px;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .legal-grid { grid-template-columns: 1fr; }
+      .legal-toc  { display: none; }
+    }
+    .legal-toc {
+      position: sticky;
+      top: calc(var(--header) + 24px);
+    }
+    .legal-toc h2 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+    .legal-toc ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .legal-toc a {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-decoration: none;
+      line-height: 1.5;
+      display: block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border-left: 2px solid transparent;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .legal-toc a:hover {
+      color: var(--text);
+      border-left-color: var(--green);
+      background: var(--surface);
+    }
+    .legal-prose { min-width: 0; }
+    .legal-prose section { margin-bottom: 56px; }
+    .legal-prose h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      scroll-margin-top: calc(var(--header) + 24px);
+    }
+    .legal-prose h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 24px 0 10px;
+      color: var(--text);
+    }
+    .legal-prose p {
+      color: var(--muted);
+      margin: 0 0 14px;
+      line-height: 1.7;
+    }
+    .legal-prose ul, .legal-prose ol {
+      color: var(--muted);
+      padding-left: 20px;
+      margin: 0 0 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      line-height: 1.6;
+    }
+    .legal-prose strong { color: var(--text); }
+    .legal-prose a { color: var(--green); text-decoration: none; }
+    .legal-prose a:hover { text-decoration: underline; }
+    .legal-prose code {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: .875em;
+      color: var(--text);
+    }
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 0 0 20px;
+    }
+    .callout.callout-warn { border-left-color: var(--gold); }
+    .callout p { margin: 0; }
+    .legal-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      margin-bottom: 32px;
+      transition: color .15s;
+    }
+    .legal-back:hover { color: var(--green); }
+    .request-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 8px 0 20px;
+    }
+    .request-actions a {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .request-actions a:hover { text-decoration: none; }
+    .request-actions .button-primary {
+      background: var(--green);
+      color: #041010;
+    }
+    .request-actions .button-secondary {
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: var(--surface);
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="../../" aria-label="Airo home">
+        <img src="../../assets/airo-tv/airo-icon.svg" alt="">
+        <span>Airo <small>Modular platform</small></span>
+      </a>
+      <button class="menu-button" type="button" aria-label="Open navigation" aria-controls="site-navigation" aria-expanded="false" data-menu-button>
+        <i data-lucide="menu" aria-hidden="true"></i>
+      </button>
+      <nav class="site-nav" id="site-navigation" aria-label="Primary navigation" data-navigation>
+        <a href="../../#architecture">Architecture</a>
+        <a href="../../#foundations">Foundations</a>
+        <a href="../../#modules">Modules</a>
+        <a href="../../#community">Community</a>
+        <a href="../../#roadmap">Roadmap</a>
+        <a class="button button-primary" href="../../aika-stream/">Explore Aika Stream <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="legal-hero">
+      <div class="container">
+        <p class="eyebrow">Legal</p>
+        <h1>Delete Aika Stream data</h1>
+        <p class="meta">Last updated: <time datetime="2026-09-15">September 15, 2026</time> &nbsp;·&nbsp; Aika Stream by DevelopersCoffee</p>
+      </div>
+    </div>
+
+    <div class="legal-body">
+      <div class="container">
+        <a class="legal-back" href="../privacy-policy/">
+          <i data-lucide="arrow-left" aria-hidden="true"></i> Privacy policy
+        </a>
+
+        <div class="legal-grid">
+          <aside class="legal-toc" aria-label="Page contents">
+            <h2>Contents</h2>
+            <ol>
+              <li><a href="#request">Request deletion</a></li>
+              <li><a href="#what-we-hold">What DevelopersCoffee holds</a></li>
+              <li><a href="#delete-on-device">Delete data on your device</a></li>
+              <li><a href="#firebase">Firebase installation ID</a></li>
+              <li><a href="#accounts">Accounts</a></li>
+              <li><a href="#contact">Contact</a></li>
+            </ol>
+          </aside>
+
+          <article class="legal-prose">
+            <section id="request">
+              <h2>Request deletion</h2>
+              <div class="callout">
+                <p><strong>This page is the Google Play data-deletion resource for Aika Stream</strong> (<code>com.developerscoffee.tv.midas</code>), published by <strong>DevelopersCoffee</strong>.</p>
+              </div>
+              <p>Use this page to request deletion of Aika Stream data. You do not need to reinstall the app. Email is enough.</p>
+              <div class="request-actions">
+                <a class="button-primary" href="mailto:coffee.devloper@gmail.com?subject=Aika%20Stream%20data%20deletion%20request">Email a deletion request</a>
+                <a class="button-secondary" href="../privacy-policy/">Read the privacy policy</a>
+              </div>
+              <p>Send the request from a mailbox we can reply to. Include the words <strong>Aika Stream</strong> and, if you have it, the Google Play order or device model. We respond within <strong>30 days</strong>. There is no developer-hosted Aika Stream account to cancel first.</p>
+            </section>
+
+            <section id="what-we-hold">
+              <h2>What DevelopersCoffee holds</h2>
+              <p>Aika Stream is a local media player for playlists you add. DevelopersCoffee does <strong>not</strong> collect, receive, or store playlist URLs, channel lists, favorites, watch history, names, emails, or payment data for TV playback.</p>
+              <p>That means there is usually <strong>no profile on our servers to erase</strong>. A deletion request still gets a human reply confirming that, or erasing any record we unexpectedly hold (for example an email you sent us).</p>
+            </section>
+
+            <section id="delete-on-device">
+              <h2>Delete data on your device</h2>
+              <p>Everything Aika Stream stores for playback lives on the device. Any of these paths erase it:</p>
+              <ol>
+                <li><strong>Android / Google TV:</strong> Settings → Apps → Aika Stream → Storage → Clear storage (or Clear data). This removes saved sources and credentials, guide URLs, favorites, watch history, and preferences.</li>
+                <li><strong>Uninstall Aika Stream.</strong> Uninstalling removes app storage, including the Firebase installation ID described below.</li>
+              </ol>
+              <p>Clearing storage or uninstalling is immediate and does not require contacting us.</p>
+            </section>
+
+            <section id="firebase">
+              <h2>Firebase installation ID</h2>
+              <p>Aika Stream includes the Firebase core library so the app can start. It does not include Firebase Analytics, Crashlytics, or Cloud Messaging. Where Firebase creates a random <strong>Firebase installation ID</strong>, that identifier is sent to Google under the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a>. DevelopersCoffee does not receive it, does not link it to you, and does not use it for advertising.</p>
+              <p>Clearing app storage or uninstalling Aika Stream resets that identifier. A deletion email cannot delete a Google-held installation ID on your behalf; use clear-data or uninstall for that.</p>
+            </section>
+
+            <section id="accounts">
+              <h2>Accounts</h2>
+              <p>Aika Stream does <strong>not</strong> offer account creation or sign-in for playback. There is no DevelopersCoffee username, password, or cloud playlist account associated with the app.</p>
+              <p>If you later used a playlist provider (Xtream, Jellyfin, or similar) inside Aika Stream, those credentials are stored only on the device. Clear storage or uninstall to remove them. We cannot delete an account that exists only on a third-party provider you chose.</p>
+            </section>
+
+            <section id="contact">
+              <h2>Contact</h2>
+              <ul>
+                <li><strong>Developer:</strong> DevelopersCoffee</li>
+                <li><strong>App:</strong> Aika Stream</li>
+                <li><strong>Package:</strong> <code>com.developerscoffee.tv.midas</code></li>
+                <li><strong>Email:</strong> <a href="mailto:coffee.devloper@gmail.com?subject=Aika%20Stream%20data%20deletion%20request">coffee.devloper@gmail.com</a></li>
+                <li><strong>Privacy policy:</strong> <a href="../privacy-policy/">developerscoffee.github.io/airo/legal/privacy-policy/</a></li>
+              </ul>
+            </section>
+          </article>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer"><div class="container"><div class="footer-grid"><div><a class="brand" href="../../"><img src="../../assets/airo-tv/airo-icon.svg" alt=""><span>Airo</span></a><h2>Focused experiences. Shared foundations.</h2><p>Aika Stream is the first focused product in the Airo ecosystem.</p></div><div class="footer-col"><h3>Platform</h3><a href="../../#architecture">Architecture</a><a href="../../#foundations">Foundations</a><a href="../../#modules">Modules</a></div><div class="footer-col"><h3>Explore</h3><a href="../../aika-stream/">Aika Stream</a><a href="../../#community">Community</a><a href="../../#roadmap">Roadmap</a></div><div class="footer-col"><h3>Trust</h3><a href="../privacy-policy/">Privacy</a><a href="./">Data deletion</a><a href="../terms-conditions/">Terms</a></div></div><div class="footer-bottom"><span>&copy; <span data-current-year>2026</span> DevelopersCoffee</span><span>Airo is built in public. Roadmap scope may change as evidence changes.</span></div></div></footer>
+</body>
+</html>
