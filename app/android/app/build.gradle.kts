@@ -452,16 +452,16 @@ dependencies {
     // tasks/tv-zero-copy-cast-phase2-task3-media3-proposal.md for the full
     // dependency proposal (versions, size, license) this was confirmed against.
     if (isTvVariant) {
-        implementation("androidx.media3:media3-exoplayer:1.11.0")
-        implementation("androidx.media3:media3-common:1.11.0")
-        implementation("androidx.media3:media3-datasource:1.11.0")
-        implementation("androidx.media3:media3-exoplayer-hls:1.11.0")
+        implementation("androidx.media3:media3-exoplayer:1.11.1")
+        implementation("androidx.media3:media3-common:1.11.1")
+        implementation("androidx.media3:media3-datasource:1.11.1")
+        implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
 
         // Wave B (F4.2): connection pooling, keepalive, custom DNS via
         // okhttp3.Dns. See tasks/tv-zero-copy-cast-phase2-waveB-task1-okhttp-proposal.md
         // for the full proposal this was confirmed against.
         implementation("com.squareup.okhttp3:okhttp:5.5.0")
-        implementation("androidx.media3:media3-datasource-okhttp:1.11.0")
+        implementation("androidx.media3:media3-datasource-okhttp:1.11.1")
         testImplementation("com.squareup.okhttp3:okhttp:5.5.0")
         // Test-only, never ships in the APK. Standard purpose-built local
         // HTTP server for exercising OkHttp code -- switched to from
