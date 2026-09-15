@@ -163,7 +163,7 @@ dependencies:
     path: ../packages/feature_iptv
   platform_playlist:
     path: ../packages/platform_playlist
-  dpad_qualification: ^1.0.0
+  dpad_qualification: ^1.1.0
   platform_channels:
     path: ../packages/platform_channels
   platform_player:
