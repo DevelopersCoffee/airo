@@ -5,9 +5,18 @@
 class AikaAdPolicy {
   AikaAdPolicy({
     DateTime Function()? clock,
-    this.sessionWarmup = const Duration(minutes: 5),
+    Duration? sessionWarmup,
     this.cooldown = const Duration(minutes: 30),
-  }) : _clock = clock ?? DateTime.now;
+  }) : sessionWarmup =
+           sessionWarmup ?? const Duration(seconds: aikaAdsWarmupSeconds),
+       _clock = clock ?? DateTime.now;
+
+  /// Override with `--dart-define=AIKA_ADS_WARMUP_SECONDS=20` on a local
+  /// debug run. Play AABs keep the 5-minute default.
+  static const int aikaAdsWarmupSeconds = int.fromEnvironment(
+    'AIKA_ADS_WARMUP_SECONDS',
+    defaultValue: 300,
+  );
 
   static const Duration defaultSessionWarmup = Duration(minutes: 5);
   static const Duration defaultCooldown = Duration(minutes: 30);
@@ -21,6 +30,18 @@ class AikaAdPolicy {
 
   DateTime? get sessionStartedAt => _sessionStartedAt;
   DateTime? get lastImpressionAt => _lastImpressionAt;
+
+  Duration get remainingWarmup {
+    final sessionStart = _sessionStartedAt;
+    if (sessionStart == null) {
+      return sessionWarmup;
+    }
+    final elapsed = _clock().difference(sessionStart);
+    if (elapsed >= sessionWarmup) {
+      return Duration.zero;
+    }
+    return sessionWarmup - elapsed;
+  }
 
   void startSession([DateTime? at]) {
     _sessionStartedAt = at ?? _clock();

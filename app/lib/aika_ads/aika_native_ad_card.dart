@@ -28,6 +28,7 @@ class _AikaNativeAdCardState extends State<AikaNativeAdCard> {
   NativeAd? _nativeAd;
   bool _isAdLoaded = false;
   bool _dismissed = false;
+  Timer? _warmupRetry;
 
   bool get _browse => widget.placement == AikaAdPlacement.browse;
 
@@ -46,10 +47,29 @@ class _AikaNativeAdCardState extends State<AikaNativeAdCard> {
   }
 
   void _loadAd() {
-    if (!AikaAdManager.instance.shouldShowAd(
+    if (_dismissed || _isAdLoaded) {
+      return;
+    }
+    final decision = AikaAdManager.instance.policy.decide(
+      isWeb: false,
       isLeanback: widget.isLeanback,
       isCasting: widget.isCasting,
-    )) {
+      sdkReady: AikaAdManager.instance.isSdkReady,
+    );
+    if (!decision.allowed) {
+      debugPrint('Aika native ad deferred: ${decision.reason}');
+      if (decision.reason == 'warmup') {
+        final wait = AikaAdManager.instance.policy.remainingWarmup;
+        _warmupRetry?.cancel();
+        _warmupRetry = Timer(
+          wait < const Duration(seconds: 1) ? const Duration(seconds: 1) : wait,
+          () {
+            if (mounted) {
+              _loadAd();
+            }
+          },
+        );
+      }
       return;
     }
 
@@ -84,6 +104,7 @@ class _AikaNativeAdCardState extends State<AikaNativeAdCard> {
             ad.dispose();
             return;
           }
+          debugPrint('Aika native ad loaded (${widget.placement.name})');
           setState(() {
             _isAdLoaded = true;
           });
@@ -159,6 +180,7 @@ class _AikaNativeAdCardState extends State<AikaNativeAdCard> {
 
   @override
   void dispose() {
+    _warmupRetry?.cancel();
     _nativeAd?.dispose();
     super.dispose();
   }

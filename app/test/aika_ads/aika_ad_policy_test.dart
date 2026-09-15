@@ -38,9 +38,11 @@ void main() {
       policy.startSession(now);
 
       expect(decide().reason, 'warmup');
+      expect(policy.remainingWarmup, const Duration(minutes: 5));
 
       now = now.add(const Duration(minutes: 5));
       expect(decide().allowed, isTrue);
+      expect(policy.remainingWarmup, Duration.zero);
     });
 
     test('enforces a 30-minute impression cooldown', () {

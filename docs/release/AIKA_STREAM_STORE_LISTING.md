@@ -30,6 +30,7 @@ package-ID cutover and human console actions.
 | Category | Video Players & Editors |
 | Tags / keywords | M3U, M3U8, playlist player, Android TV, Google TV, Chromecast, Cast, HLS |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
+| Data deletion URL | `https://developerscoffee.github.io/airo/legal/data-deletion/` |
 | Website | `https://developerscoffee.github.io/airo/aika-stream/` |
 | Content rating | Complete the IARC questionnaire in Play Console before submission. |
 

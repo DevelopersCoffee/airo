@@ -15,6 +15,7 @@ These URLs were verified with HTTP 200 responses on July 14, 2026.
 | Page | URL | Status |
 | --- | --- | --- |
 | Privacy Policy | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Live |
+| Data deletion | `https://developerscoffee.github.io/airo/legal/data-deletion/` | Ship with the Aika Stream Play listing |
 | Terms & Conditions | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Live |
 
 The Terms page opens with the IPTV content disclaimer: Aika Stream is a media
@@ -50,6 +51,7 @@ The Android Gradle config currently uses:
 | Short description | `Play your own authorized playlists on Android TV.` | Ready in [Aika Stream Store Listing Metadata](./AIKA_STREAM_STORE_LISTING.md) |
 | Full description | Final copy in [Aika Stream Store Listing Metadata](./AIKA_STREAM_STORE_LISTING.md) | Ready pending stakeholder approval |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Ready |
+| Data deletion URL | `https://developerscoffee.github.io/airo/legal/data-deletion/` | Ready |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Ready |
 | Content disclaimer | User-provided IPTV content only; no bundled streams or playlists | Ready |
 | App icon | Android launcher icon present | Needs Play 512x512 asset export before console submission |

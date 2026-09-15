@@ -50,4 +50,5 @@ Offline, zero-ad entertainment built directly into the super app.
 ## 🔒 6. Legal & Privacy
 
 - [Privacy Policy](https://developerscoffee.github.io/airo/legal/privacy-policy/): 100% on-device data processing commitment.
+- [Data Deletion](https://developerscoffee.github.io/airo/legal/data-deletion/): Google Play data-deletion resource for Aika Stream.
 - [Terms & Conditions](https://developerscoffee.github.io/airo/legal/terms-conditions/): Open-source licensing.
