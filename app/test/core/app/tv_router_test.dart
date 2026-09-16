@@ -495,11 +495,14 @@ void main() {
   });
 
   testWidgets('redirects legacy login route to Home', (tester) async {
-    await pumpTvRouter(
-      tester,
-      initialLocation: TvRouteNames.legacyLogin,
-      surfaceSize: const Size(1280, 720),
-    );
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTvRouter(tester, initialLocation: TvRouteNames.legacyLogin);
 
     expect(find.text('Your media. Your player.'), findsOneWidget);
     expect(find.byType(IPTVScreen), findsNothing);
@@ -511,11 +514,14 @@ void main() {
     // delivers deeper paths under /airo/iptv even though only the exact path
     // is routable. These used to hit go_router's default error page, which
     // renders outside TvShell — no rail, and BACK closes the app.
-    await pumpTvRouter(
-      tester,
-      initialLocation: '/airo/iptv/watch/12345',
-      surfaceSize: const Size(1280, 720),
-    );
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTvRouter(tester, initialLocation: '/airo/iptv/watch/12345');
     await tester.pumpAndSettle();
 
     expect(find.text('That link could not be opened'), findsOneWidget);
@@ -542,6 +548,20 @@ void main() {
     expect(find.text('No favorite channels yet'), findsOneWidget);
   });
 
+  testWidgets('compact default Home is the IPTV explorer', (tester) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.home,
+      surfaceSize: const Size(390, 844),
+    );
+
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Add playlist URL'), findsOneWidget);
+    expect(find.byType(IptvBottomNavBar), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsNothing);
+  });
+
   testWidgets('compact settings route shows a back button to Home', (
     tester,
   ) async {
@@ -557,8 +577,9 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pumpAndSettle();
 
-    expect(find.text('Your media. Your player.'), findsOneWidget);
-    expect(find.byType(IPTVScreen), findsNothing);
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
@@ -574,8 +595,9 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
-    expect(find.text('Your media. Your player.'), findsOneWidget);
-    expect(find.byType(IPTVScreen), findsNothing);
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
@@ -591,8 +613,9 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Your media. Your player.'), findsOneWidget);
-    expect(find.byType(IPTVScreen), findsNothing);
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
@@ -608,8 +631,9 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
 
-      expect(find.text('Your media. Your player.'), findsOneWidget);
-      expect(find.byType(IPTVScreen), findsNothing);
+      expect(find.text('Add your playlist'), findsOneWidget);
+      expect(find.byType(IPTVScreen), findsOneWidget);
+      expect(find.text('Your media. Your player.'), findsNothing);
       expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
     },
   );

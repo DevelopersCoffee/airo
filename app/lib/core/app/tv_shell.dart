@@ -90,6 +90,18 @@ class _TvShellState extends ConsumerState<TvShell> {
     // the sidebar was painted on top of the video and also stole D-pad
     // focus that should land on the player's own transport controls.
     final isPlayerFullscreen = ref.watch(isFullscreenModeProvider);
+    final router = GoRouter.maybeOf(context);
+    final location = router == null
+        ? TvRouteNames.home
+        : GoRouterState.of(context).matchedLocation;
+    // Sibling shell routes have canPop == false. Without consuming BACK,
+    // Android finishes the activity (store-rejecting). Watch owns its own
+    // PopScope so stop() still runs; fullscreen Back exits zen mode.
+    final consumeBack =
+        router != null &&
+        location != TvRouteNames.home &&
+        !isPlayerFullscreen &&
+        !isTvWatchRoute(location);
 
     // Hold the chrome inside the title-safe band so an overscanning TV cannot
     // crop the navigation rail or the top-right actions. Fullscreen playback is
@@ -125,7 +137,7 @@ class _TvShellState extends ConsumerState<TvShell> {
       ],
     );
 
-    return Scaffold(
+    final scaffold = Scaffold(
       body: isPlayerFullscreen
           ? body
           : Padding(
@@ -133,6 +145,18 @@ class _TvShellState extends ConsumerState<TvShell> {
               padding: tvTitleSafeInsets(MediaQuery.sizeOf(context)),
               child: body,
             ),
+    );
+
+    if (!consumeBack) return scaffold;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        ref.read(tvNavigationIndexProvider.notifier).state = 0;
+        context.go(TvRouteNames.home);
+      },
+      child: scaffold,
     );
   }
 

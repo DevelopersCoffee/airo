@@ -54,36 +54,40 @@ class TvRouter {
             GoRoute(
               path: TvRouteNames.home,
               name: 'tv_home',
-              builder: (context, state) => const _TvHomePlaceholder(),
+              builder: (context, state) => const _AdaptiveHomeScreen(),
             ),
-            GoRoute(
-              path: '/airo/iptv',
-              builder: (context, state) => _WatchPlaybackScope(
-                child: _AdaptiveLiveTvScreen(
-                  deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+            // One Watch session for /live, /player, and the IPTV deep-link
+            // aliases. Moving between those URLs must not remount (and
+            // stop) playback; leaving the group to Home/Guide/Settings
+            // still disposes the scope.
+            ShellRoute(
+              builder: (context, state, child) =>
+                  _WatchPlaybackScope(child: child),
+              routes: [
+                GoRoute(
+                  path: '/airo/iptv',
+                  builder: (context, state) => _AdaptiveLiveTvScreen(
+                    deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+                  ),
                 ),
-              ),
-            ),
-            GoRoute(
-              path: '/iptv',
-              builder: (context, state) => _WatchPlaybackScope(
-                child: _AdaptiveLiveTvScreen(
-                  deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+                GoRoute(
+                  path: '/iptv',
+                  builder: (context, state) => _AdaptiveLiveTvScreen(
+                    deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+                  ),
                 ),
-              ),
-            ),
-            // Kept for deep links and tests. Watch itself is `/player`.
-            GoRoute(
-              path: TvRouteNames.live,
-              name: 'tv_live',
-              builder: (context, state) =>
-                  const _WatchPlaybackScope(child: _AdaptiveLiveTvScreen()),
-            ),
-            GoRoute(
-              path: TvRouteNames.player,
-              name: 'tv_player',
-              builder: (context, state) =>
-                  const _WatchPlaybackScope(child: _AdaptiveLiveTvScreen()),
+                // Kept for deep links and tests. Watch itself is `/player`.
+                GoRoute(
+                  path: TvRouteNames.live,
+                  name: 'tv_live',
+                  builder: (context, state) => const _AdaptiveLiveTvScreen(),
+                ),
+                GoRoute(
+                  path: TvRouteNames.player,
+                  name: 'tv_player',
+                  builder: (context, state) => const _AdaptiveLiveTvScreen(),
+                ),
+              ],
             ),
             GoRoute(
               path: TvRouteNames.guide,
@@ -116,6 +120,20 @@ class TvRouter {
         ),
       ],
     );
+  }
+}
+
+/// Compact (Pixel 9 / phone) Home is the existing IPTV explorer. 10-foot
+/// Home stays the silent stub until Task 4's QR dashboard.
+class _AdaptiveHomeScreen extends StatelessWidget {
+  const _AdaptiveHomeScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    if (_usesCompactPhoneLayout(context)) {
+      return const _AdaptiveLiveTvScreen();
+    }
+    return const _TvHomePlaceholder();
   }
 }
 
