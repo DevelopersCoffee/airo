@@ -1,14 +1,16 @@
 name: core_pairing
-description: Monorepo shim re-exporting airo_pairing.
-version: 0.0.1
-publish_to: none
+description: Secure TV and phone QR/PIN device pairing, ticket verification, and secret handoff.
+version: 1.0.0
+homepage: https://developerscoffee.com
+repository: https://github.com/DevelopersCoffee/airo_pairing
+issue_tracker: https://github.com/DevelopersCoffee/airo_pairing/issues
 
 environment:
   sdk: ^3.12.2
   flutter: ">=1.17.0"
 
 dependencies:
-  airo_pairing: ^1.0.0
+  airo_pairing: ^1.2.0
   flutter:
     sdk: flutter
 

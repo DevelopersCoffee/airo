@@ -1,14 +1,16 @@
 name: platform_calendar
-description: Monorepo shim re-exporting airo_calendar.
-version: 0.1.0
-publish_to: none
+description: Cross-platform native device calendar synchronization and event abstraction.
+version: 1.0.0
+homepage: https://developerscoffee.com
+repository: https://github.com/DevelopersCoffee/airo_calendar
+issue_tracker: https://github.com/DevelopersCoffee/airo_calendar/issues
 
 environment:
   sdk: ^3.12.2
   flutter: ">=3.0.0"
 
 dependencies:
-  airo_calendar: ^1.0.0
+  airo_calendar: ^1.0.1
   flutter:
     sdk: flutter
 
