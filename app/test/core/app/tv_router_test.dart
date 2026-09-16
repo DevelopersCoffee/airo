@@ -196,7 +196,6 @@ void main() {
         ],
       );
 
-      final railRect = tester.getRect(find.byKey(const Key('tv-sidebar-nav')));
       final leadingControls = <String, Finder>{
         'Search': find.byKey(const ValueKey('filter-chip-search')),
         'Sort': find.byKey(const ValueKey('channel-sort-trigger')),
@@ -225,9 +224,12 @@ void main() {
         final renderObject = primary!.context!.findRenderObject()! as RenderBox;
         final primaryRect =
             renderObject.localToGlobal(Offset.zero) & renderObject.size;
+        final focusedRail = tester.getRect(
+          find.byKey(const Key('tv-sidebar-nav')),
+        );
         expect(
           primaryRect.center.dx,
-          lessThan(railRect.right),
+          lessThan(focusedRail.right),
           reason: 'LEFT from ${entry.key} must enter the rail',
         );
       }
@@ -471,7 +473,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const Key('tv-sidebar-nav')),
-        matching: find.text('Guide'),
+        matching: find.byIcon(Icons.grid_view_outlined),
       ),
     );
     await tester.pumpAndSettle();
@@ -485,7 +487,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const Key('tv-sidebar-nav')),
-        matching: find.text('Home'),
+        matching: find.byIcon(Icons.home_outlined),
       ),
     );
     await tester.pumpAndSettle();

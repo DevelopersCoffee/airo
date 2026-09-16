@@ -19,7 +19,12 @@ import 'tv_route_names.dart';
 
 /// Provider for current TV navigation index
 final tvNavigationIndexProvider = StateProvider<int>((ref) => 0);
-const _tvNavigationRailWidth = 88.0;
+
+/// Collapsed rail: icons only. `xxxl` (64) + `md` (16) = 80.
+const _tvRailCollapsedWidth = AiroSpacing.xxxl + AiroSpacing.md;
+
+/// Expanded rail: brand + destination labels. `tvChannelCardW` (200) + `xl` (32) = 240.
+const _tvRailExpandedWidth = AiroSpacing.tvChannelCardW + AiroSpacing.xl;
 
 /// Coalesces [VideoPlayerStreamingService.stop] for one Watch session so
 /// the awaited leave path and dispose's safety net share a single call.
@@ -71,16 +76,42 @@ class TvShell extends ConsumerStatefulWidget {
 class _TvShellState extends ConsumerState<TvShell> {
   late final List<FocusNode> _railFocusNodes = List.generate(
     _tvNavDestinations.length,
-    (index) =>
-        FocusNode(debugLabel: 'TV rail ${_tvNavDestinations[index].label}'),
+    (index) => FocusNode(
+      debugLabel: 'TV rail ${_tvNavDestinations[index].labelFor(ShellId.tv)}',
+    ),
   );
+  final FocusNode _logoFocusNode = FocusNode(debugLabel: 'TV rail logo');
+  FocusNode? _lastContentFocus;
+  bool _railFocused = false;
+
+  double get _railWidth =>
+      _railFocused ? _tvRailExpandedWidth : _tvRailCollapsedWidth;
+
+  @override
+  void initState() {
+    super.initState();
+    _logoFocusNode.addListener(_syncRailFocus);
+    for (final node in _railFocusNodes) {
+      node.addListener(_syncRailFocus);
+    }
+  }
 
   @override
   void dispose() {
+    _logoFocusNode.removeListener(_syncRailFocus);
+    _logoFocusNode.dispose();
     for (final node in _railFocusNodes) {
+      node.removeListener(_syncRailFocus);
       node.dispose();
     }
     super.dispose();
+  }
+
+  void _syncRailFocus() {
+    final focused =
+        _logoFocusNode.hasFocus || _railFocusNodes.any((node) => node.hasFocus);
+    if (!mounted || focused == _railFocused) return;
+    setState(() => _railFocused = focused);
   }
 
   @override
@@ -116,7 +147,7 @@ class _TvShellState extends ConsumerState<TvShell> {
             onKeyEvent: _handleContentKeyEvent,
             child: Padding(
               padding: EdgeInsets.only(
-                left: isPlayerFullscreen ? 0 : _tvNavigationRailWidth,
+                left: isPlayerFullscreen ? 0 : _railWidth,
               ),
               child: widget.child,
             ),
@@ -127,11 +158,18 @@ class _TvShellState extends ConsumerState<TvShell> {
             left: 0,
             top: 0,
             bottom: 0,
-            child: _TvNavigationRail(
-              currentIndex: currentIndex,
-              focusNodes: _railFocusNodes,
-              onDestinationSelected: (index) =>
-                  _selectDestination(context, index),
+            child: Focus(
+              canRequestFocus: false,
+              onKeyEvent: _handleRailKeyEvent,
+              child: _TvNavigationRail(
+                width: _railWidth,
+                expanded: _railFocused,
+                currentIndex: currentIndex,
+                logoFocusNode: _logoFocusNode,
+                focusNodes: _railFocusNodes,
+                onDestinationSelected: (index) =>
+                    _selectDestination(context, index),
+              ),
             ),
           ),
       ],
@@ -174,7 +212,21 @@ class _TvShellState extends ConsumerState<TvShell> {
     final target =
         _railFocusNodes[currentIndex.clamp(0, _railFocusNodes.length - 1)];
     if (!target.canRequestFocus) return KeyEventResult.ignored;
+    _lastContentFocus = primary;
     target.requestFocus();
+    return KeyEventResult.handled;
+  }
+
+  KeyEventResult _handleRailKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.arrowRight) {
+      return KeyEventResult.ignored;
+    }
+    final last = _lastContentFocus;
+    if (last == null || !last.canRequestFocus) {
+      return KeyEventResult.ignored;
+    }
+    last.requestFocus();
     return KeyEventResult.handled;
   }
 
@@ -185,11 +237,16 @@ class _TvShellState extends ConsumerState<TvShell> {
   bool _isLeadingEdgeFocus(FocusNode primary) {
     final primaryRect = _focusRect(primary);
     if (primaryRect == null) return false;
+    final contentLeft = _contentLeftInset();
     for (final candidate in FocusManager.instance.rootScope.descendants) {
-      if (identical(candidate, primary) || !candidate.canRequestFocus) continue;
+      if (identical(candidate, primary) ||
+          !candidate.canRequestFocus ||
+          _isRailFocus(candidate)) {
+        continue;
+      }
       final candidateRect = _focusRect(candidate);
       if (candidateRect == null ||
-          candidateRect.center.dx < _tvNavigationRailWidth ||
+          candidateRect.center.dx < contentLeft ||
           candidateRect.center.dx >= primaryRect.center.dx - 1) {
         continue;
       }
@@ -199,6 +256,30 @@ class _TvShellState extends ConsumerState<TvShell> {
       if (overlapsVerticalBeam) return false;
     }
     return true;
+  }
+
+  /// Global x of the content region's left edge: title-safe inset plus the
+  /// current (collapsed or expanded) rail width. Leading-edge LEFT ignores
+  /// focusables inside the rail so the bridge still fires after expand.
+  double _contentLeftInset() {
+    return tvTitleSafeInsets(MediaQuery.sizeOf(context)).left + _railWidth;
+  }
+
+  bool _isRailFocus(FocusNode node) {
+    if (_railFocusNodes.contains(node) || identical(node, _logoFocusNode)) {
+      return true;
+    }
+    final context = node.context;
+    if (context == null) return false;
+    var inRail = false;
+    context.visitAncestorElements((element) {
+      if (element.widget.key == const Key('tv-sidebar-nav')) {
+        inRail = true;
+        return false;
+      }
+      return true;
+    });
+    return inRail;
   }
 
   Rect? _focusRect(FocusNode node) {
@@ -246,16 +327,21 @@ class _TvShellState extends ConsumerState<TvShell> {
 /// chrome (D-pad focus, left accent bar, width) stays TV-specific here.
 final _tvNavDestinations = iptvNavigationDestinations;
 
-/// TV navigation sidebar with D-pad focus support, matching the Airo TV
-/// design handoff's rail: a green square logo mark up top, then icon+label
-/// stacks with a left accent bar on the active destination.
+/// TV navigation sidebar with D-pad focus support: collapsed icons, expanded
+/// icon+label with a left accent bar on the active destination.
 class _TvNavigationRail extends StatelessWidget {
+  final double width;
+  final bool expanded;
   final int currentIndex;
+  final FocusNode logoFocusNode;
   final List<FocusNode> focusNodes;
   final ValueChanged<int> onDestinationSelected;
 
   const _TvNavigationRail({
+    required this.width,
+    required this.expanded,
     required this.currentIndex,
+    required this.logoFocusNode,
     required this.focusNodes,
     required this.onDestinationSelected,
   });
@@ -269,8 +355,8 @@ class _TvNavigationRail extends StatelessWidget {
 
     return Container(
       key: const Key('tv-sidebar-nav'),
-      width: _tvNavigationRailWidth,
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      width: width,
+      padding: const EdgeInsets.symmetric(vertical: AiroSpacing.lg),
       decoration: BoxDecoration(
         color: chromeSurface,
         border: Border(right: BorderSide(color: colors.outlineVariant)),
@@ -282,13 +368,18 @@ class _TvNavigationRail extends StatelessWidget {
       child: SingleChildScrollView(
         child: Column(
           children: [
-            _TvSidebarLogo(onSelect: () => onDestinationSelected(0)),
-            const SizedBox(height: 28),
+            _TvSidebarLogo(
+              expanded: expanded,
+              focusNode: logoFocusNode,
+              onSelect: () => onDestinationSelected(0),
+            ),
+            const SizedBox(height: AiroSpacing.lg + AiroSpacing.xs),
             for (var i = 0; i < _tvNavDestinations.length; i++)
               _TvNavItem(
                 destination: _tvNavDestinations[i],
                 focusNode: focusNodes[i],
                 selected: currentIndex == i,
+                expanded: expanded,
                 onSelect: () => onDestinationSelected(i),
               ),
           ],
@@ -299,54 +390,74 @@ class _TvNavigationRail extends StatelessWidget {
 }
 
 class _TvSidebarLogo extends StatelessWidget {
-  const _TvSidebarLogo({required this.onSelect});
+  const _TvSidebarLogo({
+    required this.expanded,
+    required this.focusNode,
+    required this.onSelect,
+  });
 
+  final bool expanded;
+  final FocusNode focusNode;
   final VoidCallback onSelect;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.4,
+      color: colors.primary,
+    );
 
     return TvFocusable(
+      focusNode: focusNode,
       onSelect: onSelect,
       semanticLabel: 'Aika Stream home',
       semanticButton: true,
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: colors.primary,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: colors.primary.withValues(alpha: 0.4),
-                  blurRadius: 24,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: expanded ? AiroSpacing.sm : AiroSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: expanded
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.center,
+          children: [
+            Container(
+              width: AiroSpacing.tvMinTarget,
+              height: AiroSpacing.tvMinTarget,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.primary,
+                borderRadius: BorderRadius.circular(AiroSpacing.radiusMd + 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.primary.withValues(alpha: 0.4),
+                    blurRadius: AiroSpacing.lg,
+                  ),
+                ],
+              ),
+              child: Text(
+                'A',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: colors.onPrimary,
                 ),
-              ],
-            ),
-            child: Text(
-              'A',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: colors.onPrimary,
               ),
             ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'AIRO TV',
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.4,
-              color: colors.primary,
-            ),
-          ),
-        ],
+            if (expanded) ...[
+              const SizedBox(width: AiroSpacing.sm),
+              Text(
+                'Aika Stream',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: labelStyle,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -357,12 +468,14 @@ class _TvNavItem extends StatefulWidget {
     required this.destination,
     required this.focusNode,
     required this.selected,
+    required this.expanded,
     required this.onSelect,
   });
 
   final IptvNavigationDestination destination;
   final FocusNode focusNode;
   final bool selected;
+  final bool expanded;
   final VoidCallback onSelect;
 
   @override
@@ -374,72 +487,84 @@ class _TvNavItemState extends State<_TvNavItem> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final active = widget.selected;
     final iconColor = active
         ? colors.primary
         : colors.onSurfaceVariant.withValues(alpha: 0.85);
+    final icon = Icon(
+      active ? widget.destination.selectedIcon : widget.destination.icon,
+      size: 24,
+      color: iconColor,
+    );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 7),
-      child: TvFocusable(
-        focusNode: widget.focusNode,
-        onSelect: widget.onSelect,
-        onFocus: () => setState(() => _focused = true),
-        onUnfocus: () => setState(() => _focused = false),
-        semanticLabel: widget.destination.semanticLabel,
-        semanticButton: true,
-        borderRadius: 12,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            if (active)
-              Positioned(
-                left: -7,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: Container(
-                    width: 3,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: colors.primary,
-                      borderRadius: const BorderRadius.horizontal(
-                        right: Radius.circular(3),
+      padding: EdgeInsets.symmetric(
+        vertical: AiroSpacing.sm,
+        horizontal: widget.expanded ? AiroSpacing.sm : AiroSpacing.xs,
+      ),
+      child: Align(
+        alignment: widget.expanded ? Alignment.centerLeft : Alignment.center,
+        child: TvFocusable(
+          focusNode: widget.focusNode,
+          onSelect: widget.onSelect,
+          onFocus: () => setState(() => _focused = true),
+          onUnfocus: () => setState(() => _focused = false),
+          semanticLabel: widget.destination.semanticLabel,
+          semanticButton: true,
+          borderRadius: AiroSpacing.radiusMd,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (active)
+                Positioned(
+                  left: widget.expanded ? -AiroSpacing.sm : -AiroSpacing.xs,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: Container(
+                      width: 3,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: colors.primary,
+                        borderRadius: const BorderRadius.horizontal(
+                          right: Radius.circular(3),
+                        ),
                       ),
                     ),
                   ),
                 ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  vertical: AiroSpacing.sm + AiroSpacing.xxs,
+                  horizontal: AiroSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: _focused ? colors.surfaceContainerHighest : null,
+                  borderRadius: BorderRadius.circular(AiroSpacing.radiusMd),
+                ),
+                child: widget.expanded
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          icon,
+                          const SizedBox(width: AiroSpacing.sm),
+                          Text(
+                            widget.destination.labelFor(ShellId.tv),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: iconColor,
+                            ),
+                          ),
+                        ],
+                      )
+                    : icon,
               ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-              decoration: BoxDecoration(
-                color: _focused ? colors.surfaceContainerHighest : null,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    active
-                        ? widget.destination.selectedIcon
-                        : widget.destination.icon,
-                    size: 19,
-                    color: iconColor,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.destination.labelFor(ShellId.tv),
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.3,
-                      color: iconColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

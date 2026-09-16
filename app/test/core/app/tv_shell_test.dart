@@ -10,6 +10,51 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+Finder _tvSidebar() => find.byKey(const Key('tv-sidebar-nav'));
+
+Finder _tvSidebarIcon(IconData icon) =>
+    find.descendant(of: _tvSidebar(), matching: find.byIcon(icon));
+
+void _setTenFootView(WidgetTester tester, {Size size = const Size(1280, 720)}) {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = size;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+}
+
+bool _railDestinationHasPrimaryFocus() {
+  final label = FocusManager.instance.primaryFocus?.debugLabel ?? '';
+  return label.contains('TV rail');
+}
+
+bool _focusIsInSidebar(WidgetTester tester) {
+  final focusContext = FocusManager.instance.primaryFocus?.context;
+  if (focusContext == null) return false;
+  final focusedRender = focusContext.findRenderObject();
+  final sidebarRender = tester.renderObject(_tvSidebar());
+  var node = focusedRender;
+  while (node != null) {
+    if (identical(node, sidebarRender)) return true;
+    node = node.parent;
+  }
+  return false;
+}
+
+Future<void> _pumpTvShellWithContent(
+  WidgetTester tester, {
+  required Widget child,
+}) async {
+  _setTenFootView(tester);
+  await tester.pumpWidget(
+    ProviderScope(
+      child: MaterialApp(home: TvShell(child: child)),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets(
     'TV sidebar shows Home/Guide/Movies/Favorites/Settings, Home first',
@@ -47,20 +92,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final sidebar = find.byKey(const Key('tv-sidebar-nav'));
-      expect(sidebar, findsOneWidget);
-      for (final label in [
-        'Home',
-        'Guide',
-        'Movies',
-        'Favorites',
-        'Settings',
-      ]) {
-        expect(
-          find.descendant(of: sidebar, matching: find.text(label)),
-          findsOneWidget,
-        );
-      }
+      expect(_tvSidebar(), findsOneWidget);
+      expect(_tvSidebarIcon(Icons.home), findsOneWidget);
+      expect(_tvSidebarIcon(Icons.grid_view_outlined), findsOneWidget);
+      expect(_tvSidebarIcon(Icons.movie_outlined), findsOneWidget);
+      expect(_tvSidebarIcon(Icons.favorite_border), findsOneWidget);
+      expect(_tvSidebarIcon(Icons.settings_outlined), findsOneWidget);
     },
   );
 
@@ -107,12 +144,7 @@ void main() {
 
       expect(find.byType(IPTVScreen), findsOneWidget);
 
-      await tester.tap(
-        find.descendant(
-          of: find.byKey(const Key('tv-sidebar-nav')),
-          matching: find.text('Settings'),
-        ),
-      );
+      await tester.tap(_tvSidebarIcon(Icons.settings_outlined));
       await tester.pumpAndSettle();
 
       expect(find.byType(IPTVScreen), findsNothing);
@@ -166,12 +198,7 @@ void main() {
 
       expect(find.byType(IPTVScreen), findsOneWidget);
 
-      await tester.tap(
-        find.descendant(
-          of: find.byKey(const Key('tv-sidebar-nav')),
-          matching: find.text('Settings'),
-        ),
-      );
+      await tester.tap(_tvSidebarIcon(Icons.settings_outlined));
       await tester.pump();
 
       expect(
@@ -364,12 +391,7 @@ void main() {
 
     expect(find.byType(IPTVScreen), findsOneWidget);
 
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const Key('tv-sidebar-nav')),
-        matching: find.text('Settings'),
-      ),
-    );
+    await tester.tap(_tvSidebarIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
 
     expect(find.byType(IPTVScreen), findsNothing);
@@ -553,6 +575,185 @@ void main() {
     // presses on a real remote.
     expect(await tester.binding.handlePopRoute(), isFalse);
   });
+
+  testWidgets(
+    'LEFT from the first content item focuses the current rail destination',
+    (tester) async {
+      final contentFocus = FocusNode(debugLabel: 'leading-content');
+      addTearDown(contentFocus.dispose);
+
+      await _pumpTvShellWithContent(
+        tester,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TvFocusable(
+            focusNode: contentFocus,
+            autofocus: true,
+            onSelect: () {},
+            child: const SizedBox(
+              width: 120,
+              height: 56,
+              child: Text('First card'),
+            ),
+          ),
+        ),
+      );
+
+      expect(contentFocus.hasPrimaryFocus, isTrue);
+      expect(_railDestinationHasPrimaryFocus(), isFalse);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+
+      expect(contentFocus.hasPrimaryFocus, isFalse);
+      expect(_railDestinationHasPrimaryFocus(), isTrue);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, contains('Home'));
+    },
+  );
+
+  testWidgets('RIGHT from the rail restores the last content focus', (
+    tester,
+  ) async {
+    final topFocus = FocusNode(debugLabel: 'top-card');
+    final bottomFocus = FocusNode(debugLabel: 'bottom-card');
+    addTearDown(topFocus.dispose);
+    addTearDown(bottomFocus.dispose);
+
+    await _pumpTvShellWithContent(
+      tester,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TvFocusable(
+            focusNode: topFocus,
+            onSelect: () {},
+            child: const SizedBox(width: 120, height: 56, child: Text('Top')),
+          ),
+          TvFocusable(
+            focusNode: bottomFocus,
+            autofocus: true,
+            onSelect: () {},
+            child: const SizedBox(
+              width: 120,
+              height: 56,
+              child: Text('Bottom'),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    expect(bottomFocus.hasPrimaryFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(_railDestinationHasPrimaryFocus(), isTrue);
+    expect(bottomFocus.hasPrimaryFocus, isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+
+    expect(bottomFocus.hasPrimaryFocus, isTrue);
+    expect(topFocus.hasPrimaryFocus, isFalse);
+    expect(_railDestinationHasPrimaryFocus(), isFalse);
+  });
+
+  testWidgets('BACK from Home does not focus the rail', (tester) async {
+    _setTenFootView(tester);
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final router = TvRouter.createRouter(initialLocation: TvRouteNames.home);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => const []),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
+              ),
+            ),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(_focusIsInSidebar(tester), isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+
+    expect(_focusIsInSidebar(tester), isFalse);
+    expect(_railDestinationHasPrimaryFocus(), isFalse);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(await tester.binding.handlePopRoute(), isFalse);
+  });
+
+  testWidgets(
+    'rail is ~80 collapsed and ~240 expanded with labels only when focused',
+    (tester) async {
+      final contentFocus = FocusNode(debugLabel: 'leading-content');
+      addTearDown(contentFocus.dispose);
+
+      await _pumpTvShellWithContent(
+        tester,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TvFocusable(
+            focusNode: contentFocus,
+            autofocus: true,
+            onSelect: () {},
+            child: const SizedBox(
+              width: 120,
+              height: 56,
+              child: Text('First card'),
+            ),
+          ),
+        ),
+      );
+
+      expect(contentFocus.hasPrimaryFocus, isTrue);
+      expect(tester.getSize(_tvSidebar()).width, closeTo(80, 4));
+      expect(
+        find.descendant(of: _tvSidebar(), matching: find.text('Home')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: _tvSidebar(), matching: find.text('Aika Stream')),
+        findsNothing,
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+
+      expect(_railDestinationHasPrimaryFocus(), isTrue);
+      expect(tester.getSize(_tvSidebar()).width, closeTo(240, 8));
+      expect(
+        find.descendant(of: _tvSidebar(), matching: find.text('Aika Stream')),
+        findsOneWidget,
+      );
+      for (final label in [
+        'Home',
+        'Guide',
+        'Movies',
+        'Favorites',
+        'Settings',
+      ]) {
+        expect(
+          find.descendant(of: _tvSidebar(), matching: find.text(label)),
+          findsOneWidget,
+        );
+      }
+    },
+  );
 }
 
 class _RecordingStreamingService extends VideoPlayerStreamingService {
