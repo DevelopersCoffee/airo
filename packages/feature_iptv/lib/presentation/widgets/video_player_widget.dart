@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:core_ui/core_ui.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
     show
@@ -210,6 +210,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   FocusNode? _contextMenuRestoreFocusNode;
   bool _playerModalOpen = false;
   String? _lastRecoveryFocusToken;
+  Set<Key> _overflowedTvTransportKeys = {};
 
   // Channel change overlay state
   String? _channelChangeOverlayText;
@@ -2083,8 +2084,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       detailLine: detailLine,
       isLive: state.isLiveStream,
       onKeyEvent: _handleTvTransportKey,
+      onDroppedKeys: _onTvTransportOverflow,
       actions: _buildTvTransportButtons(context, service, state),
     );
+  }
+
+  void _onTvTransportOverflow(Set<Key> dropped) {
+    if (!mounted || setEquals(_overflowedTvTransportKeys, dropped)) return;
+    setState(() => _overflowedTvTransportKeys = dropped);
   }
 
   KeyEventResult _handleTvTransportKey(FocusNode node, KeyEvent event) {
@@ -2516,6 +2523,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     if (_playerModalOpen) return;
     final hasQualityChoices = _qualityOptionsFor(state).length > 1;
     final hasSubtitles = _subtitleTracksFor(state).isNotEmpty;
+    final isFavorite =
+        state.currentChannel != null &&
+        (ref
+                .read(favoriteChannelIdsProvider)
+                .asData
+                ?.value
+                .contains(state.currentChannel!.id) ??
+            false);
     _cancelHideControlsTimer();
     setState(() => _playerModalOpen = true);
     try {
@@ -2540,6 +2555,59 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     title: Text('Player actions'),
                     subtitle: Text('Secondary controls for this stream'),
                   ),
+                  if (_overflowedTvTransportKeys.contains(
+                    TvTransportOverflow.infoKey,
+                  ))
+                    _TvSheetListTile(
+                      itemKey: const ValueKey('iptv-player-info-menu-action'),
+                      leading: const Icon(Icons.info_outline_rounded),
+                      title: const Text('Info'),
+                      onSelect: () => unawaited(
+                        afterSheet(
+                          () => _openContextMenu(
+                            restoreFocusNode: _moreActionsFocusNode,
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (_overflowedTvTransportKeys.contains(
+                    TvTransportOverflow.favouriteKey,
+                  ))
+                    _TvSheetListTile(
+                      itemKey: const ValueKey(
+                        'iptv-player-favourite-menu-action',
+                      ),
+                      leading: Icon(
+                        isFavorite
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                      ),
+                      title: Text(
+                        isFavorite
+                            ? 'Remove from favourites'
+                            : 'Add to favourites',
+                      ),
+                      onSelect: () => unawaited(
+                        afterSheet(_toggleFavoriteForCurrentChannel),
+                      ),
+                    ),
+                  if (_overflowedTvTransportKeys.contains(
+                    TvTransportOverflow.audioKey,
+                  ))
+                    _TvSheetListTile(
+                      itemKey: const ValueKey('iptv-player-audio-menu-action'),
+                      leading: const Icon(Icons.volume_up_outlined),
+                      title: const Text('Audio'),
+                      onSelect: () => unawaited(
+                        _showTrackSelectorFor(
+                          sheetContext,
+                          service,
+                          state,
+                          kind: AiroPlaybackTrackKind.audio,
+                          restoreFocusNode: _moreActionsFocusNode,
+                        ),
+                      ),
+                    ),
                   if (widget.showPictureInPicture)
                     _TvSheetListTile(
                       itemKey: const ValueKey('iptv-player-pip-menu-action'),

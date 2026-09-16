@@ -200,6 +200,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'overflowed unique actions move into the More sheet at a narrow width',
+    (tester) async {
+      // 7 × 64dp + 6 gaps = 496dp. A 480-wide panel's title-safe 80% cap
+      // cannot fit that row, so unique trailing actions must leave the bar.
+      await pumpTransportBar(tester, width: 480, height: 720);
+
+      expect(tester.takeException(), isNull);
+      expect(
+        find.byKey(const ValueKey('iptv-player-more-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-info')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-favourite')),
+        findsNothing,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Player actions'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('iptv-player-info-menu-action')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-favourite-menu-action')),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('transport actions stay on one width-capped row at 1280x720', (
     tester,
   ) async {

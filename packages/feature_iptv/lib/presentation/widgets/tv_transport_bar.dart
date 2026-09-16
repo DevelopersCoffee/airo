@@ -1,6 +1,73 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
+/// Plans which Watch transport actions stay on the capped row.
+///
+/// More is identified by [moreKey], never “the last child”. Duplicated
+/// More-sheet actions (Subtitles) drop before unique ones (Info, Favourite,
+/// Audio).
+abstract final class TvTransportOverflow {
+  static const moreKey = ValueKey<String>('iptv-player-more-button');
+  static const playPauseKey = ValueKey<String>('iptv-tv-transport-play-pause');
+  static const restartKey = ValueKey<String>('iptv-tv-transport-restart');
+  static const audioKey = ValueKey<String>('iptv-tv-transport-audio');
+  static const subtitlesKey = ValueKey<String>('iptv-tv-transport-subtitles');
+  static const favouriteKey = ValueKey<String>('iptv-tv-transport-favourite');
+  static const infoKey = ValueKey<String>('iptv-tv-transport-info');
+
+  static const dropPriority = [
+    subtitlesKey,
+    infoKey,
+    favouriteKey,
+    audioKey,
+    restartKey,
+  ];
+
+  static int maxVisibleCount(double maxWidth, int actionCount) {
+    if (actionCount <= 0) return 0;
+    final gap = AiroSpacing.sm;
+    final itemWidth = AiroSpacing.tvControlSize;
+    return ((maxWidth + gap) / (itemWidth + gap)).floor().clamp(1, actionCount);
+  }
+
+  static List<int> visibleIndices(List<Key?> keys, int maxItems) {
+    if (keys.isEmpty) return const [];
+    final moreIndex = keys.indexWhere((key) => key == moreKey);
+    if (keys.length <= maxItems) {
+      return List<int>.generate(keys.length, (index) => index);
+    }
+    if (maxItems <= 1) {
+      return moreIndex >= 0 ? [moreIndex] : const [0];
+    }
+
+    final dropCount = keys.length - maxItems;
+    final dropped = <int>{};
+    for (final key in dropPriority) {
+      if (dropped.length >= dropCount) break;
+      final index = keys.indexWhere((candidate) => candidate == key);
+      if (index >= 0 && index != moreIndex) dropped.add(index);
+    }
+    for (var index = keys.length - 1; index >= 0; index--) {
+      if (dropped.length >= dropCount) break;
+      if (index == moreIndex || keys[index] == playPauseKey) continue;
+      dropped.add(index);
+    }
+
+    return [
+      for (var index = 0; index < keys.length; index++)
+        if (!dropped.contains(index)) index,
+    ];
+  }
+
+  static Set<Key> droppedKeys(List<Key?> keys, int maxItems) {
+    final visible = visibleIndices(keys, maxItems).toSet();
+    return {
+      for (var index = 0; index < keys.length; index++)
+        if (!visible.contains(index) && keys[index] != null) keys[index]!,
+    };
+  }
+}
+
 /// Bottom-centered Watch transport overlay: one action row inside a
 /// title-safe width cap. Extra actions are dropped from the trailing edge
 /// (except More) instead of wrapping to a second line.
@@ -12,6 +79,7 @@ class TvTransportBar extends StatelessWidget {
     required this.isLive,
     required this.actions,
     required this.onKeyEvent,
+    this.onDroppedKeys,
     this.menuHint = 'MENU for more actions',
   });
 
@@ -23,6 +91,7 @@ class TvTransportBar extends StatelessWidget {
   final bool isLive;
   final List<Widget> actions;
   final KeyEventResult Function(FocusNode node, KeyEvent event) onKeyEvent;
+  final ValueChanged<Set<Key>>? onDroppedKeys;
   final String menuHint;
 
   @override
@@ -118,7 +187,10 @@ class TvTransportBar extends StatelessWidget {
                       canRequestFocus: false,
                       skipTraversal: true,
                       onKeyEvent: onKeyEvent,
-                      child: TvTransportOverflowRow(actions: actions),
+                      child: TvTransportOverflowRow(
+                        actions: actions,
+                        onDroppedKeys: onDroppedKeys,
+                      ),
                     ),
                     const SizedBox(height: AiroSpacing.sm),
                     Text(menuHint, style: hintStyle),
@@ -133,48 +205,56 @@ class TvTransportBar extends StatelessWidget {
   }
 }
 
-/// Lays [actions] in a single [Row]. When they cannot all fit, trailing
-/// items before the last (More) are omitted so overflow goes to the More
-/// sheet instead of wrapping.
+/// Lays [actions] in a single [Row]. When they cannot all fit, duplicated
+/// More-sheet actions drop first, then unique ones. More stays on the row
+/// and is found by [TvTransportOverflow.moreKey].
 class TvTransportOverflowRow extends StatelessWidget {
-  const TvTransportOverflowRow({super.key, required this.actions});
+  const TvTransportOverflowRow({
+    super.key,
+    required this.actions,
+    this.onDroppedKeys,
+  });
 
   final List<Widget> actions;
+  final ValueChanged<Set<Key>>? onDroppedKeys;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final keys = [for (final action in actions) action.key];
+        final maxItems = TvTransportOverflow.maxVisibleCount(
+          constraints.maxWidth,
+          actions.length,
+        );
+        final visibleIndexes = TvTransportOverflow.visibleIndices(
+          keys,
+          maxItems,
+        );
+        final dropped = TvTransportOverflow.droppedKeys(keys, maxItems);
+        final onDropped = onDroppedKeys;
+        if (onDropped != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            onDropped(dropped);
+          });
+        }
         final gap = AiroSpacing.sm;
         final itemWidth = AiroSpacing.tvControlSize;
-        final maxItems = actions.isEmpty
-            ? 0
-            : ((constraints.maxWidth + gap) / (itemWidth + gap)).floor().clamp(
-                1,
-                actions.length,
-              );
-        final visible = _visibleActions(maxItems);
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (var index = 0; index < visible.length; index++) ...[
+            for (var index = 0; index < visibleIndexes.length; index++) ...[
               if (index > 0) SizedBox(width: gap),
               SizedBox(
                 width: itemWidth,
                 height: AiroSpacing.tvControlSize,
-                child: visible[index],
+                child: actions[visibleIndexes[index]],
               ),
             ],
           ],
         );
       },
     );
-  }
-
-  List<Widget> _visibleActions(int maxItems) {
-    if (actions.length <= maxItems) return actions;
-    if (maxItems <= 1) return [actions.last];
-    return [...actions.take(maxItems - 1), actions.last];
   }
 }
 
