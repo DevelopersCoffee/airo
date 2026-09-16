@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- Consume `airo_background_downloads` ^1.2.0 from pub.dev (transfer engine).
+
 ## 1.1.0
 
 - Consume `airo_background_downloads` ^1.1.0 from pub.dev.
