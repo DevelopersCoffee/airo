@@ -4,6 +4,8 @@
 /// No bottom navigation - uses left-side rail navigation.
 library;
 
+import 'dart:async';
+
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -13,20 +15,30 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import 'tv_route_names.dart';
+
 /// Provider for current TV navigation index
 final tvNavigationIndexProvider = StateProvider<int>((ref) => 0);
 const _tvNavigationRailWidth = 88.0;
 
-/// Rail destinations map onto real [GoRouter] locations. Watch (`/player`
-/// and leftover `/live`) is not a rail item — leaving it unmounts the live
-/// screen instead of painting an overlay on top of it.
-const _tvDestinationRoutes = <String>[
-  '/',
-  '/guide',
-  '/vod',
-  '/favorites',
-  '/settings',
-];
+/// Coalesces [VideoPlayerStreamingService.stop] for one Watch session so
+/// the awaited leave path and dispose's safety net share a single call.
+final _tvWatchStop = Expando<Future<void>>();
+
+Future<void> awaitTvWatchStop(VideoPlayerStreamingService service) {
+  return _tvWatchStop[service] ??= service.stop();
+}
+
+void resetTvWatchStop(VideoPlayerStreamingService service) {
+  _tvWatchStop[service] = null;
+}
+
+bool isTvWatchRoute(String location) {
+  return location == TvRouteNames.player ||
+      location == TvRouteNames.live ||
+      location == '/iptv' ||
+      location == '/airo/iptv';
+}
 
 /// Fraction of each edge a TV may crop. Televisions with overscan enabled
 /// discard roughly the outer 5%, which is why the Android TV guidance puts a
@@ -178,8 +190,25 @@ class _TvShellState extends ConsumerState<TvShell> {
 
   void _selectDestination(BuildContext context, int index) {
     ref.read(tvNavigationIndexProvider.notifier).state = index;
-    final destination =
-        _tvDestinationRoutes[index.clamp(0, _tvDestinationRoutes.length - 1)];
+    final destination = switch (index) {
+      0 => TvRouteNames.home,
+      1 => TvRouteNames.guide,
+      2 => TvRouteNames.vod,
+      3 => TvRouteNames.favorites,
+      _ => TvRouteNames.settings,
+    };
+    unawaited(_goToDestination(context, destination));
+  }
+
+  Future<void> _goToDestination(
+    BuildContext context,
+    String destination,
+  ) async {
+    final location = GoRouterState.of(context).matchedLocation;
+    if (isTvWatchRoute(location)) {
+      await awaitTvWatchStop(ref.read(iptvStreamingServiceProvider));
+    }
+    if (!context.mounted) return;
     GoRouter.of(context).go(destination);
   }
 }

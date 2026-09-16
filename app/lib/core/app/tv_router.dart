@@ -17,21 +17,10 @@ import '../../features/iptv/phone_media_local_picker.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/tv/tv_settings_screen.dart';
 import '../platform/device_form_factor.dart';
+import 'tv_route_names.dart';
 import 'tv_shell.dart';
 
-/// TV-specific routes
-class TvRouteNames {
-  TvRouteNames._();
-
-  static const String home = '/';
-  static const String live = '/live';
-  static const String player = '/player';
-  static const String guide = '/guide';
-  static const String vod = '/vod';
-  static const String favorites = '/favorites';
-  static const String settings = '/settings';
-  static const String legacyLogin = '/login';
-}
+export 'tv_route_names.dart';
 
 /// Router for TV app
 class TvRouter {
@@ -159,7 +148,9 @@ class _WatchPlaybackScope extends ConsumerWidget {
     return _WatchSession(
       streamingService: streamingService,
       isFullscreen: isFullscreen,
-      onLeaveWatch: () {
+      onLeaveWatch: () async {
+        await awaitTvWatchStop(streamingService);
+        if (!context.mounted) return;
         ref.read(tvNavigationIndexProvider.notifier).state = 0;
         context.go(TvRouteNames.home);
       },
@@ -178,7 +169,7 @@ class _WatchSession extends StatefulWidget {
 
   final VideoPlayerStreamingService streamingService;
   final bool isFullscreen;
-  final VoidCallback onLeaveWatch;
+  final Future<void> Function() onLeaveWatch;
   final Widget child;
 
   @override
@@ -187,18 +178,27 @@ class _WatchSession extends StatefulWidget {
 
 class _WatchSessionState extends State<_WatchSession> {
   @override
+  void initState() {
+    super.initState();
+    resetTvWatchStop(widget.streamingService);
+  }
+
+  @override
   void dispose() {
-    unawaited(widget.streamingService.stop());
+    unawaited(awaitTvWatchStop(widget.streamingService));
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: widget.isFullscreen,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        widget.onLeaveWatch();
+      // Fullscreen Back must reach IPTVScreen.didPopRoute ("exit
+      // fullscreen"), not pop Watch. A true canPop here made the last
+      // shell page poppable and dumped the live session.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop || widget.isFullscreen) return;
+        await widget.onLeaveWatch();
       },
       child: widget.child,
     );
@@ -248,8 +248,8 @@ class _TvRouteNotFoundScreen extends StatelessWidget {
                 const SizedBox(height: 28),
                 TvFocusable(
                   autofocus: true,
-                  onSelect: () => context.go(TvRouteNames.live),
-                  semanticLabel: 'Go to Live TV',
+                  onSelect: () => context.go(TvRouteNames.home),
+                  semanticLabel: 'Go to Home',
                   semanticButton: true,
                   borderRadius: 10,
                   child: Container(
@@ -262,7 +262,7 @@ class _TvRouteNotFoundScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      'Go to Live TV',
+                      'Go to Home',
                       style: TextStyle(
                         color: colors.onPrimaryContainer,
                         fontWeight: FontWeight.w600,
@@ -289,7 +289,7 @@ class AdaptiveTvSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     if (_usesCompactPhoneLayout(context)) {
       return SettingsHubScreen(
-        onRootBack: () => context.go(TvRouteNames.live),
+        onRootBack: () => context.go(TvRouteNames.home),
         shellId: ShellId.tv,
       );
     }

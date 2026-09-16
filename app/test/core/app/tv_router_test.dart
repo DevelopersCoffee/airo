@@ -506,9 +506,7 @@ void main() {
     expect(find.text('Welcome to Airo'), findsNothing);
   });
 
-  testWidgets('unmatched deep link offers a way back to live TV', (
-    tester,
-  ) async {
+  testWidgets('unmatched deep link offers a way back to Home', (tester) async {
     // The canonical link is registered with android:pathPrefix, so Android
     // delivers deeper paths under /airo/iptv even though only the exact path
     // is routable. These used to hit go_router's default error page, which
@@ -522,13 +520,12 @@ void main() {
 
     expect(find.text('That link could not be opened'), findsOneWidget);
 
-    await tester.tap(find.text('Go to Live TV'));
+    await tester.tap(find.text('Go to Home'));
     await tester.pumpAndSettle();
 
     expect(find.text('That link could not be opened'), findsNothing);
-    // Same landing the legacy-login redirect asserts: the live route with an
-    // empty playlist. The point is that the remote reached a real screen.
-    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
   });
 
   testWidgets('favorites route renders the real favorites screen', (
@@ -545,7 +542,7 @@ void main() {
     expect(find.text('No favorite channels yet'), findsOneWidget);
   });
 
-  testWidgets('compact settings route shows a back button to live TV', (
+  testWidgets('compact settings route shows a back button to Home', (
     tester,
   ) async {
     await pumpTvRouter(
@@ -560,11 +557,12 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
-  testWidgets('compact settings route handles Android back by returning live', (
+  testWidgets('compact settings route handles Android back by returning Home', (
     tester,
   ) async {
     await pumpTvRouter(
@@ -576,11 +574,12 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
-    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
-  testWidgets('compact landscape settings Back returns to live TV', (
+  testWidgets('compact landscape settings Back returns to Home', (
     tester,
   ) async {
     await pumpTvRouter(
@@ -592,12 +591,13 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
   testWidgets(
-    'compact landscape settings handles Android back by returning live',
+    'compact landscape settings handles Android back by returning Home',
     (tester) async {
       await pumpTvRouter(
         tester,
@@ -608,7 +608,8 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
 
-      expect(find.text('Add your playlist'), findsOneWidget);
+      expect(find.text('Your media. Your player.'), findsOneWidget);
+      expect(find.byType(IPTVScreen), findsNothing);
       expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
     },
   );
