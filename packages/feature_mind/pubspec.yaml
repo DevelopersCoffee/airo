@@ -135,7 +135,7 @@ dev_dependencies:
   freezed: ^3.0.0
   build_runner: ^2.4.13
   mocktail: ^1.0.4
-  # Test doubles construct DownloadArtifactRequest/DownloadProgress directly.
+  # Test doubles construct AiroDownloadRequest/AiroDownload directly.
   platform_downloads:
     path: ../platform_downloads
   # mind_service_test.dart fakes path_provider's platform channel directly.

@@ -14,7 +14,8 @@
 2. Upgraded package metadata to meet pub.dev 140/140 standards (MIT License, `analysis_options.yaml`, zero analyzer warnings, GitHub Actions CI/CD).
 3. Published `airo_background_downloads` `1.2.0` to pub.dev (transfer engine: intent policies, state machine, processors, storage matrix).
 4. Converted local `packages/platform_downloads` into a re-exporting monorepo shim pointing to hosted `airo_background_downloads`.
-5. Verified 100% test pass rate and clean static analysis.
+5. Adopted `AiroDownloadEngine` / `AiroPlatformBridge` in `core_ai` model acquisition and the AI storage dashboard (v1 `BackgroundDownloads` remains as a compatibility export).
+6. Verified 100% test pass rate and clean static analysis.
 
 ---
 

@@ -4,15 +4,12 @@ import 'package:airo_app/features/settings/application/ai_storage_dashboard.dart
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
-import 'package:platform_downloads/platform_downloads.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Directory tempDir;
-  const diskChannel = MethodChannel(
-    MethodChannelBackgroundDownloads.methodChannelName,
-  );
+  const diskChannel = MethodChannel('dev.airo.platform_downloads/methods');
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   setUp(() async {

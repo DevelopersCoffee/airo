@@ -63,7 +63,7 @@
 * Execute the technical content strategy (GitHub releases, technical articles, YouTube deep dives, community discussions).
 * Engage open-source contributors and ingest community PRs.
 
-### Phase 8 — Completed Extractions Matrix (10 Packages)
+### Phase 8 — Completed Extractions Matrix (11 Packages)
 
 | Candidate Package | Tech Stack | GitHub Repository | Migration Record | Status |
 |---|---|---|---|---|
@@ -73,6 +73,7 @@
 | **`airo_core`** | Rust / C-FFI | [DevelopersCoffee/airo_core](https://github.com/DevelopersCoffee/airo_core) | [`airo_core-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/airo_core-migration.md) | ✅ Released & Migrated |
 | **`airo_calendar`** | Flutter / OS | [DevelopersCoffee/airo_calendar](https://github.com/DevelopersCoffee/airo_calendar) | [`airo_calendar-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/airo_calendar-migration.md) | ✅ Released & Migrated |
 | **`airo_background_downloads`** | Flutter / Engine | [DevelopersCoffee/airo_background_downloads](https://github.com/DevelopersCoffee/airo_background_downloads) | [`airo_background_downloads-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/airo_background_downloads-migration.md) | ✅ Released & Migrated |
+| **`airo_ads`** | Flutter / Ads | [DevelopersCoffee/airo_ads](https://github.com/DevelopersCoffee/airo_ads) | [`airo_ads-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/airo_ads-migration.md) | ✅ Released & Migrated |
 | **`airo_job_scheduler`** | Flutter / Concurrency | [DevelopersCoffee/airo_job_scheduler](https://github.com/DevelopersCoffee/airo_job_scheduler) | [`airo_job_scheduler-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/airo_job_scheduler-migration.md) | ✅ Released & Migrated |
 | **`airo_analytics`** | Flutter / Privacy | [DevelopersCoffee/airo_analytics](https://github.com/DevelopersCoffee/airo_analytics) | [`airo_analytics-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/airo_analytics-migration.md) | ✅ Released & Migrated |
 | **`airo_pairing`** | Flutter / Security | [DevelopersCoffee/airo_pairing](https://github.com/DevelopersCoffee/airo_pairing) | [`airo_pairing-migration.md`](file:///Users/udaychauhan/workspace/airo/docs/open-source/airo_pairing-migration.md) | ✅ Released & Migrated |
@@ -83,7 +84,7 @@
 ## Next Steps
 
 1. **Package Registry Publishing (`pub.dev` & `crates.io`)**:
-   - Publish `dpad_qualification`, `run_off_main`, `iptv_org_api`, `airo_calendar`, `airo_background_downloads`, `airo_job_scheduler`, `airo_analytics`, `airo_pairing`, and `airo_protocol` to `pub.dev`.
+   - Publish `dpad_qualification`, `run_off_main`, `iptv_org_api`, `airo_calendar`, `airo_background_downloads`, `airo_ads`, `airo_job_scheduler`, `airo_analytics`, `airo_pairing`, and `airo_protocol` to `pub.dev`.
    - Publish `airo_core` crate to `crates.io`.
 2. **Execute Developer Content & Distribution Strategy**:
    - Produce YouTube tutorials, dev.to/Medium articles, and Twitter/X technical threads for the open-source suite.

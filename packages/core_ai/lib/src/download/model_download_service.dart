@@ -7,17 +7,19 @@ import '../models/offline_model_info.dart';
 import '../storage/model_storage_manager.dart';
 import 'model_download_progress.dart';
 
-/// AI-model adapter over the product-neutral progressive download platform.
+/// AI-model adapter over the product-neutral progressive download engine.
 class ModelDownloadService {
   ModelDownloadService({
-    BackgroundDownloads? downloads,
+    AiroDownloadEngine? engine,
+    AiroPlatformBridge? bridge,
     ModelStorageManager? storageManager,
     ModelStorageLocation storageLocation =
         ModelStorageLocation.applicationDocuments,
     int storageBudgetBytes = ModelStorageManager.defaultStorageBudgetBytes,
   }) : this._from(
          _resolveDependencies(
-           downloads: downloads,
+           engine: engine,
+           bridge: bridge,
            storageManager: storageManager,
            storageLocation: storageLocation,
          ),
@@ -27,7 +29,7 @@ class ModelDownloadService {
   ModelDownloadService._from(
     _ResolvedDependencies dependencies,
     this.storageBudgetBytes,
-  ) : _downloads = dependencies.downloads,
+  ) : _engine = dependencies.engine,
       _storageManager = dependencies.storageManager;
 
   /// The enforced on-device ceiling for downloaded model artifacts.
@@ -39,30 +41,31 @@ class ModelDownloadService {
   final int storageBudgetBytes;
 
   static _ResolvedDependencies _resolveDependencies({
-    BackgroundDownloads? downloads,
+    AiroDownloadEngine? engine,
+    AiroPlatformBridge? bridge,
     ModelStorageManager? storageManager,
     required ModelStorageLocation storageLocation,
   }) {
-    final resolvedDownloads = downloads ?? createBackgroundDownloads();
+    final resolvedBridge = bridge ?? AiroPlatformBridge();
     return _ResolvedDependencies(
-      downloads: resolvedDownloads,
+      engine: engine ?? AiroDownloadEngine(bridge: resolvedBridge),
       storageManager:
           storageManager ??
           ModelStorageManager(
-            downloads: resolvedDownloads,
+            bridge: resolvedBridge,
             location: storageLocation,
           ),
     );
   }
 
-  final BackgroundDownloads _downloads;
+  final AiroDownloadEngine _engine;
   final ModelStorageManager _storageManager;
 
   /// The storage manager backing this service, for callers (e.g.
   /// `ModelPort` implementations) that need real on-disk usage/quota figures
   /// without duplicating a second manager pointed at a different directory.
   ModelStorageManager get storageManager => _storageManager;
-  StreamSubscription<DownloadProgress>? _progressSubscription;
+  StreamSubscription<AiroDownload>? _progressSubscription;
   final Map<String, StreamController<ModelDownloadProgress>> _progressStreams =
       {};
   final Set<String> _scheduledIds = {};
@@ -137,14 +140,19 @@ class ModelDownloadService {
         model.id,
         model: model,
       );
-      await _downloads.enqueue(
-        DownloadArtifactRequest(
-          artifactId: model.id,
-          source: source,
-          destinationPath: destinationPath,
+      final digest = model.sha256?.trim();
+      await _engine.enqueue(
+        AiroDownloadRequest(
+          id: model.id,
+          url: source,
+          destination: destinationPath,
           expectedBytes: model.fileSizeBytes,
-          expectedSha256: model.sha256,
-          displayName: model.name,
+          checksum: digest == null || digest.isEmpty
+              ? null
+              : AiroChecksum(
+                  algorithm: AiroChecksumAlgorithm.sha256,
+                  value: digest,
+                ),
         ),
       );
     } on Object {
@@ -158,90 +166,101 @@ class ModelDownloadService {
     }
   }
 
-  Future<void> _onPlatformProgress(DownloadProgress progress) async {
-    if (progress.status == DownloadStatus.completed) {
-      final model = _scheduledModels[progress.artifactId];
+  Future<void> _onEngineProgress(AiroDownload download) async {
+    if (download.status == AiroDownloadStatus.completed) {
+      final model = _scheduledModels[download.id];
       if (model != null) {
         _emit(
           ModelDownloadProgress(
-            modelId: progress.artifactId,
-            totalBytes: progress.totalBytes,
-            downloadedBytes: progress.downloadedBytes,
+            modelId: download.id,
+            totalBytes: download.totalBytes,
+            downloadedBytes: download.downloadedBytes,
             status: ModelDownloadStatus.verifying,
-            retryCount: progress.retryCount,
-            resumeSupported: progress.resumeSupported,
+            retryCount: download.retryCount,
+            resumeSupported: _resumeSupported(download),
           ),
         );
         final verified = await _storageManager.verifyModelIntegrity(model);
         if (!verified) {
           _emit(
             ModelDownloadProgress(
-              modelId: progress.artifactId,
-              totalBytes: progress.totalBytes,
-              downloadedBytes: progress.downloadedBytes,
+              modelId: download.id,
+              totalBytes: download.totalBytes,
+              downloadedBytes: download.downloadedBytes,
               status: ModelDownloadStatus.failed,
               error: 'The downloaded artifact failed integrity verification.',
               failureCode: 'integrity_mismatch',
-              retryCount: progress.retryCount,
-              resumeSupported: progress.resumeSupported,
+              retryCount: download.retryCount,
+              resumeSupported: _resumeSupported(download),
             ),
           );
-          _scheduledIds.remove(progress.artifactId);
-          _scheduledModels.remove(progress.artifactId);
-          _clearProgressTracking(progress.artifactId);
+          _scheduledIds.remove(download.id);
+          _scheduledModels.remove(download.id);
+          _clearProgressTracking(download.id);
           return;
         }
         await _tryWriteReceipt(model);
       }
     }
-    _emit(_toModelProgress(progress));
-    if (progress.status == DownloadStatus.completed ||
-        progress.status == DownloadStatus.cancelled ||
-        progress.status == DownloadStatus.failed) {
-      _scheduledIds.remove(progress.artifactId);
-      _scheduledModels.remove(progress.artifactId);
-      _clearProgressTracking(progress.artifactId);
+    _emit(_toModelProgress(download));
+    if (download.isTerminal) {
+      _scheduledIds.remove(download.id);
+      _scheduledModels.remove(download.id);
+      _clearProgressTracking(download.id);
     }
   }
 
-  ModelDownloadProgress _toModelProgress(DownloadProgress progress) {
+  ModelDownloadProgress _toModelProgress(AiroDownload download) {
     final now = DateTime.now();
-    final status = switch (progress.status) {
-      DownloadStatus.queued => ModelDownloadStatus.pending,
-      DownloadStatus.downloading => ModelDownloadStatus.downloading,
-      DownloadStatus.paused => ModelDownloadStatus.paused,
-      DownloadStatus.verifying => ModelDownloadStatus.verifying,
-      DownloadStatus.completed => ModelDownloadStatus.completed,
-      DownloadStatus.failed => ModelDownloadStatus.failed,
-      DownloadStatus.cancelled => ModelDownloadStatus.cancelled,
-    };
+    final status = _toModelStatus(download.status);
     final startedAt = status == ModelDownloadStatus.downloading
-        ? _downloadStartedAt.putIfAbsent(progress.artifactId, () => now)
-        : _downloadStartedAt[progress.artifactId];
-    var lastProgressAt = _lastByteProgressAt[progress.artifactId];
+        ? _downloadStartedAt.putIfAbsent(download.id, () => now)
+        : _downloadStartedAt[download.id];
+    var lastProgressAt = _lastByteProgressAt[download.id];
     if (status == ModelDownloadStatus.downloading) {
-      final previousBytes = _lastDownloadedBytes[progress.artifactId];
-      if (previousBytes == null || progress.downloadedBytes > previousBytes) {
-        _lastDownloadedBytes[progress.artifactId] = progress.downloadedBytes;
+      final previousBytes = _lastDownloadedBytes[download.id];
+      if (previousBytes == null || download.downloadedBytes > previousBytes) {
+        _lastDownloadedBytes[download.id] = download.downloadedBytes;
         lastProgressAt = now;
-        _lastByteProgressAt[progress.artifactId] = now;
+        _lastByteProgressAt[download.id] = now;
       }
       lastProgressAt ??= startedAt;
     }
     return ModelDownloadProgress(
-      modelId: progress.artifactId,
-      totalBytes: progress.totalBytes,
-      downloadedBytes: progress.downloadedBytes,
+      modelId: download.id,
+      totalBytes: download.totalBytes,
+      downloadedBytes: download.downloadedBytes,
       status: status,
-      speedBytesPerSecond: progress.speedBytesPerSecond,
+      speedBytesPerSecond: download.speedBytesPerSecond,
       startTime: startedAt,
       lastProgressAt: lastProgressAt,
-      error: progress.failure?.message,
-      failureCode: progress.failure?.code.name,
-      retryCount: progress.retryCount,
-      queuePosition: progress.queuePosition,
-      resumeSupported: progress.resumeSupported,
+      error: download.failureMessage,
+      failureCode: download.failureReason?.name,
+      retryCount: download.retryCount,
+      resumeSupported: _resumeSupported(download),
     );
+  }
+
+  static ModelDownloadStatus _toModelStatus(AiroDownloadStatus status) {
+    return switch (status) {
+      AiroDownloadStatus.queued ||
+      AiroDownloadStatus.waitingForNetwork ||
+      AiroDownloadStatus.waitingForPower => ModelDownloadStatus.pending,
+      AiroDownloadStatus.preparing ||
+      AiroDownloadStatus.downloading => ModelDownloadStatus.downloading,
+      AiroDownloadStatus.paused => ModelDownloadStatus.paused,
+      AiroDownloadStatus.verifying ||
+      AiroDownloadStatus.processing => ModelDownloadStatus.verifying,
+      AiroDownloadStatus.completed => ModelDownloadStatus.completed,
+      AiroDownloadStatus.failed => ModelDownloadStatus.failed,
+      AiroDownloadStatus.cancelled => ModelDownloadStatus.cancelled,
+    };
+  }
+
+  static bool _resumeSupported(AiroDownload download) {
+    return download.status == AiroDownloadStatus.paused ||
+        (download.status == AiroDownloadStatus.failed &&
+            download.downloadedBytes > 0);
   }
 
   void _emit(ModelDownloadProgress progress) {
@@ -254,19 +273,19 @@ class ModelDownloadService {
     }
   }
 
-  Future<void> pauseDownload(String modelId) => _downloads.pause(modelId);
+  Future<void> pauseDownload(String modelId) => _engine.pause(modelId);
 
-  Future<void> resumeDownload(String modelId) => _downloads.resume(modelId);
+  Future<void> resumeDownload(String modelId) => _engine.resume(modelId);
 
   Future<void> retryDownload(String modelId, {OfflineModelInfo? model}) async {
     if (model == null) {
-      await _downloads.retry(modelId);
+      await _engine.retry(modelId);
       return;
     }
 
     // Re-enqueue with current catalog metadata so persisted requests from an
     // older catalog cannot repeat a stale size or checksum failure.
-    await _downloads.cancel(modelId);
+    await _engine.cancel(modelId);
     _scheduledIds.remove(modelId);
     _scheduledModels.remove(modelId);
     _scheduledIds.add(modelId);
@@ -276,9 +295,9 @@ class ModelDownloadService {
 
   /// Recovers a stalled or failed transfer without discarding a usable partial.
   ///
-  /// Prefers platform [resumeDownload] when the queue (or last progress)
-  /// retained resume state; otherwise falls back to [retryDownload] with the
-  /// current catalog metadata when [model] is provided.
+  /// Prefers platform [resumeDownload] when the engine retained resume state;
+  /// otherwise falls back to [retryDownload] with the current catalog metadata
+  /// when [model] is provided.
   Future<void> recoverDownload(
     String modelId, {
     OfflineModelInfo? model,
@@ -289,50 +308,41 @@ class ModelDownloadService {
       return;
     }
 
-    final snapshot = await _downloads.getQueue();
-    for (final entry in snapshot.entries) {
-      if (entry.artifactId != modelId) continue;
-      if (entry.resumeSupported ||
-          entry.status == DownloadStatus.paused ||
-          (entry.status == DownloadStatus.failed &&
-              entry.downloadedBytes > 0)) {
-        await resumeDownload(modelId);
-        return;
-      }
-      break;
+    final entry = await _engine.get(modelId);
+    if (entry != null && _resumeSupported(entry)) {
+      await resumeDownload(modelId);
+      return;
     }
 
     await retryDownload(modelId, model: model);
   }
 
-  Future<void> cancelDownload(String modelId) => _downloads.cancel(modelId);
-
-  Future<DownloadQueueSnapshot> getQueue() => _downloads.getQueue();
+  Future<void> cancelDownload(String modelId) => _engine.cancel(modelId);
 
   Future<List<ModelDownloadProgress>> restoreQueue({
     Iterable<OfflineModelInfo> catalogModels = const <OfflineModelInfo>[],
   }) async {
     _ensureSubscribed();
-    final snapshot = await _downloads.getQueue();
+    final transfers = await _engine.getAll();
     final catalog = <String, OfflineModelInfo>{
       for (final model in catalogModels) model.id: model,
     };
-    for (final entry in snapshot.entries) {
-      final model = catalog[entry.artifactId];
+    for (final entry in transfers) {
+      final model = catalog[entry.id];
       if (model == null) continue;
-      if (entry.status == DownloadStatus.completed) {
+      if (entry.status == AiroDownloadStatus.completed) {
         await _tryWriteReceipt(model);
-      } else if (entry.status == DownloadStatus.failed) {
+      } else if (entry.status == AiroDownloadStatus.failed) {
         // Keep catalog metadata for resume/retry, but do not mark the id as
         // already scheduled — otherwise a later [downloadModel] call would
         // skip re-enqueue and hang waiting for a dead WorkManager job.
         _scheduledModels[model.id] = model;
-      } else if (entry.status != DownloadStatus.cancelled) {
+      } else if (entry.status != AiroDownloadStatus.cancelled) {
         _scheduledModels[model.id] = model;
         _scheduledIds.add(model.id);
       }
     }
-    return snapshot.entries.map(_toModelProgress).toList(growable: false);
+    return transfers.map(_toModelProgress).toList(growable: false);
   }
 
   Future<String> getModelPath(String modelId, {OfflineModelInfo? model}) {
@@ -424,8 +434,8 @@ class ModelDownloadService {
   }
 
   void _ensureSubscribed() {
-    _progressSubscription ??= _downloads.events.listen(
-      _onPlatformProgress,
+    _progressSubscription ??= _engine.events.listen(
+      _onEngineProgress,
       onError: (Object error, StackTrace stackTrace) {
         // Platform stream failures are observable through the global stream,
         // without exposing URLs, credentials, or local paths.
@@ -456,10 +466,10 @@ class ModelDownloadService {
 
 class _ResolvedDependencies {
   const _ResolvedDependencies({
-    required this.downloads,
+    required this.engine,
     required this.storageManager,
   });
 
-  final BackgroundDownloads downloads;
+  final AiroDownloadEngine engine;
   final ModelStorageManager storageManager;
 }
