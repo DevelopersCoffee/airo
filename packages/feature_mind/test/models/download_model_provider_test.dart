@@ -14,45 +14,65 @@ class MockModelStorageManager extends Mock implements ModelStorageManager {}
 /// (`packages/core_ai/test/download/model_download_service_test.dart`), kept
 /// local rather than shared: a test double is not a dependency worth exporting
 /// across a package boundary.
-class FakeBackgroundDownloads implements BackgroundDownloads {
-  final eventController = StreamController<DownloadProgress>.broadcast();
-  final requests = <DownloadArtifactRequest>[];
+class FakeAiroPlatformBridge extends AiroPlatformBridge {
+  final eventController = StreamController<AiroDownload>.broadcast();
+  final requests = <AiroDownloadRequest>[];
   final actions = <String>[];
-  var queue = const DownloadQueueSnapshot(entries: []);
+  var downloads = <AiroDownload>[];
 
   @override
-  Stream<DownloadProgress> get events => eventController.stream;
+  Stream<AiroDownload> get events => eventController.stream;
 
   @override
-  Future<void> enqueue(DownloadArtifactRequest request) async {
+  Future<void> enqueue(AiroDownloadRequest request) async {
     requests.add(request);
   }
 
   @override
-  Future<void> pause(String artifactId) async {
-    actions.add('pause:$artifactId');
+  Future<void> pause(String id) async {
+    actions.add('pause:$id');
   }
 
   @override
-  Future<void> resume(String artifactId) async {
-    actions.add('resume:$artifactId');
+  Future<void> resume(String id) async {
+    actions.add('resume:$id');
   }
 
   @override
-  Future<void> retry(String artifactId) async {
-    actions.add('retry:$artifactId');
+  Future<void> retry(String id) async {
+    actions.add('retry:$id');
   }
 
   @override
-  Future<void> cancel(String artifactId) async {
-    actions.add('cancel:$artifactId');
+  Future<void> cancel(String id) async {
+    actions.add('cancel:$id');
   }
 
   @override
-  Future<DownloadQueueSnapshot> getQueue() async => queue;
+  Future<List<AiroDownload>> getAll() async => List.unmodifiable(downloads);
 
   @override
   Future<int?> getAvailableBytes() async => null;
+}
+
+AiroDownload _transfer({
+  required String id,
+  required AiroDownloadStatus status,
+  int downloadedBytes = 0,
+  int totalBytes = 0,
+  double speedBytesPerSecond = 0,
+}) {
+  return AiroDownload(
+    request: AiroDownloadRequest(
+      id: id,
+      url: Uri.parse('https://example.test/$id'),
+      destination: '/tmp/$id',
+    ),
+    status: status,
+    downloadedBytes: downloadedBytes,
+    totalBytes: totalBytes,
+    speedBytesPerSecond: speedBytesPerSecond,
+  );
 }
 
 RequiredModel _whisper() => const RequiredModel(
@@ -73,14 +93,14 @@ void main() {
     );
   });
 
-  late FakeBackgroundDownloads downloads;
+  late FakeAiroPlatformBridge bridge;
   late MockModelStorageManager storage;
   late ModelDownloadService service;
   late Directory modelsDir;
   late Directory stagingDir;
 
   setUp(() {
-    downloads = FakeBackgroundDownloads();
+    bridge = FakeAiroPlatformBridge();
     storage = MockModelStorageManager();
     when(
       () => storage.enforceStorageQuota(
@@ -89,7 +109,7 @@ void main() {
       ),
     ).thenAnswer((_) async => <String>[]);
     service = ModelDownloadService(
-      downloads: downloads,
+      engine: AiroDownloadEngine(bridge: bridge),
       storageManager: storage,
     );
     modelsDir = Directory.systemTemp.createTempSync('mind_provider_test_');
@@ -190,10 +210,10 @@ void main() {
       // turn before asserting on what it queued.
       await Future<void>.delayed(Duration.zero);
 
-      expect(downloads.requests, hasLength(1));
-      final request = downloads.requests.single;
-      expect(request.destinationPath, staged.path);
-      expect(request.expectedSha256, _whisper().sha256);
+      expect(bridge.requests, hasLength(1));
+      final request = bridge.requests.single;
+      expect(request.destination, staged.path);
+      expect(request.checksum?.value, _whisper().sha256);
 
       // What the transport writes: the bytes land in `core_ai`'s staging
       // directory, which is not where the engines read from.
@@ -202,10 +222,10 @@ void main() {
       // Drive the fake transport to completion -- the provider's `acquire`
       // stream never closes on its own (the service's per-model stream is
       // broadcast and persistent), so nothing here finishes without this.
-      downloads.eventController.add(
-        DownloadProgress(
-          artifactId: request.artifactId,
-          status: DownloadStatus.completed,
+      bridge.eventController.add(
+        _transfer(
+          id: request.id,
+          status: AiroDownloadStatus.completed,
           downloadedBytes: _whisper().sizeBytes,
           totalBytes: _whisper().sizeBytes,
         ),
@@ -271,10 +291,10 @@ void main() {
       final events = <ModelAcquisitionEvent>[];
       final acquisition = provider.acquire(modelsDir).forEach(events.add);
       await Future<void>.delayed(Duration.zero);
-      downloads.eventController.add(
-        DownloadProgress(
-          artifactId: downloads.requests.single.artifactId,
-          status: DownloadStatus.completed,
+      bridge.eventController.add(
+        _transfer(
+          id: bridge.requests.single.id,
+          status: AiroDownloadStatus.completed,
           downloadedBytes: _whisper().sizeBytes,
           totalBytes: _whisper().sizeBytes,
         ),
@@ -335,10 +355,10 @@ void main() {
       final events = <ModelAcquisitionEvent>[];
       final acquisition = provider.acquire(modelsDir).forEach(events.add);
       await Future<void>.delayed(Duration.zero);
-      downloads.eventController.add(
-        DownloadProgress(
-          artifactId: downloads.requests.single.artifactId,
-          status: DownloadStatus.completed,
+      bridge.eventController.add(
+        _transfer(
+          id: bridge.requests.single.id,
+          status: AiroDownloadStatus.completed,
           downloadedBytes: _whisper().sizeBytes,
           totalBytes: _whisper().sizeBytes,
         ),
@@ -388,7 +408,7 @@ void main() {
 
       final events = await provider.acquire(modelsDir).toList();
 
-      expect(downloads.requests, isEmpty);
+      expect(bridge.requests, isEmpty);
       expect(
         events.last,
         isA<ModelAcquisitionDone>().having(
@@ -422,35 +442,31 @@ void main() {
         () => storage.findExistingModelPath(any(), model: any(named: 'model')),
       ).thenAnswer((_) async => null);
 
-      downloads.queue = const DownloadQueueSnapshot(
-        entries: [
-          DownloadProgress(
-            artifactId: 'ggml-tiny.en',
-            status: DownloadStatus.paused,
-            downloadedBytes: 40_000_000,
-            totalBytes: 77704715,
-            resumeSupported: true,
-          ),
-        ],
-      );
+      bridge.downloads = [
+        _transfer(
+          id: 'ggml-tiny.en',
+          status: AiroDownloadStatus.paused,
+          downloadedBytes: 40_000_000,
+          totalBytes: 77704715,
+        ),
+      ];
 
       final events = <ModelAcquisitionEvent>[];
       final acquisition = provider.acquire(modelsDir).forEach(events.add);
       await Future<void>.delayed(Duration.zero);
 
-      expect(downloads.actions, contains('resume:ggml-tiny.en'));
+      expect(bridge.actions, contains('resume:ggml-tiny.en'));
       expect(
         events.whereType<ModelAcquisitionProgress>().first.fetched,
         40_000_000,
       );
 
-      downloads.eventController.add(
-        const DownloadProgress(
-          artifactId: 'ggml-tiny.en',
-          status: DownloadStatus.failed,
+      bridge.eventController.add(
+        _transfer(
+          id: 'ggml-tiny.en',
+          status: AiroDownloadStatus.failed,
           downloadedBytes: 40_000_000,
           totalBytes: 77704715,
-          resumeSupported: true,
         ),
       );
       await acquisition;
@@ -487,16 +503,15 @@ void main() {
       final events = <ModelAcquisitionEvent>[];
       final acquisition = provider.acquire(modelsDir).forEach(events.add);
       await Future<void>.delayed(Duration.zero);
-      expect(downloads.requests, hasLength(1));
+      expect(bridge.requests, hasLength(1));
 
       // Platform reports downloading with no further byte movement.
-      downloads.eventController.add(
-        const DownloadProgress(
-          artifactId: 'ggml-tiny.en',
-          status: DownloadStatus.downloading,
+      bridge.eventController.add(
+        _transfer(
+          id: 'ggml-tiny.en',
+          status: AiroDownloadStatus.downloading,
           downloadedBytes: 1_000_000,
           totalBytes: 77704715,
-          speedBytesPerSecond: 0,
         ),
       );
       await acquisition.timeout(const Duration(seconds: 2));
@@ -556,10 +571,10 @@ void main() {
       final acquisition = provider.acquire(modelsDir).forEach(events.add);
       await Future<void>.delayed(Duration.zero);
       staged.writeAsBytesSync(List.filled(_whisper().sizeBytes.toInt(), 0));
-      downloads.eventController.add(
-        DownloadProgress(
-          artifactId: downloads.requests.single.artifactId,
-          status: DownloadStatus.completed,
+      bridge.eventController.add(
+        _transfer(
+          id: bridge.requests.single.id,
+          status: AiroDownloadStatus.completed,
           downloadedBytes: _whisper().sizeBytes,
           totalBytes: _whisper().sizeBytes,
         ),

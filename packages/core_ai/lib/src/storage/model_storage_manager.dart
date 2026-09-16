@@ -24,9 +24,9 @@ enum ModelStorageLocation {
 /// Manages storage, SHA-256 integrity check, and space validation.
 class ModelStorageManager {
   ModelStorageManager({
-    BackgroundDownloads? downloads,
+    AiroPlatformBridge? bridge,
     this.location = ModelStorageLocation.applicationDocuments,
-  }) : _downloads = downloads ?? createBackgroundDownloads();
+  }) : _bridge = bridge ?? AiroPlatformBridge();
 
   static const supportedArtifactExtensions = <String>[
     '.litertlm',
@@ -46,7 +46,7 @@ class ModelStorageManager {
   /// RAM-resident cache entry.
   static const int defaultStorageBudgetBytes = 8 * 1024 * 1024 * 1024;
 
-  final BackgroundDownloads _downloads;
+  final AiroPlatformBridge _bridge;
   final ModelStorageLocation location;
 
   /// Gets the directory where models are stored.
@@ -240,7 +240,7 @@ class ModelStorageManager {
   /// Checks if the device has enough free space for the model file, plus a safety margin.
   Future<bool> hasEnoughDiskSpace(int requiredBytes) async {
     try {
-      final freeBytes = await _downloads.getAvailableBytes();
+      final freeBytes = await _bridge.getAvailableBytes();
       if (freeBytes == null) {
         return true; // Fallback if native call returns null
       }
