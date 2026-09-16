@@ -1,4 +1,3 @@
 library;
 
-export 'src/m3u_parser.dart';
-export 'src/native_bridge.dart' show initializeM3uParserBridge;
+export 'package:airo_m3u_parser/m3u_parser.dart';
