@@ -12,16 +12,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 // "MENU for more actions" hint. useTvTransportBar: true swaps the
 // touch-oriented VOL/CH pillar layout for this bar; phone/tablet callers
 // (useTvTransportBar defaults false) are unaffected.
+const _titleSafeFraction = 0.05;
+const _transportPanelMaxFraction = 0.80;
+
 void main() {
   Future<ProviderContainer> pumpTransportBar(
     WidgetTester tester, {
     required double width,
+    double height = 540,
     Duration liveDelay = Duration.zero,
     VideoPlayerStreamingService? service,
     Stream<StreamingState>? states,
     FocusNode? retainedFocusNode,
+    List<String> favoriteIds = const [],
+    List<AiroPlaybackTrackOption> tracks = const [],
   }) async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      if (favoriteIds.isNotEmpty) 'iptv_favorite_channel_ids': favoriteIds,
+    });
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
       overrides: [
@@ -37,6 +45,7 @@ void main() {
                   isLiveStream: true,
                   liveDelay: liveDelay,
                   currentQuality: VideoQuality.high,
+                  tracks: tracks,
                   currentChannel: IPTVChannel(
                     id: 'news-1',
                     name: 'City News Live',
@@ -50,6 +59,11 @@ void main() {
     );
     addTearDown(container.dispose);
 
+    tester.view.physicalSize = Size(width, height);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -59,10 +73,11 @@ void main() {
               children: [
                 SizedBox(
                   width: width,
-                  height: 540,
+                  height: height,
                   child: const VideoPlayerWidget(
                     initiallyFullscreen: true,
                     useTvTransportBar: true,
+                    enableTouchGestures: false,
                   ),
                 ),
                 if (retainedFocusNode != null)
@@ -79,6 +94,61 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     return container;
+  }
+
+  final playPause = find.byKey(const ValueKey('iptv-tv-transport-play-pause'));
+
+  const actionKeys = [
+    ValueKey('iptv-tv-transport-play-pause'),
+    ValueKey('iptv-tv-transport-restart'),
+    ValueKey('iptv-tv-transport-audio'),
+    ValueKey('iptv-tv-transport-subtitles'),
+    ValueKey('iptv-tv-transport-favourite'),
+    ValueKey('iptv-tv-transport-info'),
+    ValueKey('iptv-player-more-button'),
+  ];
+
+  void expectBoundedSingleActionRow(WidgetTester tester, Size viewport) {
+    expect(playPause, findsOneWidget);
+    expect(
+      find.ancestor(of: playPause, matching: find.byType(Wrap)),
+      findsNothing,
+      reason: 'TV transport actions must be a single row, not a Wrap',
+    );
+
+    final actionRow = find.ancestor(
+      of: playPause,
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Row || widget is ListView,
+      ),
+    );
+    expect(actionRow, findsWidgets);
+
+    final visibleActionKeys = actionKeys
+        .where((key) => find.byKey(key).evaluate().isNotEmpty)
+        .toList();
+    expect(visibleActionKeys, isNotEmpty);
+    final actionYs = {
+      for (final key in visibleActionKeys) tester.getCenter(find.byKey(key)).dy,
+    };
+    expect(
+      actionYs,
+      hasLength(1),
+      reason: 'all visible transport actions must share one row',
+    );
+
+    final titleSafeWidth = viewport.width * (1 - 2 * _titleSafeFraction);
+    final panel = find.byKey(const ValueKey('iptv-tv-transport-panel'));
+    expect(panel, findsOneWidget);
+    expect(
+      tester.getSize(panel).width,
+      lessThanOrEqualTo(titleSafeWidth * _transportPanelMaxFraction + 0.5),
+    );
+    expect(
+      tester.getSize(panel).width,
+      lessThan(viewport.width * 0.90),
+      reason: 'transport panel must not be full-bleed',
+    );
   }
 
   testWidgets('renders all transport buttons and channel metadata at the '
@@ -128,6 +198,134 @@ void main() {
     await pumpTransportBar(tester, width: 720);
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('transport actions stay on one width-capped row at 1280x720', (
+    tester,
+  ) async {
+    const viewport = Size(1280, 720);
+    await pumpTransportBar(
+      tester,
+      width: viewport.width,
+      height: viewport.height,
+    );
+
+    expect(tester.takeException(), isNull);
+    expectBoundedSingleActionRow(tester, viewport);
+  });
+
+  testWidgets('transport actions stay on one width-capped row at 1920x1080', (
+    tester,
+  ) async {
+    const viewport = Size(1920, 1080);
+    await pumpTransportBar(
+      tester,
+      width: viewport.width,
+      height: viewport.height,
+    );
+
+    expect(tester.takeException(), isNull);
+    expectBoundedSingleActionRow(tester, viewport);
+  });
+
+  testWidgets('first focus lands on Pause/Play', (tester) async {
+    await pumpTransportBar(tester, width: 1280, height: 720);
+
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player center control',
+    );
+  });
+
+  testWidgets('transport action height stays between 56 and 72', (
+    tester,
+  ) async {
+    await pumpTransportBar(tester, width: 1280, height: 720);
+
+    final size = tester.getSize(playPause);
+    expect(size.height, inInclusiveRange(56, 72));
+  });
+
+  testWidgets(
+    'Audio and Subtitles stay visible and ignore select without tracks',
+    (tester) async {
+      await pumpTransportBar(tester, width: 1280, height: 720);
+
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-audio')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-subtitles')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('iptv-tv-transport-audio')));
+      await tester.pump();
+      expect(find.text('English audio'), findsNothing);
+
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-tv-transport-subtitles')),
+      );
+      await tester.pump();
+      expect(find.text('Off'), findsNothing);
+    },
+  );
+
+  testWidgets('Favourite reflects stored favorite state', (tester) async {
+    await pumpTransportBar(
+      tester,
+      width: 1280,
+      height: 720,
+      favoriteIds: const ['news-1'],
+    );
+
+    expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
+  });
+
+  testWidgets('chrome auto-hides after 5s idle and D-pad shows it again', (
+    tester,
+  ) async {
+    await pumpTransportBar(tester, width: 1280, height: 720);
+
+    await tester.pump(const Duration(milliseconds: 300));
+    final surface = FocusManager.instance.rootScope.descendants.firstWhere(
+      (node) => node.debugLabel == 'player surface',
+    );
+    surface.requestFocus();
+    await tester.pump();
+
+    await tester.pump(const Duration(milliseconds: 4999));
+    var opacity = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('iptv-player-controls-opacity')),
+    );
+    expect(opacity.opacity, 1);
+
+    await tester.pump(const Duration(milliseconds: 1));
+    opacity = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('iptv-player-controls-opacity')),
+    );
+    expect(opacity.opacity, 0);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    opacity = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('iptv-player-controls-opacity')),
+    );
+    expect(opacity.opacity, 1);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player center control',
+    );
+  });
+
+  testWidgets('TV transport bar has no on-screen Back button', (tester) async {
+    await pumpTransportBar(tester, width: 1280, height: 720);
+
+    expect(find.byIcon(Icons.arrow_back), findsNothing);
+    expect(find.byTooltip('Back'), findsNothing);
+    expect(find.text('Back'), findsNothing);
   });
 
   testWidgets('Favourite button toggles the favorite and updates its icon', (

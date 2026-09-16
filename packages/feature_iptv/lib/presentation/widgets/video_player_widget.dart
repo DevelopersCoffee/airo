@@ -31,6 +31,7 @@ import 'player_brightness_controller.dart';
 import 'player_gesture_overlay.dart';
 import 'player_lock_button.dart';
 import 'player_overlay.dart';
+import 'tv_transport_bar.dart';
 import '../tv_ux/sections/remote_overlay.dart';
 
 /// Video player widget with YouTube-like controls
@@ -141,7 +142,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _controlsHaveFocus = false;
   Timer? _hideControlsTimer;
   bool _suppressNextPlatformBack = false;
-  static const _controlsHideDelay = Duration(seconds: 4);
+  static const _controlsHideDelay = Duration(seconds: 5);
   static const _pointerExitHideDelay = Duration(seconds: 3);
 
   /// Marks the video surface's own bounds (excluding surrounding chrome
@@ -634,6 +635,21 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           ),
         );
         return TvInputResult.handled;
+      case TvInputKey.left:
+      case TvInputKey.right:
+        if (!controlsVisible) {
+          _showControls();
+          // ExcludeFocus still has the bar detached this frame. Claim Pause
+          // after the overlay remounts so D-pad reveal can start a walk.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (_centerControlFocusNode.canRequestFocus) {
+              _centerControlFocusNode.requestFocus();
+            }
+          });
+          return TvInputResult.handled;
+        }
+        return TvInputResult.notHandled;
       case TvInputKey.back:
         if (_quickBrowse != null) {
           // Fire OS follows this raw BACK event with a platform pop-route
@@ -651,10 +667,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           return TvInputResult.handled;
         }
         return TvInputResult.notHandled;
-      // Left/right walk the visible controls via normal focus traversal
-      // (the buttons are TvFocusable); with the overlay hidden there are
-      // no focus candidates (ExcludeFocus), so the keys are inert.
-      //
       // Select is deliberately NOT handled here: TvInputHandler fires on
       // every key-down, which would reveal controls the instant Select is
       // pressed -- including the down-stroke of what turns out to be a
@@ -1042,7 +1054,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           Positioned.fill(
             child: state.diagnostic != null
                 ? _buildDiagnosticError(state)
-                : _buildError(state.errorMessage ?? 'Playback could not start.'),
+                : _buildError(
+                    state.errorMessage ?? 'Playback could not start.',
+                  ),
           )
         else if (state.isLoading)
           _buildLoading()
@@ -1790,25 +1804,28 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 width: 96,
                 height: 96,
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.headphones, size: 72, color: Colors.white70),
+                errorBuilder: (context, error, stackTrace) => const Icon(
+                  Icons.headphones,
+                  size: 72,
+                  color: Colors.white70,
+                ),
               )
             else
               const Icon(Icons.headphones, size: 72, color: Colors.white70),
             const SizedBox(height: 16),
             Text(
               'Listening only',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.white),
             ),
             if (channel != null) ...[
               const SizedBox(height: 4),
               Text(
                 channel.name,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
               ),
             ],
           ],
@@ -1827,23 +1844,25 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       children: [
         // Decorative gradient backdrop only — wrapped in IgnorePointer so it
         // never hit-tests. The real controls live in `_buildControlButtons`
-        // below as separate hit-testable siblings.
-        IgnorePointer(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black54,
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.black54,
-                ],
+        // below as separate hit-testable siblings. The TV transport bar owns
+        // its own bottom scrim, so skip this full-screen dim on that path.
+        if (!widget.useTvTransportBar)
+          IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black54,
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black54,
+                  ],
+                ),
               ),
             ),
           ),
-        ),
         _buildControlButtons(context, service, state),
       ],
     );
@@ -2047,153 +2066,24 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     );
   }
 
-  /// AiroTV D-pad design's TRANSPORT (OK) screen: a metadata row that never
-  /// overlaps the button row below it, six action buttons matching the
-  /// prototype exactly (Pause, Restart, Audio, Subtitles, Favourite, Info),
-  /// and a "MENU for more actions" hint. Every button is wired to a real,
-  /// already-existing capability -- Info opens channel actions, rather than
-  /// a new stub panel.
+  /// Bottom-centered Watch overlay: one width-capped action row. Overflow
+  /// drops trailing actions (except More) rather than wrapping.
   Widget _buildTvTransportBar(
     BuildContext context,
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
     final channel = state.currentChannel;
-
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [Colors.black87, Colors.transparent],
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Metadata row — sits above the buttons, never overlaps them.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      (channel?.name.trim().isNotEmpty ?? false)
-                          ? channel!.name.trim()[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            if (state.isLiveStream)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'LIVE',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.6,
-                                  ),
-                                ),
-                              ),
-                            if (state.isLiveStream) const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                [
-                                  if (channel?.group.trim().isNotEmpty ?? false)
-                                    channel!.group,
-                                  state.currentQuality.label,
-                                ].join(' · '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          channel?.name ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Buttons row. The button group scrolls horizontally instead
-              // of being a fixed Row -- six buttons (two labeled with
-              // longer strings than the prototype's placeholder text) plus
-              // the MENU hint don't reliably fit the safe-area width on
-              // every real panel size, and overflowing here would crash
-              // the frame rather than just clip.
-              Focus(
-                canRequestFocus: false,
-                skipTraversal: true,
-                onKeyEvent: _handleTvTransportKey,
-                child: Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 10,
-                  runSpacing: 8,
-                  children: [
-                    ..._buildTvTransportButtons(context, service, state),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 6),
-                      child: Text(
-                        'MENU for more actions',
-                        style: TextStyle(color: Colors.white38, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    final detailLine = [
+      if (channel?.group.trim().isNotEmpty ?? false) channel!.group,
+      state.currentQuality.label,
+    ].join(' · ');
+    return TvTransportBar(
+      channelName: channel?.name ?? '',
+      detailLine: detailLine,
+      isLive: state.isLiveStream,
+      onKeyEvent: _handleTvTransportKey,
+      actions: _buildTvTransportButtons(context, service, state),
     );
   }
 
@@ -2214,7 +2104,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _favoriteTransportFocusNode,
       _infoFocusNode,
       _moreActionsFocusNode,
-    ];
+    ].where((candidate) => candidate.context != null).toList(growable: false);
     final currentIndex = focusNodes.indexWhere(
       (candidate) => candidate.hasFocus,
     );
@@ -2237,6 +2127,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final canRewind =
         state.canSeekBack ||
         (!state.isLiveStream && state.position > Duration.zero);
+    final hasAudio = state.tracks.any(
+      (track) => track.kind == AiroPlaybackTrackKind.audio,
+    );
+    final hasSubtitles = _subtitleTracksFor(state).isNotEmpty;
 
     return [
       TvFocusable(
@@ -2251,9 +2145,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             service.resume();
           }
         },
-        borderRadius: 10,
+        borderRadius: AiroSpacing.radiusSm,
         semanticLabel: state.isPlaying ? 'Pause' : 'Play',
-        child: _TvTransportButton(
+        child: TvTransportActionButton(
           icon: state.isPlaying
               ? Icons.pause_rounded
               : Icons.play_arrow_rounded,
@@ -2264,49 +2158,53 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         focusNode: _restartTransportFocusNode,
         onFocus: _startHideControlsTimer,
         onSelect: canRewind ? () => _seekBackward10(service, state) : null,
-        borderRadius: 10,
+        borderRadius: AiroSpacing.radiusSm,
         semanticLabel: state.isLiveStream
             ? 'Rewind 10 seconds'
             : 'Back 10 seconds',
-        child: const _TvTransportButton(icon: Icons.skip_previous_rounded),
+        child: const TvTransportActionButton(icon: Icons.skip_previous_rounded),
       ),
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-audio'),
         focusNode: _audioTransportFocusNode,
         onFocus: _startHideControlsTimer,
-        onSelect: () => unawaited(
-          _showTrackSelectorFor(
-            context,
-            service,
-            state,
-            kind: AiroPlaybackTrackKind.audio,
-            restoreFocusNode: _audioTransportFocusNode,
-          ),
-        ),
-        borderRadius: 10,
-        semanticLabel: 'Audio',
-        child: const _TvTransportButton(
+        onSelect: hasAudio
+            ? () => unawaited(
+                _showTrackSelectorFor(
+                  context,
+                  service,
+                  state,
+                  kind: AiroPlaybackTrackKind.audio,
+                  restoreFocusNode: _audioTransportFocusNode,
+                ),
+              )
+            : null,
+        borderRadius: AiroSpacing.radiusSm,
+        semanticLabel: hasAudio ? 'Audio' : 'Audio, no tracks',
+        child: TvTransportActionButton(
           icon: Icons.volume_up_outlined,
-          label: 'Audio',
+          enabled: hasAudio,
         ),
       ),
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-subtitles'),
         focusNode: _subtitleTransportFocusNode,
         onFocus: _startHideControlsTimer,
-        onSelect: () => unawaited(
-          _showTrackSelector(
-            context,
-            service,
-            state,
-            restoreFocusNode: _subtitleTransportFocusNode,
-          ),
-        ),
-        borderRadius: 10,
-        semanticLabel: 'Subtitles',
-        child: const _TvTransportButton(
+        onSelect: hasSubtitles
+            ? () => unawaited(
+                _showTrackSelector(
+                  context,
+                  service,
+                  state,
+                  restoreFocusNode: _subtitleTransportFocusNode,
+                ),
+              )
+            : null,
+        borderRadius: AiroSpacing.radiusSm,
+        semanticLabel: hasSubtitles ? 'Subtitles' : 'Subtitles, no tracks',
+        child: TvTransportActionButton(
           icon: Icons.subtitles_outlined,
-          label: 'Subtitles',
+          enabled: hasSubtitles,
         ),
       ),
       TvFocusable(
@@ -2314,15 +2212,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         focusNode: _favoriteTransportFocusNode,
         onFocus: _startHideControlsTimer,
         onSelect: channel == null ? null : _toggleFavoriteForCurrentChannel,
-        borderRadius: 10,
+        borderRadius: AiroSpacing.radiusSm,
         semanticLabel: isFavorite
             ? 'Remove from favourites'
             : 'Add to favourites',
-        child: _TvTransportButton(
+        child: TvTransportActionButton(
           icon: isFavorite
               ? Icons.favorite_rounded
               : Icons.favorite_border_rounded,
-          label: 'Favourite',
+          selected: isFavorite,
         ),
       ),
       TvFocusable(
@@ -2332,12 +2230,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         onSelect: channel == null
             ? null
             : () => _openContextMenu(restoreFocusNode: _infoFocusNode),
-        borderRadius: 10,
+        borderRadius: AiroSpacing.radiusSm,
         semanticLabel: 'Info',
-        child: const _TvTransportButton(
-          icon: Icons.info_outline_rounded,
-          label: 'Info',
-        ),
+        child: const TvTransportActionButton(icon: Icons.info_outline_rounded),
       ),
       TvFocusable(
         key: const ValueKey('iptv-player-more-button'),
@@ -2349,12 +2244,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           state,
           restoreFocusNode: _moreActionsFocusNode,
         ),
-        borderRadius: 10,
+        borderRadius: AiroSpacing.radiusSm,
         semanticLabel: 'More player actions',
-        child: const _TvTransportButton(
-          icon: Icons.more_horiz_rounded,
-          label: 'More',
-        ),
+        child: const TvTransportActionButton(icon: Icons.more_horiz_rounded),
       ),
     ];
   }
@@ -2762,15 +2654,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       onSelect: () =>
                           unawaited(afterSheet(widget.onShowMultiviewLayout!)),
                     ),
-                  if (widget.onShowHelp != null || widget.onOpenSettings != null)
+                  if (widget.onShowHelp != null ||
+                      widget.onOpenSettings != null)
                     const Divider(height: 1),
                   if (widget.onShowHelp != null)
                     _TvSheetListTile(
                       itemKey: const ValueKey('iptv-player-help-menu-action'),
                       leading: const Icon(Icons.help_outline),
                       title: const Text('Help'),
-                      onSelect: () =>
-                          unawaited(afterSheet(widget.onShowHelp!)),
+                      onSelect: () => unawaited(afterSheet(widget.onShowHelp!)),
                     ),
                   if (widget.onOpenSettings != null)
                     _TvSheetListTile(
@@ -4001,44 +3893,6 @@ class _RecoveryActionButton extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _TvTransportButton extends StatelessWidget {
-  const _TvTransportButton({required this.icon, this.label});
-
-  final IconData icon;
-  final String? label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: EdgeInsets.symmetric(horizontal: label == null ? 0 : 16),
-      constraints: BoxConstraints(minWidth: label == null ? 48 : 0),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          if (label != null) ...[
-            const SizedBox(width: 8),
-            Text(
-              label!,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }
