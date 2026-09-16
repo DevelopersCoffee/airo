@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:airo_app/features/iptv/iptv_feature_module.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -9,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+// ignore: depend_on_referenced_packages
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+// ignore: depend_on_referenced_packages
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

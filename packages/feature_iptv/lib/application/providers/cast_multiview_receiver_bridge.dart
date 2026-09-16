@@ -75,6 +75,8 @@ class CastMultiviewReceiverBridge {
         await _controller.toggle(session.channel);
       case MultiviewPromoteCommand(:final slotId):
         await _controller.promote(slotId);
+      case MultiviewMuteAllCommand():
+        await _controller.muteAll();
       case MultiviewSwapCommand(:final firstSlotId, :final secondSlotId):
         _controller.swap(firstSlotId, secondSlotId);
       case MultiviewQueryStateCommand():

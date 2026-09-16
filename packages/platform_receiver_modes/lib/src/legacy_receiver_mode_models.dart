@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:platform_device_profile/platform_device_profile.dart';
+import 'package:platform_device_profile/platform_device_profile.dart'
+    hide ProductProfileId;
 import 'package:product_capabilities/product_capabilities.dart';
 
 const String kLegacyReceiverModeSchemaVersion = '1.0.0';

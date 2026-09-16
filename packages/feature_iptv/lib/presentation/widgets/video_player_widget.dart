@@ -108,6 +108,16 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   /// active; leave it null otherwise.
   final VoidCallback? onShowMultiviewLayout;
 
+  /// Adds a "Ways to Watch" entry to this widget's own player-actions
+  /// sheet, for the same reason as [onShowHelp] -- the ten-foot layout
+  /// reaches that same dialog (fit/fullscreen/PiP/Cast/Cast MultiView) via
+  /// [ChannelInfoBar]'s own "Ways to Watch" button, which only renders in
+  /// that layout (`AiroTvShell.showInfoBar` is `!showVideoStage`, true only
+  /// for the grid-first ten-foot case). The phone/compact layout renders no
+  /// [ChannelInfoBar] at all, so without this entry Cast MultiView (reached
+  /// through this same dialog) has no reachable UI on a phone screen.
+  final VoidCallback? onShowWaysToWatch;
+
   const VideoPlayerWidget({
     super.key,
     this.showControls = true,
@@ -127,6 +137,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.onShowHelp,
     this.onOpenSettings,
     this.onShowMultiviewLayout,
+    this.onShowWaysToWatch,
   });
 
   @override
@@ -2714,6 +2725,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       title: const Text('MultiView layout'),
                       onSelect: () =>
                           unawaited(afterSheet(widget.onShowMultiviewLayout!)),
+                    ),
+                  if (widget.onShowWaysToWatch != null)
+                    _TvSheetListTile(
+                      itemKey: const ValueKey(
+                        'iptv-player-ways-to-watch-menu-action',
+                      ),
+                      leading: const Icon(Icons.monitor_outlined),
+                      title: const Text('Ways to Watch'),
+                      onSelect: () =>
+                          unawaited(afterSheet(widget.onShowWaysToWatch!)),
                     ),
                   if (widget.onShowHelp != null || widget.onOpenSettings != null)
                     const Divider(height: 1),

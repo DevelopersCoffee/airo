@@ -36,15 +36,31 @@ packages:
     dependency: transitive
     description:
       name: airo_background_downloads
-      sha256: "825644c6c63f5e3bfc7b7ed0dcc88143690aaca0ee8a8891782302237daacaae"
+      sha256: "6e8df9b7b664d9894790ace23c92ddef102f263b813b9c08b1339e5606ddc950"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.2.0"
   airo_calendar:
     dependency: transitive
     description:
       name: airo_calendar
-      sha256: "3b226dbcad7cc0f4f334f109c19038c84e44c6bc8a710d8b7a9ebe0f15a891ea"
+      sha256: "0551df7aa63e02a5787d4b6d3d90f62eca13a3fbfaeaced46489f2c2d77a0bc2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
+  airo_device_profile:
+    dependency: transitive
+    description:
+      name: airo_device_profile
+      sha256: "00c728c160f1a2fa813ec4b77b38c56f875ca072e4bf083b193b689e0ceef9de"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  airo_epg:
+    dependency: transitive
+    description:
+      name: airo_epg
+      sha256: "3908e75b25ca7a336d2b75e73a1cd2742bf9a9cecdd3caad1e18ead7710a4db9"
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
@@ -52,10 +68,10 @@ packages:
     dependency: transitive
     description:
       name: airo_job_scheduler
-      sha256: a37c773312c038d283fce6177c2b23cdc95181fa2a31ca1201f10429912afc0d
+      sha256: a80f5cb74a5fa9e5fec813674af2c396dccdf879304522f17eea3df18b6450c6
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.1.0"
   airo_pro_bootstrap:
     dependency: "direct main"
     description:
@@ -63,14 +79,6 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
-  airo_protocol:
-    dependency: transitive
-    description:
-      name: airo_protocol
-      sha256: c94824cc32612db3da54a0519b42123ee67ed5184bee42860871e3de34c07210
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
   alchemist:
     dependency: "direct dev"
     description:
@@ -452,7 +460,7 @@ packages:
       path: "../packages/core_analytics"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   core_app_shell:
     dependency: "direct main"
     description:
@@ -523,13 +531,6 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
-  core_protocol:
-    dependency: transitive
-    description:
-      path: "../packages/core_protocol"
-      relative: true
-    source: path
-    version: "0.0.1"
   core_ui:
     dependency: "direct main"
     description:
@@ -543,7 +544,7 @@ packages:
       path: "../packages/core_workers"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   coverage:
     dependency: transitive
     description:
@@ -1240,6 +1241,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.16.0"
+  google_mobile_ads:
+    dependency: transitive
+    description:
+      name: google_mobile_ads
+      sha256: f35e040875bb54e8a3455bcffed3b4ac9e9263fbf7751b9fd1ae7f30793faee8
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.0"
   google_sign_in:
     dependency: "direct main"
     description:
@@ -1909,13 +1918,20 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.6"
+  platform_ads:
+    dependency: "direct main"
+    description:
+      path: "../packages/platform_ads"
+      relative: true
+    source: path
+    version: "1.0.0"
   platform_calendar:
     dependency: transitive
     description:
       path: "../packages/platform_calendar"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   platform_channels:
     dependency: "direct main"
     description:
@@ -1936,21 +1952,21 @@ packages:
       path: "../packages/platform_device_profile"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   platform_downloads:
     dependency: "direct main"
     description:
       path: "../packages/platform_downloads"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   platform_epg:
     dependency: transitive
     description:
       path: "../packages/platform_epg"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   platform_favorites:
     dependency: transitive
     description:
@@ -1971,7 +1987,7 @@ packages:
       path: "../packages/platform_iptv_org_api"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   platform_media:
     dependency: "direct main"
     description:
@@ -2034,7 +2050,7 @@ packages:
       path: "../packages/platform_worker_jobs"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   plugin_platform_interface:
     dependency: transitive
     description:
@@ -2917,6 +2933,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.1"
+  webview_flutter:
+    dependency: transitive
+    description:
+      name: webview_flutter
+      sha256: d53e1ccf5516f25017e3c9d44c39034db352d20fa34fe200674270242c2c5111
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.14.1"
+  webview_flutter_android:
+    dependency: transitive
+    description:
+      name: webview_flutter_android
+      sha256: "4de8b3d1ff4ebe1bdb42e68a5e4f809194a3cb0117a8f495f590004f00da3964"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.14.1"
+  webview_flutter_platform_interface:
+    dependency: transitive
+    description:
+      name: webview_flutter_platform_interface
+      sha256: "1221c1b12f5278791042f2ec2841743784cf25c5a644e23d6680e5d718824f04"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.15.1"
+  webview_flutter_wkwebview:
+    dependency: transitive
+    description:
+      name: webview_flutter_wkwebview
+      sha256: fe359c7fac1002124b5b9e2ba3a41906bbb9b2d029ccb4a0067404d8f3704730
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.26.1"
   win32:
     dependency: transitive
     description:

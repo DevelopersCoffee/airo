@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 
 import '../../application/providers/cast_multiview_layouts_provider.dart';
@@ -172,8 +173,20 @@ class _LiveGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (state.slots.isEmpty) return const _EmptyLiveGrid();
     final sender = ref.read(multiviewCastSenderTransportProvider);
+    final anyFeatured = state.slots.any((slot) => slot.featured);
     return Column(
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            key: const ValueKey('cast-multiview-mute-all'),
+            onPressed: anyFeatured
+                ? () => sender.sendCommand(const MultiviewMuteAllCommand())
+                : null,
+            icon: const Icon(Icons.volume_off),
+            label: const Text('Mute all'),
+          ),
+        ),
         for (final slot in state.slots)
           Card(
             key: ValueKey('cast-multiview-live-slot-${slot.slotId}'),
@@ -272,9 +285,12 @@ class _SavedLayoutsList extends ConsumerWidget {
 }
 
 /// Builds a new named layout: pick channels from the current playlist, then
-/// save. A simple inline search — the TV-side long-list picker
-/// (`filter_dialogs.dart`) is a ten-foot-UI concern this phone screen
-/// doesn't share.
+/// save. Search + category filtering reuse the same [channelSearchIndexProvider]
+/// the Live TV browse grid filters with, but kept in sheet-local state
+/// rather than the grid's [channelSearchQueryProvider]/[selectedCategoryProvider]
+/// — this sheet must not perturb the grid's filters once it closes. The
+/// TV-side long-list picker (`filter_dialogs.dart`) stays a separate,
+/// ten-foot-UI-specific widget this phone screen doesn't share.
 class CastMultiviewLayoutEditorSheet extends ConsumerStatefulWidget {
   const CastMultiviewLayoutEditorSheet({super.key});
 
@@ -286,8 +302,10 @@ class CastMultiviewLayoutEditorSheet extends ConsumerStatefulWidget {
 class _CastMultiviewLayoutEditorSheetState
     extends ConsumerState<CastMultiviewLayoutEditorSheet> {
   final _nameController = TextEditingController();
+  final _searchController = TextEditingController();
   final _selected = <MultiviewCastLayoutSlot>[];
   MultiviewLayoutKind? _layout;
+  ChannelCategory _category = ChannelCategory.all;
 
   @override
   void initState() {
@@ -295,17 +313,19 @@ class _CastMultiviewLayoutEditorSheetState
     // The Save button's enabled state depends on the name field's text —
     // rebuild on every keystroke, not only when a channel checkbox toggles.
     _nameController.addListener(() => setState(() {}));
+    _searchController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final channels = ref.watch(iptvChannelsProvider);
+    final searchIndex = ref.watch(channelSearchIndexProvider);
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ConstrainedBox(
@@ -368,48 +388,104 @@ class _CastMultiviewLayoutEditorSheetState
                       ],
                     ),
                     const SizedBox(height: 8),
-                    channels.when(
-                      data: (available) => SizedBox(
-                        height: 160,
-                        child: ListView(
-                          children: [
-                            for (final channel in available)
-                              CheckboxListTile(
-                                key: ValueKey(
-                                  'cast-multiview-channel-option-${channel.id}',
-                                ),
-                                value: _selected.any(
-                                  (s) => s.channelId == channel.id,
-                                ),
-                                title: Text(channel.name),
-                                onChanged: (checked) => setState(() {
-                                  if (checked == true) {
-                                    _selected.add(
-                                      MultiviewCastLayoutSlot(
-                                        channelId: channel.id,
-                                        channelName: channel.name,
-                                      ),
-                                    );
-                                  } else {
-                                    _selected.removeWhere(
-                                      (s) => s.channelId == channel.id,
-                                    );
-                                  }
-                                }),
-                              ),
-                          ],
-                        ),
+                    TextField(
+                      key: const ValueKey('cast-multiview-channel-search'),
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: 'Search channels',
+                        isDense: true,
                       ),
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (error, stackTrace) =>
-                          Text('Could not load channels: $error'),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 36,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          for (final category in ChannelCategory.values)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                key: ValueKey(
+                                  'cast-multiview-category-${category.name}',
+                                ),
+                                label: Text(category.label),
+                                selected: _category == category,
+                                onSelected: (_) =>
+                                    setState(() => _category = category),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Builder(
+                      builder: (context) {
+                        if (searchIndex == null) {
+                          final channelsAsync = ref.watch(iptvChannelsProvider);
+                          return channelsAsync.maybeWhen(
+                            error: (error, _) =>
+                                Text('Could not load channels: $error'),
+                            orElse: () =>
+                                const Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        final available = searchIndex.filterAndSort(
+                          category: _category,
+                          query: _searchController.text,
+                        );
+                        return SizedBox(
+                          height: 240,
+                          child: available.isEmpty
+                              ? const Center(child: Text('No channels match'))
+                              : ListView(
+                                  children: [
+                                    for (final channel in available)
+                                      CheckboxListTile(
+                                        key: ValueKey(
+                                          'cast-multiview-channel-option-${channel.id}',
+                                        ),
+                                        value: _selected.any(
+                                          (s) => s.channelId == channel.id,
+                                        ),
+                                        title: Text(channel.name),
+                                        onChanged: (checked) => setState(() {
+                                          if (checked == true) {
+                                            _selected.add(
+                                              MultiviewCastLayoutSlot(
+                                                channelId: channel.id,
+                                                channelName: channel.name,
+                                              ),
+                                            );
+                                          } else {
+                                            _selected.removeWhere(
+                                              (s) => s.channelId == channel.id,
+                                            );
+                                          }
+                                        }),
+                                      ),
+                                  ],
+                                ),
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
+            if (!_canSave)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  _saveHint,
+                  key: const ValueKey('cast-multiview-save-hint'),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -431,8 +507,18 @@ class _CastMultiviewLayoutEditorSheetState
     );
   }
 
-  bool get _canSave =>
-      _nameController.text.trim().isNotEmpty && _selected.isNotEmpty;
+  bool get _hasName => _nameController.text.trim().isNotEmpty;
+
+  bool get _canSave => _hasName && _selected.isNotEmpty;
+
+  /// What's missing before Save enables — shown above the button row so a
+  /// disabled Save isn't a dead end.
+  String get _saveHint => switch ((_hasName, _selected.isNotEmpty)) {
+    (false, false) => 'Add a layout name and pick at least one channel.',
+    (false, true) => 'Add a layout name to save.',
+    (true, false) => 'Pick at least one channel to save.',
+    (true, true) => '',
+  };
 
   Future<void> _save() async {
     final save = ref.read(saveMultiviewCastLayoutProvider);

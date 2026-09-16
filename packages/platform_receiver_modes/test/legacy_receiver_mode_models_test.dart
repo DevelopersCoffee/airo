@@ -1,6 +1,7 @@
 import 'package:core_protocol/core_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_device_profile/platform_device_profile.dart';
+import 'package:platform_device_profile/platform_device_profile.dart'
+    hide ProductProfileId;
 import 'package:platform_receiver_modes/platform_receiver_modes.dart';
 import 'package:product_capabilities/product_capabilities.dart';
 

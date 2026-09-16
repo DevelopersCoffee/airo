@@ -28,6 +28,7 @@ analyzer:
     - "**/build/**"
     - ".dart_tool/**"
     - "**/frb_generated*.dart"
+    - "**/cargokit/**"
 
 linter:
   rules:

@@ -1,7 +1,9 @@
 name: core_analytics
-description: Monorepo shim re-exporting airo_analytics.
-version: 0.0.1
-publish_to: none
+description: Local privacy-first analytics, telemetry filters, and vendor-neutral event reporting engine.
+version: 1.0.0
+homepage: https://developerscoffee.com
+repository: https://github.com/DevelopersCoffee/airo_analytics
+issue_tracker: https://github.com/DevelopersCoffee/airo_analytics/issues
 
 environment:
   sdk: ^3.12.2

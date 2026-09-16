@@ -2,20 +2,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_epg/platform_epg.dart';
 
 void main() {
-  test('platform_epg shim re-exports airo_epg contracts correctly', () {
-    const xmltv = '''
-<tv>
-  <channel id="news1">
-    <display-name>News 1</display-name>
-  </channel>
-  <programme channel="news1" start="20260727180000 +0000" stop="20260727200000 +0000">
-    <title>Evening News</title>
-  </programme>
-</tv>
-''';
+  group('platform_epg shim', () {
+    test('re-exports EmptyCompactEpgRepository from airo_epg', () {
+      final repository = EmptyCompactEpgRepository();
+      expect(repository, isA<CompactEpgRepository>());
+    });
 
-    final result = parseXmltvProgrammes(xmltv);
-    expect(result.programmes.length, 1);
-    expect(result.programmes.single.title, 'Evening News');
+    test('re-exports CompactEpgSlice availability logic', () {
+      final now = DateTime.utc(2026, 1, 1);
+      final slice = CompactEpgSlice(
+        entries: const [],
+        generatedAt: now,
+        expiresAt: now.add(const Duration(hours: 1)),
+        source: CompactEpgSliceSource.unavailable,
+      );
+
+      expect(slice.availabilityAt(now), CompactEpgAvailability.unavailable);
+    });
   });
 }

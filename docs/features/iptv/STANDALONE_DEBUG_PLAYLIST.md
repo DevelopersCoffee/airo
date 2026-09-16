@@ -10,8 +10,15 @@ flutter build apk --debug \
   --target=lib/main_tv.dart \
   --dart-define=APP_VARIANT=tv \
   --dart-define=APP_PLATFORM=androidTv \
-  --dart-define=DEBUG_IPTV_PLAYLIST_URL=https://example.com/iptv_channels.m3u
+  --dart-define=DEBUG_IPTV_PLAYLIST_URL=https://iptv-org.github.io/iptv/index.m3u
 ```
+
+Use that iptv-org index as a **test-supplied fixture only**. It is not a
+production default or Play Store preset. The catalog is about 2.5 MB, so
+native TV parses it off the main isolate. The web debug loader
+(`loadTvDebugPlaylistForWeb`) rejects playlists over 50 KB — do not use
+this URL with that path; keep a local fixture under the cap for browser
+validation.
 
 This is intentionally debug-only. `main_tv.dart` checks `kDebugMode`
 before writing the playlist URL, so release and production builds stay

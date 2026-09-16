@@ -126,6 +126,19 @@ void main() {
     },
   );
 
+  test('clearAll removes favorites and not-for-me flags', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = FavoriteChannelsStorage(prefs);
+    await storage.setFavorite('chA');
+    await storage.setNotForMe('chB');
+
+    await storage.clearAll();
+
+    expect(await storage.getFavoriteChannelIds(), isEmpty);
+    expect(await storage.getNotForMeChannelIds(), isEmpty);
+  });
+
   test('replaceAll preserves the order of the provided iterable', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();

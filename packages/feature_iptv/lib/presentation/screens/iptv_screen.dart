@@ -1150,7 +1150,19 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       AiroResponsiveScaffold(
         padding: EdgeInsets.zero,
         appBar: AppBar(
-          title: const Text('Aika Stream'),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/aika_stream_mark.png',
+                package: 'feature_iptv',
+                width: 28,
+                height: 28,
+              ),
+              const SizedBox(width: 8),
+              const Text('Aika Stream'),
+            ],
+          ),
           actions: [
             if (isGoogleCastSenderPlatform)
               IconButton(
@@ -1584,6 +1596,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                       onPlaylistSourceTap: _showPlaylistSheet,
                     ),
                     onShowHelp: () => showAiroTvShellHelpDialog(context),
+                    onShowWaysToWatch: () => unawaited(_showWaysToWatch()),
                   ),
                 ),
               ),
@@ -1725,6 +1738,10 @@ class _StreamTabContent extends ConsumerWidget {
                       onGuideSourceTap: onGuideSourceTap,
                     ),
                     onShowHelp: () => showAiroTvShellHelpDialog(context),
+                    // The compact/phone layout renders no ChannelInfoBar (see
+                    // AiroTvShell.showInfoBar), so "Ways to Watch" -> Cast
+                    // MultiView has no other reachable entry here.
+                    onShowWaysToWatch: () => unawaited(onWaysToWatchTap()),
                   ),
                   const Positioned(
                     top: 60,

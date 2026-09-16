@@ -13,6 +13,7 @@ access.
 | Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
+| Data deletion URL | `https://developerscoffee.github.io/airo/legal/data-deletion/` |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` |
 | Current release | v0.0.1+14 |
 
@@ -90,7 +91,10 @@ removed from `app/pubspec_tv.yaml`, revisit both together.
 | Question | Recommended answer |
 | --- | --- |
 | Is all user data collected encrypted in transit? | Not applicable for developer collection. Network requests initiated by users use the URL scheme of the playlist or stream they provide. |
-| Can users request that data be deleted? | Local app data is removed by clearing app storage or uninstalling the app. No developer-hosted account data is collected for TV playback. |
+| Does the app allow users to create an account? | **No.** Aika Stream has no sign-in or account-creation UI. Playback does not require an account. `firebase_auth` may be present for runtime compatibility; it is not a user-facing account product. |
+| Can users request that data be deleted? | **Yes.** Local app data is removed in Settings → Privacy → Delete local data, by clearing app storage, or by uninstalling. Email `coffee.devloper@gmail.com` with subject “Aika Stream data deletion request” for a web request. No developer-hosted account data is collected for TV playback. |
+| Data deletion URL (Play Console) | `https://developerscoffee.github.io/airo/legal/data-deletion/` after GitHub Pages deploys this change |
+| Console URL saved 2026-09-15 (live today) | `https://developerscoffee.github.io/airo/legal/privacy-policy/#your-rights` |
 | Is data shared with third parties? | No app-owned user data sharing. Users may load playlist/stream URLs from third-party providers they choose. |
 | Does the app use advertising ID? | No. |
 | Does the app use tracking for ads or cross-app profiling? | No. |
@@ -122,9 +126,32 @@ Crashlytics, advertising SDK, and sensitive permission signals, then writes JSON
 and Markdown under `artifacts/release/`. It intentionally does not submit or
 replace Google Play/App Store forms.
 
+## Play Console — Data deletion questions
+
+Paste these into **App content → Data safety → Data deletion** (and the
+Account deletion section on App content, if shown).
+
+| Console question | Answer |
+| --- | --- |
+| Does your app allow users to create an account? | No |
+| Can users request that data be deleted? | Yes |
+| URL where users can request that data be deleted | `https://developerscoffee.github.io/airo/legal/data-deletion/` |
+| If the dedicated page is not on GitHub Pages yet | `https://developerscoffee.github.io/airo/legal/privacy-policy/#your-rights` |
+
+The dedicated page names **Aika Stream** and **DevelopersCoffee**, leads with a
+mailto deletion request, and explains on-device clear-data / uninstall. Do not
+point Play at the site homepage or a login wall.
+
+Account deletion in-app is **not required** for this TV listing: Play exempts
+Android TV from the in-app account-deletion path, and Aika Stream does not
+create accounts. Settings → Privacy → Delete local data is still shipped as
+release hardening so phone/tablet users on the same package can wipe local
+sources, credentials, favorites, and history without uninstalling.
+
 ## Human Console Actions
 
-- Complete Google Play Data Safety using the final answers above.
+- Complete Google Play Data Safety using the final answers above, including
+  the Data deletion URL.
 - Complete App Store Connect App Privacy labels only if iOS/tvOS enters scope.
 - Re-check this document if Firebase Analytics, Crashlytics, ads, account
   sign-in, cloud playlists, EPG sync, favorites sync, or server-side telemetry
