@@ -107,6 +107,8 @@ dependencies:
     path: ../packages/core_product_shell
   platform_downloads:
     path: ../packages/platform_downloads
+  platform_ads:
+    path: ../packages/platform_ads
 
   # Local packages - Features
   airo:
@@ -229,6 +231,10 @@ dependency_overrides:
   # Android FLAG_SECURE bridge locally so app builds retain screen protection.
   screen_protector:
     path: ../packages/platform_player/third_party/screen_protector
+  # Phone never ships AdMob. airo_ads depends on hosted google_mobile_ads;
+  # keep the flavor stub as the resolved implementation.
+  google_mobile_ads:
+    path: ../packages/stubs/google_mobile_ads_stub
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

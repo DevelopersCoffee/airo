@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0
+
+- Consume `airo_background_downloads` ^1.1.0 from pub.dev.
+
 ## 0.1.0
 
 - Add the versioned product-neutral background-download contract.
