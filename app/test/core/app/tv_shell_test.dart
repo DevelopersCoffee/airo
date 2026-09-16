@@ -62,6 +62,62 @@ void main() {
     },
   );
 
+  testWidgets(
+    'opening Settings from the rail leaves no live playback surface',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 720);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final router = TvRouter.createRouter(initialLocation: TvRouteNames.live);
+      final streamingService = _RecordingStreamingService();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvChannelsProvider.overrideWith((ref) async => const []),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.idle,
+                  isLiveStream: true,
+                ),
+              ),
+            ),
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              ref.onDispose(streamingService.dispose);
+              return streamingService;
+            }),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(IPTVScreen), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('tv-sidebar-nav')),
+          matching: find.text('Settings'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(IPTVScreen), findsNothing);
+      expect(streamingService.stopCount, 1);
+    },
+  );
+
   testWidgets('zen mode: sidebar is hidden while the player is fullscreen, and '
       'returns when fullscreen exits', (tester) async {
     final container = ProviderContainer();
@@ -88,120 +144,125 @@ void main() {
     expect(find.byKey(const Key('tv-sidebar-nav')), findsOneWidget);
   });
 
-  testWidgets(
-    'Settings overlay claims Theme focus and excludes retained live controls',
-    (tester) async {
-      final liveFocus = FocusNode(debugLabel: 'retained live action');
-      addTearDown(liveFocus.dispose);
-      var liveActivations = 0;
+  testWidgets('Settings is a real route and does not retain live controls', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1280, 720);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
 
-      await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            home: TvShell(
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: TvFocusable(
-                  focusNode: liveFocus,
-                  autofocus: true,
-                  onSelect: () => liveActivations++,
-                  child: const SizedBox(
-                    width: 160,
-                    height: 56,
-                    child: Text('Live action'),
-                  ),
-                ),
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final router = TvRouter.createRouter(initialLocation: TvRouteNames.live);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => const []),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final settingsRailItem = tester.widget<TvFocusable>(
-        find.ancestor(
-          of: find.text('Settings'),
-          matching: find.byType(TvFocusable),
-        ),
-      );
-      settingsRailItem.focusNode!.requestFocus();
-      await tester.pump();
-      await tester.sendKeyEvent(LogicalKeyboardKey.select);
-      await tester.pump();
-
-      // Fire TV restores the launching rail item after the overlay's first
-      // frame. The overlay must reclaim focus on the following frame.
-      settingsRailItem.focusNode!.requestFocus();
-      await tester.pump();
-      await tester.pumpAndSettle();
-
-      final themeItem = tester.widget<TvFocusable>(
-        find.ancestor(
-          of: find.text('Theme'),
-          matching: find.byType(TvFocusable),
-        ),
-      );
-      expect(themeItem.focusNode?.hasPrimaryFocus, isTrue);
-      expect(liveFocus.canRequestFocus, isFalse);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pump();
-      final playbackItem = tester.widget<TvFocusable>(
-        find.ancestor(
-          of: find.text('Playback'),
-          matching: find.byType(TvFocusable),
-        ),
-      );
-      expect(playbackItem.focusNode?.hasPrimaryFocus, isTrue);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.select);
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('tv_settings_section_playback')),
-        findsOneWidget,
-      );
-      expect(liveActivations, 0);
-    },
-  );
-
-  testWidgets('BACK dismisses an overlay instead of closing the app', (
-    tester,
-  ) async {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const MaterialApp(
-          home: TvShell(child: SizedBox.expand(child: Text('Live surface'))),
-        ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
       ),
     );
     await tester.pumpAndSettle();
 
-    final settingsRailItem = tester.widget<TvFocusable>(
+    expect(find.byType(IPTVScreen), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('tv-sidebar-nav')),
+        matching: find.text('Settings'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IPTVScreen), findsNothing);
+
+    final themeItem = tester.widget<TvFocusable>(
+      find.ancestor(of: find.text('Theme'), matching: find.byType(TvFocusable)),
+    );
+    expect(themeItem.focusNode?.hasPrimaryFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    final playbackItem = tester.widget<TvFocusable>(
       find.ancestor(
-        of: find.text('Settings'),
+        of: find.text('Playback'),
         matching: find.byType(TvFocusable),
       ),
     );
-    settingsRailItem.focusNode!.requestFocus();
-    await tester.pump();
+    expect(playbackItem.focusNode?.hasPrimaryFocus, isTrue);
+
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('tv_settings_section_playback')),
+      findsOneWidget,
+    );
+    expect(find.byType(IPTVScreen), findsNothing);
+  });
+
+  testWidgets('BACK from Settings does not restore a live playback surface', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1280, 720);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final router = TvRouter.createRouter(initialLocation: TvRouteNames.live);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => const []),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
+              ),
+            ),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('tv-sidebar-nav')),
+        matching: find.text('Settings'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Theme'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
 
-    // `true` means the shell consumed BACK. Were it `false`, the key would
-    // fall through to IPTVScreen.didPopRoute and ultimately SystemNavigator
-    // .pop() — the store-rejecting "BACK exits the app" behaviour.
-    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
-    expect(find.text('Theme'), findsNothing);
-    expect(find.text('Live surface'), findsOneWidget);
-    expect(container.read(tvNavigationIndexProvider), 0);
+    expect(find.byType(IPTVScreen), findsNothing);
   });
 
   testWidgets('BACK is left to the player while fullscreen', (tester) async {
@@ -216,17 +277,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final settingsRailItem = tester.widget<TvFocusable>(
-      find.ancestor(
-        of: find.text('Settings'),
-        matching: find.byType(TvFocusable),
-      ),
-    );
-    settingsRailItem.focusNode!.requestFocus();
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.select);
-    await tester.pumpAndSettle();
-
     container.read(isFullscreenModeProvider.notifier).state = true;
     await tester.pumpAndSettle();
 
@@ -235,4 +285,16 @@ void main() {
     // presses on a real remote.
     expect(await tester.binding.handlePopRoute(), isFalse);
   });
+}
+
+class _RecordingStreamingService extends VideoPlayerStreamingService {
+  _RecordingStreamingService() : super(engine: FakeAiroPlaybackEngine());
+
+  int stopCount = 0;
+
+  @override
+  Future<void> stop() async {
+    stopCount++;
+    await super.stop();
+  }
 }

@@ -13,11 +13,20 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/settings/presentation/tv/tv_settings_screen.dart';
-
 /// Provider for current TV navigation index
 final tvNavigationIndexProvider = StateProvider<int>((ref) => 0);
 const _tvNavigationRailWidth = 88.0;
+
+/// Rail destinations map onto real [GoRouter] locations. Watch (`/player`
+/// and leftover `/live`) is not a rail item — leaving it unmounts the live
+/// screen instead of painting an overlay on top of it.
+const _tvDestinationRoutes = <String>[
+  '/',
+  '/guide',
+  '/vod',
+  '/favorites',
+  '/settings',
+];
 
 /// Fraction of each edge a TV may crop. Televisions with overscan enabled
 /// discard roughly the outer 5%, which is why the Android TV guidance puts a
@@ -37,16 +46,6 @@ EdgeInsets tvTitleSafeInsets(Size size) => EdgeInsets.symmetric(
   vertical: size.height * tvTitleSafeFraction,
 );
 
-/// Non-live destinations the sidebar can show. Rendered as an overlay on
-/// top of [TvShell.child] instead of being routed to — routing away would
-/// unmount whatever live playback [child] holds (AiroTV D-pad design:
-/// "VIDEO LAYER always present, never destroyed" / "Playback never
-/// stops"). Only index 0 (Home) ever calls [GoRouter.go]: it's the one
-/// case where returning to the live route is actually correct even if it
-/// means building a fresh live screen (e.g. after a deep link landed the
-/// shell on a non-live route).
-enum _TvOverlayScreen { guide, vod, favorites, settings }
-
 /// TV Shell with sidebar navigation
 class TvShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -58,7 +57,6 @@ class TvShell extends ConsumerStatefulWidget {
 }
 
 class _TvShellState extends ConsumerState<TvShell> {
-  _TvOverlayScreen? _overlay;
   late final List<FocusNode> _railFocusNodes = List.generate(
     _tvNavDestinations.length,
     (index) =>
@@ -88,9 +86,6 @@ class _TvShellState extends ConsumerState<TvShell> {
     // way to navigate is not.
     final body = Stack(
       children: [
-        // The routed content (the live TV screen on the common path).
-        // Never removed from the tree by a sidebar tap — only a direct
-        // deep link to a different route replaces it.
         Positioned.fill(
           child: Focus(
             canRequestFocus: false,
@@ -99,35 +94,11 @@ class _TvShellState extends ConsumerState<TvShell> {
               padding: EdgeInsets.only(
                 left: isPlayerFullscreen ? 0 : _tvNavigationRailWidth,
               ),
-              // Non-live destinations are painted over the retained live
-              // surface. Keep that surface mounted for playback, but never
-              // leave its controls in the focus graph behind an overlay.
-              child: ExcludeFocus(
-                excluding: _overlay != null,
-                child: widget.child,
-              ),
+              child: widget.child,
             ),
           ),
         ),
-        if (!isPlayerFullscreen) ...[
-          if (_overlay != null)
-            Positioned.fill(
-              // The rail stays visible (painted after this, so on top) and
-              // isn't docked in a layout row anymore, so it no longer
-              // reserves space of its own — give overlay screens the same
-              // left inset the old Row gave them, so their content doesn't
-              // render underneath the now-floating rail.
-              child: Focus(
-                canRequestFocus: false,
-                onKeyEvent: _handleContentKeyEvent,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: _tvNavigationRailWidth),
-                  child: _buildOverlay(_overlay!),
-                ),
-              ),
-            ),
-          // The rail is painted on top instead of docked in a Row, so it
-          // never claims layout width from the content beneath it.
+        if (!isPlayerFullscreen)
           Positioned(
             left: 0,
             top: 0,
@@ -139,37 +110,17 @@ class _TvShellState extends ConsumerState<TvShell> {
                   _selectDestination(context, index),
             ),
           ),
-        ],
       ],
     );
 
-    // BACK must return to the previous screen, which for an overlay means
-    // dismissing it — both store review guidelines require this. Without
-    // this gate the key falls through to `IPTVScreen.didPopRoute`, which
-    // either closes the app outright or (in ten-foot mode after any prior
-    // fullscreen session) swallows it, stranding the user in Settings with
-    // only D-pad LEFT to the rail as an escape.
-    //
-    // Fullscreen playback is deliberately exempt: there BACK means "leave
-    // fullscreen", which is `IPTVScreen`'s job, and the overlay is not
-    // painted anyway.
-    final overlayHandlesBack = _overlay != null && !isPlayerFullscreen;
-
-    return PopScope(
-      canPop: !overlayHandlesBack,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        _closeOverlay();
-      },
-      child: Scaffold(
-        body: isPlayerFullscreen
-            ? body
-            : Padding(
-                key: const Key('tv-title-safe-inset'),
-                padding: tvTitleSafeInsets(MediaQuery.sizeOf(context)),
-                child: body,
-              ),
-      ),
+    return Scaffold(
+      body: isPlayerFullscreen
+          ? body
+          : Padding(
+              key: const Key('tv-title-safe-inset'),
+              padding: tvTitleSafeInsets(MediaQuery.sizeOf(context)),
+              child: body,
+            ),
     );
   }
 
@@ -227,41 +178,9 @@ class _TvShellState extends ConsumerState<TvShell> {
 
   void _selectDestination(BuildContext context, int index) {
     ref.read(tvNavigationIndexProvider.notifier).state = index;
-    if (index == 0) {
-      setState(() => _overlay = null);
-      GoRouter.of(context).go('/live');
-      return;
-    }
-    setState(() {
-      _overlay = switch (index) {
-        1 => _TvOverlayScreen.guide,
-        2 => _TvOverlayScreen.vod,
-        3 => _TvOverlayScreen.favorites,
-        _ => _TvOverlayScreen.settings,
-      };
-    });
-  }
-
-  void _closeOverlay() {
-    ref.read(tvNavigationIndexProvider.notifier).state = 0;
-    setState(() => _overlay = null);
-  }
-
-  Widget _buildOverlay(_TvOverlayScreen overlay) {
-    return switch (overlay) {
-      _TvOverlayScreen.guide => IptvGuideScreen(
-        overrideFormFactor: AiroFormFactor.tv,
-        onChannelSelected: _closeOverlay,
-      ),
-      // Both start playback on the retained live surface underneath, so they
-      // have to dismiss themselves the same way the guide does — otherwise
-      // the user hears audio start while still staring at the grid.
-      _TvOverlayScreen.vod => VodTvScreen(onItemSelected: _closeOverlay),
-      _TvOverlayScreen.favorites => TvFavoritesScreen(
-        onChannelSelected: _closeOverlay,
-      ),
-      _TvOverlayScreen.settings => const TvSettingsScreen(),
-    };
+    final destination =
+        _tvDestinationRoutes[index.clamp(0, _tvDestinationRoutes.length - 1)];
+    GoRouter.of(context).go(destination);
   }
 }
 

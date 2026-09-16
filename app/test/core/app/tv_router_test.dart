@@ -420,87 +420,89 @@ void main() {
     },
   );
 
-  testWidgets(
-    'sidebar navigation overlays Guide without unmounting the live shell '
-    '(playback must never stop for a menu tap)',
-    (tester) async {
-      DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
-      addTearDown(DeviceFormFactorDetector.clearCache);
+  testWidgets('sidebar navigation to Guide unmounts the live shell', (
+    tester,
+  ) async {
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
 
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      await tester.binding.setSurfaceSize(const Size(960, 540));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await tester.binding.setSurfaceSize(const Size(960, 540));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            iptvChannelsProvider.overrideWith(
-              (ref) async => const [
-                IPTVChannel(
-                  id: 'ch1',
-                  name: 'Test Channel',
-                  streamUrl: 'https://example.com/ch1.m3u8',
-                ),
-              ],
-            ),
-            recentlyWatchedChannelsProvider.overrideWith(
-              (ref) async => const [],
-            ),
-            streamingStateProvider.overrideWith(
-              (ref) => Stream.value(
-                StreamingState(
-                  playbackState: PlaybackState.idle,
-                  isLiveStream: true,
-                ),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith(
+            (ref) async => const [
+              IPTVChannel(
+                id: 'ch1',
+                name: 'Test Channel',
+                streamUrl: 'https://example.com/ch1.m3u8',
+              ),
+            ],
+          ),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
               ),
             ),
-          ],
-          child: MaterialApp.router(
-            routerConfig: TvRouter.createRouter(
-              initialLocation: TvRouteNames.live,
-            ),
+          ),
+        ],
+        child: MaterialApp.router(
+          routerConfig: TvRouter.createRouter(
+            initialLocation: TvRouteNames.live,
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
-        findsOneWidget,
-      );
+    expect(
+      find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
+      findsOneWidget,
+    );
 
-      await tester.tap(find.text('Guide'));
-      await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('tv-sidebar-nav')),
+        matching: find.text('Guide'),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      // The live shell (and the video widget it hosts) is still in the
-      // tree underneath the Guide overlay — a sidebar tap must not tear
-      // it down and rebuild it from scratch.
-      expect(
-        find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
-        findsOneWidget,
-      );
-      expect(find.text('Guide'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
+      findsNothing,
+    );
+    expect(find.byType(IPTVScreen), findsNothing);
 
-      await tester.tap(find.text('Home'));
-      await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('tv-sidebar-nav')),
+        matching: find.text('Home'),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(find.byType(IPTVScreen), findsNothing);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+  });
 
-  testWidgets('redirects legacy login route to live TV', (tester) async {
+  testWidgets('redirects legacy login route to Home', (tester) async {
     await pumpTvRouter(
       tester,
       initialLocation: TvRouteNames.legacyLogin,
       surfaceSize: const Size(1280, 720),
     );
 
-    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
     expect(find.text('Welcome to Airo'), findsNothing);
   });
 

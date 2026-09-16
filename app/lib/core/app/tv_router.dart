@@ -4,10 +4,13 @@
 /// No bottom navigation - uses grid/sidebar navigation patterns.
 library;
 
+import 'dart:async';
+
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/iptv/phone_media_local_picker.dart';
@@ -37,7 +40,7 @@ class TvRouter {
   static final GoRouter router = createRouter();
 
   @visibleForTesting
-  static GoRouter createRouter({String initialLocation = TvRouteNames.live}) {
+  static GoRouter createRouter({String initialLocation = TvRouteNames.home}) {
     return GoRouter(
       initialLocation: initialLocation,
       // The canonical deep link is registered with `android:pathPrefix`, so
@@ -49,76 +52,72 @@ class TvRouter {
       // there is no navigation rail, and BACK closes the app.
       errorBuilder: (context, state) =>
           _TvRouteNotFoundScreen(location: state.uri.toString()),
-      redirect: (context, state) {
-        final location = state.matchedLocation;
-        if (location == TvRouteNames.home ||
-            location == TvRouteNames.legacyLogin) {
-          return TvRouteNames.live;
-        }
-
-        return null;
-      },
       routes: [
-        // Redirect root to live TV
-        GoRoute(
-          path: TvRouteNames.home,
-          redirect: (context, state) => TvRouteNames.live,
-        ),
         // Preserve old links but keep the TV release auth-free.
         GoRoute(
           path: TvRouteNames.legacyLogin,
-          redirect: (context, state) => TvRouteNames.live,
+          redirect: (context, state) => TvRouteNames.home,
         ),
         // Main TV shell with sidebar navigation
         ShellRoute(
           builder: (context, state, child) => _AdaptiveTvShell(child: child),
           routes: [
             GoRoute(
+              path: TvRouteNames.home,
+              name: 'tv_home',
+              builder: (context, state) => const _TvHomePlaceholder(),
+            ),
+            GoRoute(
               path: '/airo/iptv',
-              builder: (context, state) => _AdaptiveLiveTvScreen(
-                deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+              builder: (context, state) => _WatchPlaybackScope(
+                child: _AdaptiveLiveTvScreen(
+                  deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+                ),
               ),
             ),
             GoRoute(
               path: '/iptv',
-              builder: (context, state) => _AdaptiveLiveTvScreen(
-                deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+              builder: (context, state) => _WatchPlaybackScope(
+                child: _AdaptiveLiveTvScreen(
+                  deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+                ),
               ),
             ),
-            // Live TV / IPTV (main screen)
+            // Kept for deep links and tests. Watch itself is `/player`.
             GoRoute(
               path: TvRouteNames.live,
               name: 'tv_live',
-              builder: (context, state) => const _AdaptiveLiveTvScreen(),
+              builder: (context, state) =>
+                  const _WatchPlaybackScope(child: _AdaptiveLiveTvScreen()),
             ),
-            // Player route for fullscreen playback
             GoRoute(
               path: TvRouteNames.player,
               name: 'tv_player',
-              builder: (context, state) => const _AdaptiveLiveTvScreen(),
+              builder: (context, state) =>
+                  const _WatchPlaybackScope(child: _AdaptiveLiveTvScreen()),
             ),
-            // Guide route
             GoRoute(
               path: TvRouteNames.guide,
               name: 'tv_guide',
               builder: (context, state) => IptvGuideScreen(
                 overrideFormFactor: AiroFormFactor.tv,
-                onChannelSelected: () => context.go(TvRouteNames.live),
+                onChannelSelected: () => context.go(TvRouteNames.player),
               ),
             ),
-            // VOD (movies/shows) route
             GoRoute(
               path: TvRouteNames.vod,
               name: 'tv_vod',
-              builder: (context, state) => const VodTvScreen(),
+              builder: (context, state) => VodTvScreen(
+                onItemSelected: () => context.go(TvRouteNames.player),
+              ),
             ),
-            // Favorites route
             GoRoute(
               path: TvRouteNames.favorites,
               name: 'tv_favorites',
-              builder: (context, state) => const TvFavoritesScreen(),
+              builder: (context, state) => TvFavoritesScreen(
+                onChannelSelected: () => context.go(TvRouteNames.player),
+              ),
             ),
-            // Settings route
             GoRoute(
               path: TvRouteNames.settings,
               name: 'tv_settings',
@@ -127,6 +126,81 @@ class TvRouter {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Silent Home stub. Task 4 replaces this with QR landing + dashboard rails.
+class _TvHomePlaceholder extends StatelessWidget {
+  const _TvHomePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Colors.black,
+      child: Center(child: Text('Your media. Your player.')),
+    );
+  }
+}
+
+/// Owns the live playback session for `/player` and leftover `/live`.
+/// Unmounting this scope (rail `go`, Back, or any other leave) calls
+/// [VideoPlayerStreamingService.stop] so audio focus and the media session
+/// are released. [IPTVScreen.dispose] does not.
+class _WatchPlaybackScope extends ConsumerWidget {
+  const _WatchPlaybackScope({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final streamingService = ref.watch(iptvStreamingServiceProvider);
+    final isFullscreen = ref.watch(isFullscreenModeProvider);
+    return _WatchSession(
+      streamingService: streamingService,
+      isFullscreen: isFullscreen,
+      onLeaveWatch: () {
+        ref.read(tvNavigationIndexProvider.notifier).state = 0;
+        context.go(TvRouteNames.home);
+      },
+      child: child,
+    );
+  }
+}
+
+class _WatchSession extends StatefulWidget {
+  const _WatchSession({
+    required this.streamingService,
+    required this.isFullscreen,
+    required this.onLeaveWatch,
+    required this.child,
+  });
+
+  final VideoPlayerStreamingService streamingService;
+  final bool isFullscreen;
+  final VoidCallback onLeaveWatch;
+  final Widget child;
+
+  @override
+  State<_WatchSession> createState() => _WatchSessionState();
+}
+
+class _WatchSessionState extends State<_WatchSession> {
+  @override
+  void dispose() {
+    unawaited(widget.streamingService.stop());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: widget.isFullscreen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        widget.onLeaveWatch();
+      },
+      child: widget.child,
     );
   }
 }
