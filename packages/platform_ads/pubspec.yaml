@@ -1,0 +1,23 @@
+name: platform_ads
+description: Google Mobile Ads SDK wrapper, in-app AdMob Native card widgets, frequency capping policy engine, and web/leanback opt-out guards.
+version: 1.0.0
+publish_to: none
+homepage: https://developerscoffee.com
+repository: https://github.com/DevelopersCoffee/airo_ads
+issue_tracker: https://github.com/DevelopersCoffee/airo_ads/issues
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.18.0"
+
+dependencies:
+  core_app_shell:
+    path: ../core_app_shell
+  flutter:
+    sdk: flutter
+  google_mobile_ads: ^7.0.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter

@@ -103,6 +103,8 @@ dependencies:
     path: ../packages/feature_iptv
   platform_streaming_engine:
     path: ../packages/platform_streaming_engine
+  platform_ads:
+    path: ../packages/platform_ads
 
   # UI
   cupertino_icons: ^1.0.9

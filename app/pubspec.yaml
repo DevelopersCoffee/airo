@@ -102,6 +102,8 @@ dependencies:
     path: ../packages/core_product_shell
   platform_downloads:
     path: ../packages/platform_downloads
+  platform_ads:
+    path: ../packages/platform_ads
 
   # Local packages - Features
   airo:
