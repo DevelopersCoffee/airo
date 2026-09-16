@@ -1,5 +1,5 @@
-import 'package:airo_app/aika_ads/aika_ads.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_ads/platform_ads.dart';
 
 void main() {
   group('AikaAdPolicy', () {

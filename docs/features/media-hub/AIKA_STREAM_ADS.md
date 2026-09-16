@@ -5,7 +5,9 @@ the HLS, do not rewrite manifests, and do not run IMA/DAI stitching.
 
 ## What we ship
 
-In-app **AdMob Native Advanced** cards only:
+In-app **AdMob Native Advanced** cards only, consumed from
+[`airo_ads`](https://pub.dev/packages/airo_ads) via the
+`packages/platform_ads` shim:
 
 - one dismissible tile in the phone/tablet browse grid (index 4)
 - one dismissible card on the **fullscreen** player pause overlay
@@ -43,7 +45,7 @@ Layouts use Flutter `NativeTemplateStyle` (`TemplateType.small` browse,
 `AikaAdPolicy` (pure Dart) and `AikaAdManager` skip serving when:
 
 - the surface is web
-- `DeviceFormFactor` is TV or desktop
+- `AiroDeviceFormFactor` is TV or desktop
 - `AiroTvShell.showVideoStage` is false (grid-first ten-foot)
 - `VideoPlayerWidget.useTvTransportBar` is true
 - `iptvCastProvider` reports an active Cast session

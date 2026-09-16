@@ -13,10 +13,10 @@ packages:
     dependency: transitive
     description:
       name: airo_background_downloads
-      sha256: "825644c6c63f5e3bfc7b7ed0dcc88143690aaca0ee8a8891782302237daacaae"
+      sha256: "5c5dd4f8fcacd9666e1942d3b4f028a7d3bef79ffb9cf7765d46c85e2c9aabeb"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.1.0"
   airo_calendar:
     dependency: transitive
     description:
@@ -1098,7 +1098,7 @@ packages:
       path: "../platform_downloads"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.1.0"
   plugin_platform_interface:
     dependency: "direct dev"
     description:

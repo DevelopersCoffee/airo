@@ -3,7 +3,7 @@
 > **Status**: Completed & Verified  
 > **Original Location**: `packages/platform_downloads`  
 > **New Public Repository**: [DevelopersCoffee/airo_background_downloads](https://github.com/DevelopersCoffee/airo_background_downloads)  
-> **Consumed Remote Version**: `airo_background_downloads: ^1.0.0` (Remote Git Dependency)
+> **Consumed Remote Version**: `airo_background_downloads: ^1.1.0` (pub.dev)
 
 ---
 
@@ -11,8 +11,8 @@
 
 1. Extracted progressive background downloader, native Android WorkManager workers, iOS URLSession task handlers, and checksum integrity verifier from `packages/platform_downloads` into standalone repository [`DevelopersCoffee/airo_background_downloads`](https://github.com/DevelopersCoffee/airo_background_downloads).
 2. Upgraded package metadata to meet pub.dev 140/140 standards (MIT License, `analysis_options.yaml`, zero analyzer warnings, 11/11 test pass rate, GitHub Actions CI/CD).
-3. Published release `v1.0.0` to GitHub repository.
-4. Converted local `packages/platform_downloads` into a re-exporting monorepo shim pointing to remote `airo_background_downloads`.
+3. Published `airo_background_downloads` `1.1.0` to pub.dev.
+4. Converted local `packages/platform_downloads` into a re-exporting monorepo shim pointing to hosted `airo_background_downloads`.
 5. Verified 100% test pass rate and clean static analysis.
 
 ---
@@ -23,10 +23,7 @@ In `packages/platform_downloads/pubspec.yaml`:
 
 ```yaml
 dependencies:
-  airo_background_downloads:
-    git:
-      url: https://github.com/DevelopersCoffee/airo_background_downloads.git
-      ref: main
+  airo_background_downloads: ^1.1.0
 ```
 
 In `packages/platform_downloads/lib/platform_downloads.dart`:
