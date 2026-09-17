@@ -1,0 +1,7 @@
+owner: platform_core
+name: airo_haptics
+description: Standalone open-source Flutter cross-platform haptics engine.
+layer: framework
+stability: production
+tests:
+  unit: true

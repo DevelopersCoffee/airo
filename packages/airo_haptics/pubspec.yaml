@@ -1,0 +1,42 @@
+name: airo_haptics
+description: A cross-platform Flutter haptics engine with semantic feedback, custom patterns, device capability detection, accessibility-aware behavior, and native platform optimization.
+version: 1.0.0
+homepage: https://developerscoffee.com
+repository: https://github.com/DevelopersCoffee/airo_haptics
+issue_tracker: https://github.com/DevelopersCoffee/airo_haptics/issues
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.0.0"
+
+dependencies:
+  equatable: ^2.1.0
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  meta: ^1.11.0
+  plugin_platform_interface: ^2.1.8
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.airo.airo_haptics
+        pluginClass: AiroHapticsPlugin
+      ios:
+        pluginClass: AiroHapticsPlugin
+      macos:
+        pluginClass: AiroHapticsPlugin
+      windows:
+        pluginClass: AiroHapticsPluginCApi
+      linux:
+        pluginClass: AiroHapticsPlugin
+      web:
+        pluginClass: AiroHapticsWeb
+        fileName: src/platform/airo_haptics_web.dart

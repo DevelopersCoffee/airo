@@ -1,0 +1,7 @@
+owner: platform_core
+name: platform_haptics
+description: Monorepo shim package re-exporting airo_haptics engine.
+layer: framework
+stability: production
+tests:
+  unit: true
