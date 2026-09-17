@@ -198,6 +198,11 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
     });
 
     try {
+      await preview.setVolume(0);
+      if (!preview.currentState.isMuted) {
+        await preview.toggleMute();
+      }
+      if (!mounted || epoch != _epoch || _preview != preview) return;
       await preview.playChannel(channel);
       if (!mounted || epoch != _epoch || _preview != preview) return;
       if (preview.currentState.hasError ||
@@ -205,10 +210,6 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
         setState(() => _errorChannelId = channel.id);
         _stopPreviewSession();
         return;
-      }
-      await preview.setVolume(0);
-      if (!preview.currentState.isMuted) {
-        await preview.toggleMute();
       }
       if (!mounted || epoch != _epoch || _preview != preview) return;
       setState(() {

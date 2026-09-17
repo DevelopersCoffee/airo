@@ -228,6 +228,32 @@ void main() {
         expect(openedRequest.allowBackgroundPlayback, isFalse);
       },
     );
+
+    test(
+      'playChannel requests video audio focus unless mixWithOthers is true',
+      () async {
+        final defaultAudio = _RecordingAudioContext();
+        final defaultService = VideoPlayerStreamingService(
+          engine: FakeAiroPlaybackEngine(),
+          audioContext: defaultAudio,
+        );
+        addTearDown(defaultService.dispose);
+
+        await defaultService.playChannel(channel());
+        expect(defaultAudio.requested, [AudioFocusType.video]);
+
+        final mixAudio = _RecordingAudioContext();
+        final mixService = VideoPlayerStreamingService(
+          engine: FakeAiroPlaybackEngine(),
+          audioContext: mixAudio,
+          mixWithOthers: true,
+        );
+        addTearDown(mixService.dispose);
+
+        await mixService.playChannel(channel());
+        expect(mixAudio.requested, isEmpty);
+      },
+    );
   });
 
   group('VideoPlayerStreamingService multi-source failover', () {
@@ -1232,4 +1258,13 @@ class _PendingOpenEngine implements AiroPlaybackEngine {
 
   @override
   Future<void> dispose() async => _controller.close();
+}
+
+class _RecordingAudioContext extends AudioContextManager {
+  final requested = <AudioFocusType>[];
+
+  @override
+  void requestFocus(AudioFocusType type) {
+    requested.add(type);
+  }
 }

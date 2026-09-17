@@ -140,6 +140,10 @@ void main() {
       expect(previews, hasLength(1));
       expect(previews.single.playCount, 1);
       expect(previews.single.lastChannel?.id, 'news-1');
+      expect(previews.single.volumeBeforePlay, 0);
+      expect(previews.single.mutedBeforePlay, isTrue);
+      expect(previews.single.engine.volumesAtPlay, [0.0]);
+      expect(previews.single.audioContext.requested, isEmpty);
       expect(previews.single.currentState.isMuted, isTrue);
       expect(previews.single.currentState.volume, 0);
       expect(find.text('LIVE'), findsOneWidget);
@@ -326,24 +330,51 @@ void main() {
   });
 }
 
-class _RecordingPreviewService extends VideoPlayerStreamingService {
-  _RecordingPreviewService()
-    : super(engine: FakeAiroPlaybackEngine(), mixWithOthers: true);
+class _RecordingEngine extends FakeAiroPlaybackEngine {
+  final volumesAtPlay = <double>[];
 
+  @override
+  Future<AiroPlaybackState> play() async {
+    volumesAtPlay.add(currentState.volume);
+    return super.play();
+  }
+}
+
+class _RecordingAudioContext extends AudioContextManager {
+  final requested = <AudioFocusType>[];
+
+  @override
+  void requestFocus(AudioFocusType type) {
+    requested.add(type);
+  }
+}
+
+class _RecordingPreviewService extends VideoPlayerStreamingService {
+  factory _RecordingPreviewService() {
+    final engine = _RecordingEngine();
+    final audioContext = _RecordingAudioContext();
+    return _RecordingPreviewService._(engine, audioContext);
+  }
+
+  _RecordingPreviewService._(this.engine, this.audioContext)
+    : super(engine: engine, audioContext: audioContext, mixWithOthers: true);
+
+  final _RecordingEngine engine;
+  final _RecordingAudioContext audioContext;
   int playCount = 0;
   int stopCount = 0;
   bool disposed = false;
   IPTVChannel? lastChannel;
+  double? volumeBeforePlay;
+  bool? mutedBeforePlay;
 
   @override
   Future<void> playChannel(IPTVChannel channel) async {
     playCount++;
     lastChannel = channel;
+    volumeBeforePlay = currentState.volume;
+    mutedBeforePlay = currentState.isMuted;
     await super.playChannel(channel);
-    await setVolume(0);
-    if (!currentState.isMuted) {
-      await toggleMute();
-    }
   }
 
   @override
