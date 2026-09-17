@@ -36,11 +36,10 @@ packages:
   airo_notifications:
     dependency: transitive
     description:
-      path: "."
-      ref: main
-      resolved-ref: "6fad080ed4a788d893023691852ab99a8ebb4868"
-      url: "https://github.com/DevelopersCoffee/airo_notifications.git"
-    source: git
+      name: airo_notifications
+      sha256: "5cda7003ff41dd0b9e9d9d460e6a872f50af32a2bc7188bc7f14cabb6e4b4549"
+      url: "https://pub.dev"
+    source: hosted
     version: "1.1.0"
   analyzer:
     dependency: transitive
