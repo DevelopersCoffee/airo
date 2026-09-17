@@ -87,6 +87,19 @@ public class AiroHapticsPlugin: NSObject, FlutterPlugin {
         triggerImpact(style: .heavy, intensity: 1.0)
       }
       result(nil)
+    case "updatePattern":
+      if #available(iOS 13.0, *),
+         let engine = hapticEngine as? CHHapticEngine,
+         let args = call.arguments as? [String: Any],
+         let intensity = args["intensity"] as? Double,
+         let sharpness = args["sharpness"] as? Double {
+        do {
+          let intensityParam = CHHapticDynamicParameter(parameterID: .hapticIntensityControl, value: Float(intensity), relativeTime: 0)
+          let sharpnessParam = CHHapticDynamicParameter(parameterID: .hapticSharpnessControl, value: Float(sharpness), relativeTime: 0)
+          try engine.sendParameters([intensityParam, sharpnessParam], atTime: 0)
+        } catch {}
+      }
+      result(nil)
     case "stopAll", "stopPattern", "updateSettings":
       result(nil)
     case "getDiagnostics":

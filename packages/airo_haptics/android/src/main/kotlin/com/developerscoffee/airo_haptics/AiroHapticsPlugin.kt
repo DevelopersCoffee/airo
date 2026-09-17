@@ -85,6 +85,14 @@ class AiroHapticsPlugin : FlutterPlugin, MethodCallHandler {
         }
         result.success(null)
       }
+      "updatePattern" -> {
+        val intensity = call.argument<Double>("intensity") ?: 1.0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && currentVibrator.hasAmplitudeControl()) {
+          val amplitude = (intensity * 255).toInt().coerceIn(1, 255)
+          currentVibrator.vibrate(VibrationEffect.createOneShot(50L, amplitude))
+        }
+        result.success(null)
+      }
       "stopAll", "stopPattern" -> {
         currentVibrator.cancel()
         result.success(null)
@@ -120,7 +128,6 @@ class AiroHapticsPlugin : FlutterPlugin, MethodCallHandler {
       } catch (_: Exception) {}
     }
 
-    // Fallback one-shot
     val duration = when (type) {
       "selection", "focus" -> 15L
       "light", "soft" -> 25L
@@ -154,7 +161,6 @@ class AiroHapticsPlugin : FlutterPlugin, MethodCallHandler {
     val timings = mutableListOf<Long>()
     val amplitudes = mutableListOf<Int>()
 
-    // Initial delay
     timings.add(0L)
     amplitudes.add(0)
 

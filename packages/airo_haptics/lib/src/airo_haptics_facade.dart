@@ -1,12 +1,16 @@
 import 'engine/haptic_coalescer.dart';
 import 'engine/haptic_player.dart';
 import 'engine/haptic_resolver.dart';
+import 'engine/haptic_session.dart';
 import 'engine/haptic_throttle.dart';
 import 'models/haptic_capabilities.dart';
 import 'models/haptic_diagnostics.dart';
+import 'models/haptic_envelope.dart';
+import 'models/haptic_event.dart';
 import 'models/haptic_intent.dart';
 import 'models/haptic_options.dart';
 import 'models/haptic_pattern.dart';
+import 'models/haptic_profile.dart';
 import 'models/haptic_settings.dart';
 import 'models/haptic_theme.dart';
 import 'platform/airo_haptics_platform.dart';
@@ -20,12 +24,23 @@ class AiroHaptics {
   static final AiroHapticCoalescer _coalescer = AiroHapticCoalescer();
 
   static AiroHapticSettings _settings = const AiroHapticSettings();
+  static AiroHapticProfile _profile = AiroHapticProfile.defaultProfile;
 
   /// Current active haptic theme.
   static AiroHapticTheme theme = AiroHapticTheme.standard();
 
   /// Current global settings.
   static AiroHapticSettings get settings => _settings;
+
+  /// Current active haptic tuning profile.
+  static AiroHapticProfile get profile => _profile;
+  static set profile(AiroHapticProfile profile) {
+    _profile = profile;
+    _settings = _settings.copyWith(
+      globalScale: profile.intensityScale,
+      minThrottleDuration: profile.minThrottleWindow,
+    );
+  }
 
   /// Updates global engine configuration.
   static Future<void> updateSettings(AiroHapticSettings settings) async {
@@ -43,6 +58,53 @@ class AiroHaptics {
   /// Returns telemetry diagnostics from the engine.
   static Future<AiroHapticDiagnostics> get diagnostics =>
       AiroHapticsPlatform.instance.getDiagnostics();
+
+  /// Creates a reusable, controllable [AiroHapticPlayer] instance for a pattern.
+  static Future<AiroHapticPlayer> createPlayer(AiroHapticPattern pattern) async {
+    return AiroHapticPlayer(
+      pattern: pattern,
+      onPlayPattern: (p, opt) => AiroHapticsPlatform.instance.playPattern(p, options: opt),
+      onStopPattern: (id) => AiroHapticsPlatform.instance.stopPattern(id),
+      onUpdatePattern: (id, intensity, sharpness) =>
+          AiroHapticsPlatform.instance.updatePattern(id, intensity, sharpness),
+    );
+  }
+
+  /// Starts an isolated haptic execution session owning engine lifecycle and queueing.
+  static Future<AiroHapticSession> startSession({String? id}) async {
+    final sessionId = id ?? 'session_${DateTime.now().millisecondsSinceEpoch}';
+    return AiroHapticSession(
+      id: sessionId,
+      onPlayPattern: (pattern, options) => playPattern(pattern, options: options),
+      onStopPattern: (patternId) => AiroHapticsPlatform.instance.stopPattern(patternId),
+      onUpdatePattern: (patternId, intensity, sharpness) =>
+          AiroHapticsPlatform.instance.updatePattern(patternId, intensity, sharpness),
+    );
+  }
+
+  /// Plays continuous haptic vibration shaped by an ADSR envelope.
+  static Future<AiroHapticPlayer> playContinuous({
+    double intensity = 0.5,
+    double sharpness = 0.5,
+    AiroHapticEnvelope envelope = const AiroHapticEnvelope(),
+    AiroHapticOptions? options,
+  }) async {
+    final events = <AiroHapticEvent>[
+      AiroHapticEvent.continuous(
+        duration: envelope.initialDuration,
+        intensity: intensity,
+        sharpness: sharpness,
+      ),
+    ];
+
+    final pattern = AiroHapticPattern(
+      id: 'continuous_${DateTime.now().millisecondsSinceEpoch}',
+      name: 'Continuous ADSR Pattern',
+      events: events,
+    );
+
+    return playPattern(pattern, options: options);
+  }
 
   /// Triggers a semantic haptic feedback event.
   static Future<void> perform(
@@ -123,11 +185,7 @@ class AiroHaptics {
     AiroHapticPattern pattern, {
     AiroHapticOptions? options,
   }) async {
-    final player = AiroHapticPlayer(
-      pattern: pattern,
-      onPlayPattern: (p, opt) => AiroHapticsPlatform.instance.playPattern(p, options: opt),
-      onStopPattern: (id) => AiroHapticsPlatform.instance.stopPattern(id),
-    );
+    final player = await createPlayer(pattern);
 
     final caps = await capabilities;
     final decision = _resolver.resolve(

@@ -14,6 +14,7 @@ class HapticInvocation {
     this.impact,
     this.pattern,
     this.intensity,
+    this.sharpness,
     this.options,
     this.timestamp,
   });
@@ -23,6 +24,7 @@ class HapticInvocation {
   final AiroHapticImpact? impact;
   final AiroHapticPattern? pattern;
   final double? intensity;
+  final double? sharpness;
   final AiroHapticOptions? options;
   final DateTime? timestamp;
 }
@@ -45,6 +47,32 @@ class FakeAiroHapticPlatform extends AiroHapticsPlatform {
   void clearInvocations() {
     invocations.clear();
     isStopped = false;
+  }
+
+  /// Helper assertion: verifies a semantic feedback type was performed.
+  void expectHapticPlayed(AiroHapticFeedbackType type) {
+    final match = invocations.any((inv) => inv.feedbackType == type);
+    if (!match) {
+      throw StateError('Expected haptic feedback ${type.name} to be played');
+    }
+  }
+
+  /// Helper assertion: verifies no haptic feedback was triggered.
+  void expectNoHapticPlayed() {
+    final played = invocations.any(
+      (inv) => inv.method == 'performFeedback' || inv.method == 'performImpact' || inv.method == 'playPattern',
+    );
+    if (played) {
+      throw StateError('Expected no haptic feedback to be played');
+    }
+  }
+
+  /// Helper assertion: verifies a pattern with id [patternId] was played.
+  void expectHapticPatternPlayed(String patternId) {
+    final match = invocations.any((inv) => inv.pattern?.id == patternId);
+    if (!match) {
+      throw StateError('Expected haptic pattern $patternId to be played');
+    }
   }
 
   @override
@@ -94,6 +122,16 @@ class FakeAiroHapticPlatform extends AiroHapticsPlatform {
   }
 
   @override
+  Future<void> updatePattern(String patternId, double intensity, double sharpness) async {
+    invocations.add(HapticInvocation(
+      method: 'updatePattern',
+      intensity: intensity,
+      sharpness: sharpness,
+      timestamp: DateTime.now(),
+    ));
+  }
+
+  @override
   Future<void> stopPattern(String patternId) async {
     invocations.add(HapticInvocation(
       method: 'stopPattern',
@@ -131,6 +169,15 @@ class FakeAiroHapticPlatform extends AiroHapticsPlatform {
     );
   }
 }
+
+/// Helper assertion: verifies a semantic feedback type was performed on [fake].
+void expectHapticPlayed(FakeAiroHapticPlatform fake, AiroHapticFeedbackType type) => fake.expectHapticPlayed(type);
+
+/// Helper assertion: verifies no haptic feedback was triggered on [fake].
+void expectNoHapticPlayed(FakeAiroHapticPlatform fake) => fake.expectNoHapticPlayed();
+
+/// Helper assertion: verifies a pattern with id [patternId] was played on [fake].
+void expectHapticPatternPlayed(FakeAiroHapticPlatform fake, String patternId) => fake.expectHapticPatternPlayed(patternId);
 
 /// Type aliases for testing convenience.
 typedef FakeAiroHaptics = FakeAiroHapticPlatform;

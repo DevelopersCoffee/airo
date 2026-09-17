@@ -56,6 +56,11 @@ abstract class AiroHapticsPlatform extends PlatformInterface {
     throw UnimplementedError('playPattern() has not been implemented.');
   }
 
+  /// Dynamically updates intensity and sharpness of an active pattern player.
+  Future<void> updatePattern(String patternId, double intensity, double sharpness) {
+    throw UnimplementedError('updatePattern() has not been implemented.');
+  }
+
   /// Stops playback of a specific pattern by ID.
   Future<void> stopPattern(String patternId) {
     throw UnimplementedError('stopPattern() has not been implemented.');

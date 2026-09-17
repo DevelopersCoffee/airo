@@ -96,6 +96,61 @@ class AiroHapticPattern extends Equatable {
     );
   }
 
+  /// Parses an Apple AHAP (Apple Haptic Audio Pattern) format dictionary.
+  factory AiroHapticPattern.fromAhap(Map<String, dynamic> ahapJson, {String? id, String? name}) {
+    final patternList = ahapJson['Pattern'] as List<dynamic>? ?? [];
+    final events = <AiroHapticEvent>[];
+
+    for (final item in patternList) {
+      if (item is! Map<String, dynamic>) continue;
+      final eventData = item['Event'] as Map<String, dynamic>?;
+      if (eventData == null) continue;
+
+      final eventTypeStr = eventData['EventType'] as String? ?? 'HapticTransient';
+      final timeSeconds = (eventData['Time'] as num? ?? 0.0).toDouble();
+      final durationSeconds = (eventData['EventDuration'] as num? ?? 0.0).toDouble();
+
+      var intensity = 1.0;
+      var sharpness = 0.5;
+
+      final params = eventData['EventParameters'] as List<dynamic>? ?? [];
+      for (final p in params) {
+        if (p is Map<String, dynamic>) {
+          final pId = p['ParameterID'] as String?;
+          final pVal = (p['ParameterValue'] as num?)?.toDouble();
+          if (pVal != null) {
+            if (pId == 'HapticIntensity') intensity = pVal.clamp(0.0, 1.0);
+            if (pId == 'HapticSharpness') sharpness = pVal.clamp(0.0, 1.0);
+          }
+        }
+      }
+
+      final delay = Duration(milliseconds: (timeSeconds * 1000).round());
+      final duration = Duration(milliseconds: (durationSeconds * 1000).round());
+
+      if (eventTypeStr == 'HapticContinuous') {
+        events.add(AiroHapticEvent.continuous(
+          duration: duration,
+          intensity: intensity,
+          sharpness: sharpness,
+          delay: delay,
+        ));
+      } else {
+        events.add(AiroHapticEvent.transient(
+          intensity: intensity,
+          sharpness: sharpness,
+          delay: delay,
+        ));
+      }
+    }
+
+    return AiroHapticPattern(
+      id: id ?? 'ahap_pattern_${DateTime.now().millisecondsSinceEpoch}',
+      name: name ?? 'AHAP Pattern',
+      events: events,
+    );
+  }
+
   final String id;
   final String? name;
   final List<AiroHapticEvent> events;

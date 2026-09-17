@@ -144,6 +144,17 @@ class MethodChannelAiroHaptics extends AiroHapticsPlatform {
   }
 
   @override
+  Future<void> updatePattern(String patternId, double intensity, double sharpness) async {
+    try {
+      await channel.invokeMethod<void>('updatePattern', {
+        'patternId': patternId,
+        'intensity': intensity,
+        'sharpness': sharpness,
+      });
+    } on Exception catch (_) {}
+  }
+
+  @override
   Future<void> stopPattern(String patternId) async {
     try {
       await channel.invokeMethod<void>('stopPattern', {'patternId': patternId});
