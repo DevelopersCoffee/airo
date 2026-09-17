@@ -75,6 +75,11 @@ dependencies:
   intl: ^0.20.3
   uuid: ^4.5.3
 
+  # Phone flavor never ships AdMob. This stub lets `main_tv.dart` analyze.
+  # `pubspec_tv.yaml` resolves the real google_mobile_ads package.
+  google_mobile_ads:
+    path: ../packages/stubs/google_mobile_ads_stub
+
   # Local packages - Core
   core_domain:
     path: ../packages/core_domain
@@ -160,7 +165,7 @@ dependencies:
     path: ../packages/feature_iptv
   platform_playlist:
     path: ../packages/platform_playlist
-  dpad_qualification: ^1.0.0
+  dpad_qualification: ^1.1.0
   platform_channels:
     path: ../packages/platform_channels
   platform_player:
@@ -226,6 +231,10 @@ dependency_overrides:
   # Android FLAG_SECURE bridge locally so app builds retain screen protection.
   screen_protector:
     path: ../packages/platform_player/third_party/screen_protector
+  # Phone never ships AdMob. airo_ads depends on hosted google_mobile_ads;
+  # keep the flavor stub as the resolved implementation.
+  google_mobile_ads:
+    path: ../packages/stubs/google_mobile_ads_stub
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

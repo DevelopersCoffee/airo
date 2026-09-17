@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:platform_channels/platform_channels.dart';
 
 import '../services/cast_log_redaction.dart';
 import 'playback_engine_models.dart';
@@ -16,6 +17,7 @@ enum AiroPlaybackDiagnosticCode {
   codecUnsupported('codec_unsupported'),
   playerInitFailed('player_init_failed'),
   sourceInvalid('source_invalid'),
+  adInsertionUnsupported('ad_insertion_unsupported'),
   unknown('unknown');
 
   const AiroPlaybackDiagnosticCode(this.stableId);
@@ -115,6 +117,12 @@ class AiroPlaybackDiagnosticMapper {
     final override = event.overrideCode;
     if (override != null) return override;
 
+    final sourceUri = event.sourceUri;
+    if (sourceUri != null &&
+        AiroPlaylistUrlPolicy.isAdInsertionApiUrl(sourceUri)) {
+      return AiroPlaybackDiagnosticCode.adInsertionUnsupported;
+    }
+
     final status = event.httpStatusCode;
     if (status != null) return _codeForHttpStatus(status);
 
@@ -166,6 +174,7 @@ class AiroPlaybackDiagnosticMapper {
       AiroPlaybackDiagnosticCode.codecUnsupported ||
       AiroPlaybackDiagnosticCode.playerInitFailed ||
       AiroPlaybackDiagnosticCode.sourceInvalid ||
+      AiroPlaybackDiagnosticCode.adInsertionUnsupported ||
       AiroPlaybackDiagnosticCode.providerAuthDenied ||
       AiroPlaybackDiagnosticCode.regionRestricted ||
       AiroPlaybackDiagnosticCode.providerNotFound =>
@@ -181,7 +190,8 @@ class AiroPlaybackDiagnosticMapper {
       AiroPlaybackDiagnosticCode.providerNotFound ||
       AiroPlaybackDiagnosticCode.codecUnsupported ||
       AiroPlaybackDiagnosticCode.playerInitFailed ||
-      AiroPlaybackDiagnosticCode.sourceInvalid => false,
+      AiroPlaybackDiagnosticCode.sourceInvalid ||
+      AiroPlaybackDiagnosticCode.adInsertionUnsupported => false,
       _ => true,
     };
   }
@@ -210,6 +220,8 @@ class AiroPlaybackDiagnosticMapper {
         'Playback could not start on this device.',
       AiroPlaybackDiagnosticCode.sourceInvalid =>
         'This channel address looks invalid. Check your playlist.',
+      AiroPlaybackDiagnosticCode.adInsertionUnsupported =>
+        AiroPlaylistUrlPolicy.adInsertionUnsupportedUserMessage,
       AiroPlaybackDiagnosticCode.unknown => 'Playback failed. Retrying…',
     };
   }

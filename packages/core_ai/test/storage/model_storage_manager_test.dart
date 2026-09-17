@@ -5,46 +5,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:platform_downloads/platform_downloads.dart';
 
-class FakeBackgroundDownloads implements BackgroundDownloads {
+class FakeAiroPlatformBridge extends AiroPlatformBridge {
   int? availableBytes = 2 * 1024 * 1024 * 1024;
 
   @override
-  Stream<DownloadProgress> get events => const Stream.empty();
-
-  @override
-  Future<void> cancel(String artifactId) async {}
-
-  @override
-  Future<void> enqueue(DownloadArtifactRequest request) async {}
+  Stream<AiroDownload> get events => const Stream.empty();
 
   @override
   Future<int?> getAvailableBytes() async => availableBytes;
-
-  @override
-  Future<DownloadQueueSnapshot> getQueue() async {
-    return const DownloadQueueSnapshot(entries: []);
-  }
-
-  @override
-  Future<void> pause(String artifactId) async {}
-
-  @override
-  Future<void> resume(String artifactId) async {}
-
-  @override
-  Future<void> retry(String artifactId) async {}
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late ModelStorageManager storageManager;
-  late FakeBackgroundDownloads downloads;
+  late FakeAiroPlatformBridge bridge;
   late Directory tempDir;
 
   setUp(() async {
-    downloads = FakeBackgroundDownloads();
-    storageManager = ModelStorageManager(downloads: downloads);
+    bridge = FakeAiroPlatformBridge();
+    storageManager = ModelStorageManager(bridge: bridge);
     tempDir = await Directory.systemTemp.createTemp('airo_storage_test');
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -80,7 +60,7 @@ void main() {
     'applicationSupport keeps artifacts out of the documents root',
     () async {
       final manager = ModelStorageManager(
-        downloads: downloads,
+        bridge: bridge,
         location: ModelStorageLocation.applicationSupport,
       );
 
@@ -407,7 +387,7 @@ void main() {
     // model download and Clear Model Cache instead of taking the fallback
     // the option already documented.
     final external = ModelStorageManager(
-      downloads: downloads,
+      bridge: bridge,
       location: ModelStorageLocation.applicationExternal,
     );
 

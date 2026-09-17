@@ -24,6 +24,7 @@ export "application/providers/epg_catalog_provider.dart";
 export "application/providers/local_iptv_search_providers.dart";
 export "application/providers/picture_in_picture_preference_provider.dart";
 export "application/providers/playback_settings_extension_point.dart";
+export "application/providers/iptv_ad_placements.dart";
 export "application/providers/channel_library_merger_extension_point.dart";
 export "application/providers/recently_watched_recorder.dart";
 export "application/providers/video_aspect_ratio_provider.dart";

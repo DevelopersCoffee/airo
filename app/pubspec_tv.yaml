@@ -11,7 +11,7 @@
 name: airo_app
 description: "Aika Stream - bring-your-own-playlist player for Android TV"
 publish_to: 'none'
-version: 0.0.1+16
+version: 0.0.1+18
 
 environment:
   sdk: ">=3.12.2 <4.0.0"
@@ -113,6 +113,11 @@ dependencies:
 
   # TV-specific
   package_info_plus: 10.2.0
+
+  # In-app AdMob Native Advanced (phone/tablet only at runtime).
+  # 7.0.0 is the first release that configures on Gradle 9 (6.0.0 dies on
+  # `configurations.all`). Keep below 8.x unless we need a newer GMA SDK.
+  google_mobile_ads: 7.0.0
 
   # Dependencies with stub overrides (required for compilation but using lightweight stubs)
   # These are overridden by dependency_overrides section below

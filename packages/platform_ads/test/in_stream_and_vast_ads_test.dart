@@ -36,7 +36,9 @@ void main() {
   });
 
   group('AiroLowerThirdOverlayAd', () {
-    testWidgets('renders lower third overlay banner and dismisses on close', (tester) async {
+    testWidgets('renders lower third overlay banner and dismisses on close', (
+      tester,
+    ) async {
       var dismissed = false;
       await tester.pumpWidget(
         MaterialApp(
@@ -59,7 +61,6 @@ void main() {
       expect(find.text('Live Match Sponsor'), findsOneWidget);
       expect(find.text('Special 20% discount on merchandise'), findsOneWidget);
 
-      // Tap close button
       await tester.tap(find.byIcon(Icons.close));
       await tester.pumpAndSettle();
 

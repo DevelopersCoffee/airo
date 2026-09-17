@@ -17,6 +17,7 @@ import '../../application/channel_warmup_policy.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/dead_link_report_provider.dart';
+import '../../application/providers/iptv_ad_placements.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/recently_watched_recorder.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
@@ -1022,6 +1023,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final hasPlaybackError = state.hasError;
     final blocksPlaybackChrome =
         hasPlaybackError || state.isLoading || state.isBuffering;
+    final adPlacements = ref.watch(iptvAdPlacementsProvider);
+    final showPauseAd = iptvPauseAdVisible(
+      placements: adPlacements,
+      isPlaying: state.isPlaying,
+      useTvTransportBar: widget.useTvTransportBar,
+      isCasting: ref.watch(iptvCastProvider).isCasting,
+      isFullscreen: _isFullscreen || widget.initiallyFullscreen,
+      isPipActive: isPipActive,
+      blocksPlaybackChrome: blocksPlaybackChrome,
+    );
 
     // The state surface is deliberately exclusive. A retained engine view
     // must never win over a newer loading/error state and leave stale video
@@ -1335,6 +1346,42 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         currentChannelId: state.currentChannel!.id,
                         onSelected: _playChannelFromQuickBrowse,
                       ),
+                    if (showPauseAd && adPlacements.pauseCard != null)
+                      Positioned.fill(
+                        child: ColoredBox(
+                          color: Colors.black.withValues(alpha: 0.54),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: 320,
+                                maxHeight: 280,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Playback paused',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 220,
+                                    child: adPlacements.pauseCard!,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
                     if (_quickBrowse == _TvQuickBrowse.recent)
                       Consumer(
                         builder: (context, ref, _) {

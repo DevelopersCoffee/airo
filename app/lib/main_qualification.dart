@@ -83,7 +83,10 @@ class AiroIptvQualificationApp extends StatelessWidget {
           if (formFactor == 'tv') {
             DeviceFormFactorDetector.debugFormFactorOverride =
                 DeviceFormFactor.tv;
-          } else if (formFactor == 'tablet') {
+          } else if (formFactor == 'tablet' || formFactor == 'native') {
+            // v1.1.0 reports the native-device preset as 'native' instead of
+            // 'tablet' (previously it fell into this branch); keep mapping
+            // it to tablet so behavior matches pre-upgrade.
             DeviceFormFactorDetector.debugFormFactorOverride =
                 DeviceFormFactor.tablet;
           } else {

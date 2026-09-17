@@ -18,6 +18,15 @@ Supported V1 media:
 - public progressive MP4 streams
 - streams reachable by the receiver device itself
 
+Unsupported V1 media:
+
+- Google DAI (`dai.google.com`) and other ad-insertion stream-request APIs.
+  These are not playable manifests. Aika Stream does not run IMA/DAI stitching;
+  Cast and local playback show a clear unsupported-source error instead of
+  sending the API URL to the player or receiver.
+- In-app AdMob Native cards. Those stay on the phone/tablet UI and are never
+  sent to a Cast receiver. See [AIKA_STREAM_ADS.md](./AIKA_STREAM_ADS.md).
+
 Unsupported V1 receivers:
 
 - MacBook as a generic Google Cast receiver

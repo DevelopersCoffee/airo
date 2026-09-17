@@ -29,7 +29,7 @@ plugins {
     // on the next line, not this comment, before believing either.
     // See #1348.
     id("com.android.application") version "9.4.0" apply false
-    id("org.jetbrains.kotlin.android") version "2.4.10" apply false
+    id("org.jetbrains.kotlin.android") version "2.4.20" apply false
 }
 
 // Repository Android SDK baseline lives at ../../gradle/libs.versions.toml so

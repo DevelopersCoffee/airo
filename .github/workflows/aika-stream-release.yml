@@ -648,7 +648,8 @@ jobs:
             echo "| Airo-TV-${BUILD_NAME}-Play-Store.aab | Store upload / draft release evidence | Google Play TV upload input |"
             echo "| SHA256SUMS | Public/internal verification | Checksum evidence after final renaming |"
             echo "| Airo-TV-${BUILD_NAME}-Release-Manifest.json | Public/internal verification | Profile, package, source ref, workflow run, and checksum mapping |"
-            echo "| airo-tv-debug-info-${RELEASE_VERSION} | Restricted internal artifact | Obfuscation symbol lookup |"
+            echo "| airo-tv-debug-info-${RELEASE_VERSION} | Restricted internal artifact | Dart obfuscation symbol lookup |"
+            echo "| airo-tv-r8-mapping-${RELEASE_VERSION} | Restricted internal artifact | R8/ProGuard mapping.txt for deobfuscating Play Console reports |"
             echo ""
             echo "Policy: docs/release/V2_DISTRIBUTION_MATRIX.md"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -670,6 +671,18 @@ jobs:
         with:
           name: airo-tv-debug-info-${{ env.RELEASE_VERSION }}
           path: app/build/debug-info-tv/
+          retention-days: 90
+
+      # app/build/debug-info-tv above is only Dart's --obfuscate symbol table.
+      # The Play Console App Bundle Explorer's pre-launch report names
+      # Java/Kotlin classes through R8's own renaming; without this
+      # mapping.txt those names (e.g. "ar3.b0") can never be traced back to
+      # the real dependency that produced them.
+      - name: Upload R8/ProGuard mapping
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-tv-r8-mapping-${{ env.RELEASE_VERSION }}
+          path: app/build/app/outputs/mapping/release/mapping.txt
           retention-days: 90
 
       - name: Upload native debug symbols

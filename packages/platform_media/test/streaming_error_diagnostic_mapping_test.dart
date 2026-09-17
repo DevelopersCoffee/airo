@@ -52,11 +52,45 @@ void main() {
       expect(diagnostic.retryEligible, isFalse);
     });
 
+    test('maps an embedded dai.google.com URL to ad-insertion unsupported', () {
+      final diagnostic = mapStreamingErrorToDiagnostic(
+        Exception(
+          'Failed to load https://dai.google.com/linear/v1/hls/event/x/stream',
+        ),
+      );
+
+      expect(
+        diagnostic.code,
+        AiroPlaybackDiagnosticCode.adInsertionUnsupported,
+      );
+      expect(diagnostic.retryEligible, isFalse);
+      expect(diagnostic.userMessage, isNot(contains('dai.google')));
+    });
+
+    test('maps the stable ad-insertion token from the streaming service', () {
+      final diagnostic = mapStreamingErrorToDiagnostic(
+        'ad_insertion_unsupported',
+      );
+
+      expect(
+        diagnostic.code,
+        AiroPlaybackDiagnosticCode.adInsertionUnsupported,
+      );
+    });
+
     test('falls back to an unknown retryable diagnostic for opaque errors', () {
       final diagnostic = mapStreamingErrorToDiagnostic('boom');
 
       expect(diagnostic.code, AiroPlaybackDiagnosticCode.unknown);
       expect(diagnostic.retryEligible, isTrue);
+    });
+
+    test('leaves ordinary HLS failures on the existing unknown path', () {
+      final diagnostic = mapStreamingErrorToDiagnostic(
+        Exception('Failed to load https://media.example.com/live.m3u8'),
+      );
+
+      expect(diagnostic.code, AiroPlaybackDiagnosticCode.unknown);
     });
 
     test('never includes the raw error text verbatim in technical detail', () {

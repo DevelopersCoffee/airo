@@ -1,4 +1,13 @@
 name: platform_ads
-council_owner: Platform / Monetization & Security
-description: Google Mobile Ads SDK wrapper, in-app AdMob Native card widgets, frequency capping policy engine, and web/leanback opt-out guards.
-public_package: airo_ads
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+  - Chief Open Source Officer
+  - Chief QA Officer
+  - Chief Documentation Officer
+forbidden_dependencies:
+  - app
+  - core_ai
+  - feature_coin
+quality_gates: {}

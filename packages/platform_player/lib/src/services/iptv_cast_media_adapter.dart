@@ -24,6 +24,12 @@ class IptvCastMediaAdapter {
       );
     }
 
+    if (AiroPlaylistUrlPolicy.isAdInsertionApiUrl(uri)) {
+      return IptvCastMediaResult.unsupported(
+        AiroPlaylistUrlPolicy.adInsertionUnsupportedUserMessage,
+      );
+    }
+
     final contentType = _contentTypeFor(uri, channel);
     if (contentType == null) {
       return IptvCastMediaResult.unsupported(

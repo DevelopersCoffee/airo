@@ -290,8 +290,11 @@ class AiroDataSafetyPreflightRunner {
     'android.permission.READ_MEDIA_AUDIO',
     'android.permission.READ_EXTERNAL_STORAGE',
     'android.permission.WRITE_EXTERNAL_STORAGE',
-    'com.google.android.gms.permission.AD_ID',
+    advertisingIdPermission,
   };
+
+  static const advertisingIdPermission =
+      'com.google.android.gms.permission.AD_ID';
 
   final AiroReleaseMatrix matrix;
 
@@ -392,14 +395,21 @@ class AiroDataSafetyPreflightRunner {
         const AiroDataSafetyFinding(
           target: AiroDataSafetyTarget.googlePlayDataSafety,
           code: AiroDataSafetyFindingCode.advertisingSdkPresent,
+          blocking: false,
           message:
-              'Advertising SDK is present; declare ads/tracking data or remove '
-              'the SDK before submission.',
+              'AdMob Native Advanced is declared for Aika Stream. Confirm Play '
+              'Ads, Advertising ID, and Data Safety (Device or other IDs / '
+              'Advertising or marketing) match the TV AAB. Leanback skips '
+              'serving at runtime.',
         ),
       );
     }
 
     for (final permission in request.sensitiveAndroidPermissions) {
+      if (permission == advertisingIdPermission &&
+          request.advertisingSdkPresent) {
+        continue;
+      }
       findings.add(
         AiroDataSafetyFinding(
           target: AiroDataSafetyTarget.googlePlayDataSafety,
@@ -512,11 +522,16 @@ class AiroDataSafetyPreflightRunner {
       AiroDataSafetyDeclaration(
         dataType: 'Device or other IDs',
         collected: request.advertisingSdkPresent
-            ? 'Review required'
+            ? 'Yes'
             : 'No app-owned external collection',
-        shared: false,
-        purpose: 'Not applicable',
-        notes: 'No advertising ID SDK or permission is expected for TV.',
+        shared: request.advertisingSdkPresent,
+        purpose: request.advertisingSdkPresent
+            ? 'Advertising or marketing'
+            : 'Not applicable',
+        notes: request.advertisingSdkPresent
+            ? 'AdMob Native Advanced on phone/tablet. Advertising ID is used '
+                  'for ads. Leanback TV skips ad serving at runtime.'
+            : 'No advertising ID SDK or permission is expected for TV.',
       ),
       AiroDataSafetyDeclaration(
         dataType: 'IPTV playlist URLs',

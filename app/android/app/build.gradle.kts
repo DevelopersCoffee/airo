@@ -326,6 +326,12 @@ android {
     }
 
     packaging {
+        resources {
+            // kotlin_module files are metadata only. Excluding them avoids
+            // AGP rejecting `package:plugin_release.kotlin_module` names
+            // that Flutter plugins emit (invalid ZIP entry characters).
+            excludes += "META-INF/*.kotlin_module"
+        }
         jniLibs {
             // Flutter's --target-platform filters only the libs Flutter itself
             // contributes (libflutter.so, libapp.so). Native libs that arrive
@@ -386,6 +392,11 @@ dependencies {
     // Core library desugaring for flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
+    // enableEdgeToEdge() for MainActivity/CoinsActivity/AnyaActivity (Android
+    // 15 / targetSdk 35 edge-to-edge enforcement -- Play Console pre-launch
+    // report flags this if not called explicitly).
+    implementation("androidx.activity:activity-ktx:1.9.3")
+
     testImplementation("junit:junit:4.13.2")
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
@@ -441,16 +452,16 @@ dependencies {
     // tasks/tv-zero-copy-cast-phase2-task3-media3-proposal.md for the full
     // dependency proposal (versions, size, license) this was confirmed against.
     if (isTvVariant) {
-        implementation("androidx.media3:media3-exoplayer:1.11.0")
-        implementation("androidx.media3:media3-common:1.11.0")
-        implementation("androidx.media3:media3-datasource:1.11.0")
-        implementation("androidx.media3:media3-exoplayer-hls:1.11.0")
+        implementation("androidx.media3:media3-exoplayer:1.11.1")
+        implementation("androidx.media3:media3-common:1.11.1")
+        implementation("androidx.media3:media3-datasource:1.11.1")
+        implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
 
         // Wave B (F4.2): connection pooling, keepalive, custom DNS via
         // okhttp3.Dns. See tasks/tv-zero-copy-cast-phase2-waveB-task1-okhttp-proposal.md
         // for the full proposal this was confirmed against.
         implementation("com.squareup.okhttp3:okhttp:5.5.0")
-        implementation("androidx.media3:media3-datasource-okhttp:1.11.0")
+        implementation("androidx.media3:media3-datasource-okhttp:1.11.1")
         testImplementation("com.squareup.okhttp3:okhttp:5.5.0")
         // Test-only, never ships in the APK. Standard purpose-built local
         // HTTP server for exercising OkHttp code -- switched to from

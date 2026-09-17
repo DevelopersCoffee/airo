@@ -1,6 +1,7 @@
 name: platform_downloads
-description: Resilient progressive background file transfer manager with lifecycle pause/resume controls.
-version: 1.0.0
+description: Cross-platform transfer engine with intent policies, native WorkManager & URLSession background execution, checksum processors, state machines, and telemetry.
+version: 1.2.0
+publish_to: none
 homepage: https://developerscoffee.com
 repository: https://github.com/DevelopersCoffee/airo_background_downloads
 issue_tracker: https://github.com/DevelopersCoffee/airo_background_downloads/issues

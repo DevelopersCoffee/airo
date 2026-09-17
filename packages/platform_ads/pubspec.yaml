@@ -1,5 +1,5 @@
 name: platform_ads
-description: Google Mobile Ads SDK wrapper, in-app AdMob Native card widgets, frequency capping policy engine, and web/leanback opt-out guards.
+description: Google Mobile Ads SDK wrapper, native cards, pause ads, lower-third overlays, and VAST tag parser.
 version: 1.0.0
 publish_to: none
 homepage: https://developerscoffee.com
@@ -11,11 +11,9 @@ environment:
   flutter: ">=3.18.0"
 
 dependencies:
-  core_app_shell:
-    path: ../core_app_shell
+  airo_ads: ^1.0.0
   flutter:
     sdk: flutter
-  google_mobile_ads: ^7.0.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0
