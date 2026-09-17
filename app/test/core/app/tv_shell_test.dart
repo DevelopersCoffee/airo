@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:airo_app/core/app/tv_router.dart';
 import 'package:airo_app/core/app/tv_shell.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_iptv/application/providers/tv_playlist_pairing_provider.dart';
+import 'package:feature_iptv/application/services/tv_playlist_pairing_server.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,6 +80,9 @@ void main() {
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
+            tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+              () => _FakePairingServer(never: true),
+            ),
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
                 StreamingState(
@@ -123,6 +128,9 @@ void main() {
             iptvChannelsProvider.overrideWith((ref) async => const []),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
+            ),
+            tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+              () => _FakePairingServer(never: true),
             ),
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
@@ -177,6 +185,9 @@ void main() {
             iptvChannelsProvider.overrideWith((ref) async => const []),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
+            ),
+            tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+              () => _FakePairingServer(never: true),
             ),
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
@@ -238,6 +249,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => const []),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -273,6 +287,7 @@ void main() {
 
     expect(find.byType(IPTVScreen), findsNothing);
     expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
     expect(streamingService.stopCount, 1);
   });
 
@@ -297,6 +312,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => const []),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -375,6 +393,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => const []),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -442,6 +463,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => const []),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -462,6 +486,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
     expect(find.byType(IPTVScreen), findsNothing);
   });
 
@@ -485,6 +510,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => const []),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -503,6 +531,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
     expect(find.byType(IPTVScreen), findsNothing);
   });
 
@@ -527,6 +556,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => const []),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -671,6 +703,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => const []),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -686,6 +721,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
     expect(_focusIsInSidebar(tester), isFalse);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -770,4 +806,40 @@ class _RecordingStreamingService extends VideoPlayerStreamingService {
     if (hold != null) await hold.future;
     await super.stop();
   }
+}
+
+class _FakePairingServer implements TvPlaylistPairingServer {
+  _FakePairingServer({this.never = false});
+
+  final bool never;
+  final _resultCompleter = Completer<String?>();
+  bool stopped = false;
+
+  @override
+  Future<Uri> start() async {
+    return Uri.parse('http://192.168.1.5:8080/pair/fake-token');
+  }
+
+  @override
+  Future<String?> get result {
+    if (!never && !_resultCompleter.isCompleted) {
+      _resultCompleter.complete(null);
+    }
+    return _resultCompleter.future;
+  }
+
+  @override
+  Future<void> cancel() => stop();
+
+  @override
+  Future<void> stop() async {
+    stopped = true;
+    if (!_resultCompleter.isCompleted) _resultCompleter.complete(null);
+  }
+
+  @override
+  bool get isRunning => !stopped;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

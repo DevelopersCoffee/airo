@@ -12,16 +12,46 @@ import '../../application/services/tv_playlist_pairing_server.dart';
 /// a QR code for a short-lived LAN-only pairing session, lets the user
 /// cancel or regenerate on expiry, and returns the phone-submitted URL (or
 /// `null` if cancelled/expired) to the caller.
-class TvPlaylistQrDialog extends ConsumerStatefulWidget {
+class TvPlaylistQrDialog extends StatelessWidget {
   const TvPlaylistQrDialog({super.key});
 
   @override
-  ConsumerState<TvPlaylistQrDialog> createState() => _TvPlaylistQrDialogState();
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: TvPlaylistQrPanel(
+          onUrlSubmitted: (url) => Navigator.of(context).pop(url),
+          onCancel: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+}
+
+/// LAN-only QR pairing panel. Used by [TvPlaylistQrDialog] and the 10-foot
+/// empty Home. Never logs the submitted playlist URL.
+class TvPlaylistQrPanel extends ConsumerStatefulWidget {
+  const TvPlaylistQrPanel({
+    super.key,
+    this.onUrlSubmitted,
+    this.onCancel,
+    this.showHeading = true,
+    this.showCancel = true,
+  });
+
+  final ValueChanged<String>? onUrlSubmitted;
+  final VoidCallback? onCancel;
+  final bool showHeading;
+  final bool showCancel;
+
+  @override
+  ConsumerState<TvPlaylistQrPanel> createState() => _TvPlaylistQrPanelState();
 }
 
 enum _PairingStatus { waiting, expired }
 
-class _TvPlaylistQrDialogState extends ConsumerState<TvPlaylistQrDialog> {
+class _TvPlaylistQrPanelState extends ConsumerState<TvPlaylistQrPanel> {
   TvPlaylistPairingServer? _server;
   Uri? _pairingUrl;
   _PairingStatus _status = _PairingStatus.waiting;
@@ -58,7 +88,7 @@ class _TvPlaylistQrDialogState extends ConsumerState<TvPlaylistQrDialog> {
       final submittedUrl = await server.result;
       if (!mounted) return;
       if (submittedUrl != null) {
-        Navigator.of(context).pop(submittedUrl);
+        widget.onUrlSubmitted?.call(submittedUrl);
         return;
       }
       setState(() => _status = _PairingStatus.expired);
@@ -70,52 +100,53 @@ class _TvPlaylistQrDialogState extends ConsumerState<TvPlaylistQrDialog> {
 
   void _cancel() {
     unawaited(_server?.stop());
-    Navigator.of(context).pop();
+    widget.onCancel?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'Scan with your phone',
-                style: theme.textTheme.titleLarge,
-                textAlign: TextAlign.center,
+    return Padding(
+      padding: const EdgeInsets.all(AiroSpacing.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (widget.showHeading) ...[
+            Text(
+              'Scan with your phone',
+              style: AiroTypography.titleLarge.copyWith(
+                color: theme.colorScheme.onSurface,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Connect to the same Wi-Fi, scan the code, and type your '
-                'playlist link on your phone.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              _buildBody(theme),
-              const SizedBox(height: 20),
-              TvFocusable(
-                key: const ValueKey('tv-playlist-qr-cancel'),
-                semanticLabel: 'Cancel',
-                autofocus: true,
-                onSelect: _cancel,
-                borderRadius: 8,
-                child: OutlinedButton(
-                  onPressed: _cancel,
-                  child: const Text('Cancel'),
-                ),
-              ),
-            ],
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AiroSpacing.sm),
+          ],
+          Text(
+            'Connect to the same Wi-Fi, scan the code, and type your '
+            'playlist link on your phone.',
+            style: AiroTypography.bodyMedium.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
+          const SizedBox(height: AiroSpacing.lg),
+          _buildBody(theme),
+          if (widget.showCancel) ...[
+            const SizedBox(height: AiroSpacing.lg),
+            TvFocusable(
+              key: const ValueKey('tv-playlist-qr-cancel'),
+              semanticLabel: 'Cancel',
+              autofocus: true,
+              onSelect: _cancel,
+              borderRadius: AiroSpacing.radiusSm,
+              child: OutlinedButton(
+                onPressed: _cancel,
+                child: const Text('Cancel'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -125,7 +156,7 @@ class _TvPlaylistQrDialogState extends ConsumerState<TvPlaylistQrDialog> {
       return Text(
         "Couldn't start pairing — check your TV's Wi-Fi connection.",
         key: const ValueKey('tv-playlist-qr-error'),
-        style: theme.textTheme.bodyMedium?.copyWith(
+        style: AiroTypography.bodyMedium.copyWith(
           color: theme.colorScheme.error,
         ),
         textAlign: TextAlign.center,
@@ -135,13 +166,18 @@ class _TvPlaylistQrDialogState extends ConsumerState<TvPlaylistQrDialog> {
       return Column(
         key: const ValueKey('tv-playlist-qr-expired'),
         children: [
-          Text('QR code expired', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 12),
+          Text(
+            'QR code expired',
+            style: AiroTypography.titleMedium.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: AiroSpacing.md),
           TvFocusable(
             key: const ValueKey('tv-playlist-qr-regenerate'),
             semanticLabel: 'Generate new code',
             onSelect: () => unawaited(_startSession()),
-            borderRadius: 8,
+            borderRadius: AiroSpacing.radiusSm,
             child: FilledButton(
               onPressed: () => unawaited(_startSession()),
               child: const Text('Generate new code'),
@@ -161,7 +197,7 @@ class _TvPlaylistQrDialogState extends ConsumerState<TvPlaylistQrDialog> {
       key: const ValueKey('tv-playlist-qr-waiting'),
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AiroSpacing.md),
           color: Colors.white,
           child: QrImageView(
             data: url.toString(),
@@ -169,8 +205,13 @@ class _TvPlaylistQrDialogState extends ConsumerState<TvPlaylistQrDialog> {
             backgroundColor: Colors.white,
           ),
         ),
-        const SizedBox(height: 12),
-        Text('Waiting for your phone…', style: theme.textTheme.bodySmall),
+        const SizedBox(height: AiroSpacing.md),
+        Text(
+          'Waiting for your phone…',
+          style: AiroTypography.bodySmall.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }

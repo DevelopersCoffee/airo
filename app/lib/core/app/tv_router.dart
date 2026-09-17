@@ -124,7 +124,7 @@ class TvRouter {
 }
 
 /// Compact (Pixel 9 / phone) Home is the existing IPTV explorer. 10-foot
-/// Home stays the silent stub until Task 4's QR dashboard.
+/// Home is the QR landing or silent dashboard rails.
 class _AdaptiveHomeScreen extends StatelessWidget {
   const _AdaptiveHomeScreen();
 
@@ -133,19 +133,9 @@ class _AdaptiveHomeScreen extends StatelessWidget {
     if (_usesCompactPhoneLayout(context)) {
       return const _AdaptiveLiveTvScreen();
     }
-    return const _TvHomePlaceholder();
-  }
-}
-
-/// Silent Home stub. Task 4 replaces this with QR landing + dashboard rails.
-class _TvHomePlaceholder extends StatelessWidget {
-  const _TvHomePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: Colors.black,
-      child: Center(child: Text('Your media. Your player.')),
+    return TvHomeScreen(
+      onPlayChannel: (_) => context.go(TvRouteNames.player),
+      onSeeAllLiveTv: () => context.go(TvRouteNames.guide),
     );
   }
 }

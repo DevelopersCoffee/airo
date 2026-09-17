@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:airo_app/core/app/tv_router.dart';
 import 'package:airo_app/core/platform/device_form_factor.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_iptv/application/providers/tv_playlist_pairing_provider.dart';
+import 'package:feature_iptv/application/services/tv_playlist_pairing_server.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +35,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => channels),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -390,6 +397,9 @@ void main() {
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
+            tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+              () => _FakePairingServer(never: true),
+            ),
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
                 StreamingState(
@@ -447,6 +457,9 @@ void main() {
             ],
           ),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -490,10 +503,31 @@ void main() {
         matching: find.byIcon(Icons.home_outlined),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(IPTVScreen), findsNothing);
+    expect(find.text('Your media. Your player.'), findsNothing);
+    expect(find.text('Live TV'), findsOneWidget);
+    expect(find.text('Test Channel'), findsAtLeastNWidgets(1));
+    expect(find.text('Continue Watching'), findsNothing);
+  });
+
+  testWidgets('10-foot empty Home is QR-primary landing', (tester) async {
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTvRouter(tester, initialLocation: TvRouteNames.home);
+
+    expect(find.text('Aika Stream'), findsWidgets);
     expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
+    expect(find.text('Or enter URL manually'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
   });
 
   testWidgets('redirects legacy login route to Home', (tester) async {
@@ -507,6 +541,7 @@ void main() {
     await pumpTvRouter(tester, initialLocation: TvRouteNames.legacyLogin);
 
     expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
     expect(find.byType(IPTVScreen), findsNothing);
     expect(find.text('Welcome to Airo'), findsNothing);
   });
@@ -533,6 +568,7 @@ void main() {
 
     expect(find.text('That link could not be opened'), findsNothing);
     expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
     expect(find.byType(IPTVScreen), findsNothing);
   });
 
@@ -639,4 +675,40 @@ void main() {
       expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
     },
   );
+}
+
+class _FakePairingServer implements TvPlaylistPairingServer {
+  _FakePairingServer({this.never = false});
+
+  final bool never;
+  final _resultCompleter = Completer<String?>();
+  bool stopped = false;
+
+  @override
+  Future<Uri> start() async {
+    return Uri.parse('http://192.168.1.5:8080/pair/fake-token');
+  }
+
+  @override
+  Future<String?> get result {
+    if (!never && !_resultCompleter.isCompleted) {
+      _resultCompleter.complete(null);
+    }
+    return _resultCompleter.future;
+  }
+
+  @override
+  Future<void> cancel() => stop();
+
+  @override
+  Future<void> stop() async {
+    stopped = true;
+    if (!_resultCompleter.isCompleted) _resultCompleter.complete(null);
+  }
+
+  @override
+  bool get isRunning => !stopped;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
