@@ -52,7 +52,23 @@ packages:
     dependency: transitive
     description:
       name: airo_calendar
-      sha256: "3b226dbcad7cc0f4f334f109c19038c84e44c6bc8a710d8b7a9ebe0f15a891ea"
+      sha256: "0551df7aa63e02a5787d4b6d3d90f62eca13a3fbfaeaced46489f2c2d77a0bc2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
+  airo_device_profile:
+    dependency: transitive
+    description:
+      name: airo_device_profile
+      sha256: "00c728c160f1a2fa813ec4b77b38c56f875ca072e4bf083b193b689e0ceef9de"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  airo_epg:
+    dependency: transitive
+    description:
+      name: airo_epg
+      sha256: "3908e75b25ca7a336d2b75e73a1cd2742bf9a9cecdd3caad1e18ead7710a4db9"
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
@@ -60,10 +76,19 @@ packages:
     dependency: transitive
     description:
       name: airo_job_scheduler
-      sha256: a37c773312c038d283fce6177c2b23cdc95181fa2a31ca1201f10429912afc0d
+      sha256: a80f5cb74a5fa9e5fec813674af2c396dccdf879304522f17eea3df18b6450c6
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.1.0"
+  airo_notifications:
+    dependency: transitive
+    description:
+      path: "."
+      ref: main
+      resolved-ref: "6fad080ed4a788d893023691852ab99a8ebb4868"
+      url: "https://github.com/DevelopersCoffee/airo_notifications.git"
+    source: git
+    version: "1.1.0"
   airo_pro_bootstrap:
     dependency: "direct main"
     description:
@@ -71,14 +96,6 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
-  airo_protocol:
-    dependency: transitive
-    description:
-      name: airo_protocol
-      sha256: c94824cc32612db3da54a0519b42123ee67ed5184bee42860871e3de34c07210
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
   alchemist:
     dependency: "direct dev"
     description:
@@ -460,7 +477,7 @@ packages:
       path: "../packages/core_analytics"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   core_app_shell:
     dependency: "direct main"
     description:
@@ -531,13 +548,6 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
-  core_protocol:
-    dependency: transitive
-    description:
-      path: "../packages/core_protocol"
-      relative: true
-    source: path
-    version: "0.0.1"
   core_ui:
     dependency: "direct main"
     description:
@@ -551,7 +561,7 @@ packages:
       path: "../packages/core_workers"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   coverage:
     dependency: transitive
     description:
@@ -1937,7 +1947,7 @@ packages:
       path: "../packages/platform_calendar"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   platform_channels:
     dependency: "direct main"
     description:
@@ -1958,7 +1968,7 @@ packages:
       path: "../packages/platform_device_profile"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   platform_downloads:
     dependency: "direct main"
     description:
@@ -1972,7 +1982,7 @@ packages:
       path: "../packages/platform_epg"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   platform_favorites:
     dependency: transitive
     description:
@@ -1993,7 +2003,7 @@ packages:
       path: "../packages/platform_iptv_org_api"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   platform_media:
     dependency: "direct main"
     description:
@@ -2001,6 +2011,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  platform_notifications:
+    dependency: transitive
+    description:
+      path: "../packages/platform_notifications"
+      relative: true
+    source: path
+    version: "1.0.0"
   platform_player:
     dependency: "direct main"
     description:
@@ -2056,7 +2073,7 @@ packages:
       path: "../packages/platform_worker_jobs"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   plugin_platform_interface:
     dependency: transitive
     description:

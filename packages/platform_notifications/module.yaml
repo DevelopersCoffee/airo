@@ -1,0 +1,3 @@
+module_name: platform_notifications
+council_owner: platform_core
+description: Monorepo shim for airo_notifications local alert engine and push wake policy engine.

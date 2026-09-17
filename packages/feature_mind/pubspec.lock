@@ -21,18 +21,26 @@ packages:
     dependency: transitive
     description:
       name: airo_calendar
-      sha256: "3b226dbcad7cc0f4f334f109c19038c84e44c6bc8a710d8b7a9ebe0f15a891ea"
+      sha256: "0551df7aa63e02a5787d4b6d3d90f62eca13a3fbfaeaced46489f2c2d77a0bc2"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
-  airo_protocol:
+    version: "1.0.1"
+  airo_device_profile:
     dependency: transitive
     description:
-      name: airo_protocol
-      sha256: c94824cc32612db3da54a0519b42123ee67ed5184bee42860871e3de34c07210
+      name: airo_device_profile
+      sha256: "00c728c160f1a2fa813ec4b77b38c56f875ca072e4bf083b193b689e0ceef9de"
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  airo_notifications:
+    dependency: transitive
+    description:
+      name: airo_notifications
+      sha256: "5cda7003ff41dd0b9e9d9d460e6a872f50af32a2bc7188bc7f14cabb6e4b4549"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   analyzer:
     dependency: transitive
     description:
@@ -314,13 +322,6 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
-  core_protocol:
-    dependency: transitive
-    description:
-      path: "../core_protocol"
-      relative: true
-    source: path
-    version: "0.0.1"
   core_ui:
     dependency: "direct main"
     description:
@@ -334,7 +335,7 @@ packages:
       path: "../core_workers"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   coverage:
     dependency: transitive
     description:
@@ -1084,14 +1085,14 @@ packages:
       path: "../platform_calendar"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   platform_device_profile:
     dependency: transitive
     description:
       path: "../platform_device_profile"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   platform_downloads:
     dependency: "direct dev"
     description:
@@ -1099,6 +1100,13 @@ packages:
       relative: true
     source: path
     version: "1.2.0"
+  platform_notifications:
+    dependency: "direct main"
+    description:
+      path: "../platform_notifications"
+      relative: true
+    source: path
+    version: "1.0.0"
   plugin_platform_interface:
     dependency: "direct dev"
     description:
@@ -1123,13 +1131,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.5.2"
-  product_capabilities:
-    dependency: transitive
-    description:
-      path: "../product_capabilities"
-      relative: true
-    source: path
-    version: "0.0.1"
   pub_semver:
     dependency: transitive
     description:
