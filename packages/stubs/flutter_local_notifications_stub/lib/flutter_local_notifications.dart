@@ -1,8 +1,9 @@
 library;
 
 class FlutterLocalNotificationsPlugin {
-  Future<bool?> initialize({
-    required InitializationSettings settings,
+  Future<bool?> initialize(
+    InitializationSettings initializationSettings, {
+    InitializationSettings? settings,
     DidReceiveNotificationResponseCallback? onDidReceiveNotificationResponse,
   }) async => true;
 
@@ -11,26 +12,30 @@ class FlutterLocalNotificationsPlugin {
 
   T? resolvePlatformSpecificImplementation<T>() => null;
 
-  Future<void> zonedSchedule({
-    required int id,
-    required String title,
-    required String body,
-    required Object scheduledDate,
-    required NotificationDetails notificationDetails,
-    required AndroidScheduleMode androidScheduleMode,
+  Future<void> zonedSchedule(
+    int id,
+    String? title,
+    String? body,
+    Object scheduledDate,
+    NotificationDetails notificationDetails, {
+    AndroidScheduleMode? androidScheduleMode,
+    UILocalNotificationDateInterpretation? uiLocalNotificationDateInterpretation,
     DateTimeComponents? matchDateTimeComponents,
     String? payload,
   }) async {}
 
-  Future<void> show({
-    required int id,
-    required String title,
-    required String body,
-    required NotificationDetails notificationDetails,
+  Future<void> show(
+    int id,
+    String? title,
+    String? body,
+    NotificationDetails? notificationDetails, {
     String? payload,
   }) async {}
 
-  Future<void> cancel({required int id}) async {}
+  Future<void> cancel(
+    int id, {
+    String? tag,
+  }) async {}
 }
 
 typedef DidReceiveNotificationResponseCallback =
@@ -121,12 +126,14 @@ class DarwinNotificationDetails {
 class NotificationDetails {
   const NotificationDetails({this.android, this.iOS, this.macOS});
 
-  final AndroidNotificationDetails? android;
-  final DarwinNotificationDetails? iOS;
-  final DarwinNotificationDetails? macOS;
+  final AndroidInitializationSettings? android;
+  final DarwinInitializationSettings? iOS;
+  final DarwinInitializationSettings? macOS;
 }
 
 enum AndroidScheduleMode { exactAllowWhileIdle, inexactAllowWhileIdle }
+
+enum UILocalNotificationDateInterpretation { absoluteTime, wallClockTime }
 
 enum DateTimeComponents { time }
 

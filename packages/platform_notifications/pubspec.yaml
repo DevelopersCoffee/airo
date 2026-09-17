@@ -11,7 +11,10 @@ environment:
   flutter: ">=3.0.0"
 
 dependencies:
-  airo_notifications: ^1.0.0
+  airo_notifications:
+    git:
+      url: https://github.com/DevelopersCoffee/airo_notifications.git
+      ref: main
   flutter:
     sdk: flutter
 
