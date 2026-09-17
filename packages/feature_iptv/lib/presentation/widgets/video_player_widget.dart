@@ -32,6 +32,7 @@ import 'player_gesture_overlay.dart';
 import 'player_lock_button.dart';
 import 'player_overlay.dart';
 import 'tv_transport_bar.dart';
+import 'tv_mini_guide_overlay.dart';
 import '../tv_ux/sections/remote_overlay.dart';
 
 /// Video player widget with YouTube-like controls
@@ -1344,11 +1345,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     // UP/DOWN quick-browse overlays.
                     if (_quickBrowse == _TvQuickBrowse.miniGuide &&
                         state.currentChannel != null)
-                      _QuickBrowseOverlay(
-                        title: 'Mini guide',
+                      TvMiniGuideOverlay(
                         channels: _miniGuideChannels(state.currentChannel!),
                         currentChannelId: state.currentChannel!.id,
                         onSelected: _playChannelFromQuickBrowse,
+                        previewFactory: ref.read(
+                          tvMiniGuidePreviewFactoryProvider,
+                        ),
                       ),
                     if (showPauseAd && adPlacements.pauseCard != null)
                       Positioned.fill(
