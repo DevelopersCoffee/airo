@@ -1233,6 +1233,113 @@ void main() {
 
     await service.stop();
   });
+
+  // Regression: Cast MultiView is reached through ChannelInfoBar's "Ways to
+  // Watch" button, which only renders in the ten-foot layout
+  // (AiroTvShell.showInfoBar is `!showVideoStage`). The phone/compact layout
+  // renders no ChannelInfoBar at all, so without this entry in the player's
+  // own actions sheet, Cast MultiView had no reachable UI on a phone screen.
+  testWidgets(
+    'the player-actions sheet offers Ways to Watch when the host provides it',
+    (tester) async {
+      final engine = FakeAiroPlaybackEngine();
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      var waysToWatchTapped = false;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: VideoPlayerWidget(
+                onShowWaysToWatch: () => waysToWatchTapped = true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-more-button')).first,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // The sheet's ListView only lays out children near the initial
+      // viewport -- a fresh row past that (as this new last row is) isn't
+      // built yet, so ensureVisible has nothing to find until the list is
+      // actually scrolled down first (the pre-existing D-pad-reachability
+      // test above gets this for free by ensureVisible-ing every preceding
+      // row in order, which cumulatively extends how far down is built).
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pump();
+
+      final waysToWatchTile = find.byKey(
+        const ValueKey('iptv-player-ways-to-watch-menu-action'),
+      );
+      await tester.ensureVisible(waysToWatchTile);
+      await tester.pump();
+      expect(waysToWatchTile, findsOneWidget);
+
+      await tester.tap(waysToWatchTile);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(waysToWatchTapped, isTrue);
+
+      await service.stop();
+    },
+  );
+
+  testWidgets(
+    'the player-actions sheet omits Ways to Watch when the host provides none',
+    (tester) async {
+      final engine = FakeAiroPlaybackEngine();
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+          ],
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        find.byKey(const ValueKey('iptv-player-ways-to-watch-menu-action')),
+        findsNothing,
+      );
+
+      await service.stop();
+    },
+  );
 }
 
 class _RecordingSeekStreamingService extends VideoPlayerStreamingService {

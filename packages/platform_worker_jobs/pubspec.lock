@@ -5,10 +5,10 @@ packages:
     dependency: "direct main"
     description:
       name: airo_job_scheduler
-      sha256: a37c773312c038d283fce6177c2b23cdc95181fa2a31ca1201f10429912afc0d
+      sha256: a80f5cb74a5fa9e5fec813674af2c396dccdf879304522f17eea3df18b6450c6
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.1.0"
   async:
     dependency: transitive
     description:

@@ -110,6 +110,25 @@ class AiroMultiviewPool {
     );
   }
 
+  /// Silences every active session — no tile featured. Distinct from
+  /// [promote]: that always leaves exactly one session audible, this leaves
+  /// none. The next [add]/[promote]/[remove] picks a new featured session as
+  /// usual, same as any other routing change.
+  Future<void> muteAll() async {
+    if (_closed || _state.featuredSessionId == null) return;
+    _audioRouteTail = _audioRouteTail.then((_) => _applyMuteAll());
+    await _audioRouteTail;
+    _setState(
+      AiroMultiviewPoolState(sessions: _state.sessions, featuredSessionId: null),
+    );
+  }
+
+  Future<void> _applyMuteAll() async {
+    for (final session in _state.sessions) {
+      await session.setVolume(0);
+    }
+  }
+
   /// Reorders two active sessions without reopening either decoder.
   void swap(String firstId, String secondId) {
     if (_closed || firstId == secondId) return;

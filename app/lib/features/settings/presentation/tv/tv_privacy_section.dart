@@ -2,14 +2,12 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/aika_stream_local_data_deletion.dart';
 import '../../../../core/providers/streaming_telemetry_consent_provider.dart';
 
 /// Privacy settings for the TV settings screen (CV-022): the streaming
-/// QoE telemetry opt-in (F7.5, Phase 1 Task 7). No dedicated on/off
-/// switch widget exists elsewhere in the TV UI, so this follows the
-/// same selected/unselected row + check-icon pattern as
-/// `TvThemeSection`/`TvPlaybackSection`'s options, applied to a
-/// two-option (on/off) choice instead of picking one of several.
+/// QoE telemetry opt-in (F7.5, Phase 1 Task 7) and the local data-deletion
+/// path required for Play Data Safety.
 class TvPrivacySection extends ConsumerWidget {
   const TvPrivacySection({super.key});
 
@@ -48,7 +46,124 @@ class TvPrivacySection extends ConsumerWidget {
               .setEnabled(false),
           colorScheme: colorScheme,
         ),
+        const SizedBox(height: 32),
+        Text(
+          'Local data',
+          style: TextStyle(
+            color: colorScheme.onSurface,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Text(
+            'Aika Stream does not create an account. Playlists, credentials, '
+            'favorites, and history stay on this device. Delete local data '
+            'to wipe them without uninstalling.',
+            style: TextStyle(color: colorScheme.onSurfaceVariant),
+          ),
+        ),
+        TvFocusable(
+          onSelect: () => _confirmDeleteLocalData(context, ref),
+          semanticLabel: 'Delete local data',
+          semanticButton: true,
+          child: FilledButton.tonal(
+            onPressed: () => _confirmDeleteLocalData(context, ref),
+            child: const Text('Delete local data'),
+          ),
+        ),
       ],
+    );
+  }
+
+  Future<void> _confirmDeleteLocalData(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete local data?'),
+        content: const Text(
+          'This removes saved sources and credentials, the program guide, '
+          'favorites, watch history, and preferences on this device. It '
+          'cannot be undone.',
+        ),
+        actions: [
+          TvFocusable(
+            onSelect: () => Navigator.of(dialogContext).pop(false),
+            semanticLabel: 'Cancel',
+            semanticButton: true,
+            child: TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+          ),
+          TvFocusable(
+            autofocus: true,
+            onSelect: () => Navigator.of(dialogContext).pop(true),
+            semanticLabel: 'Delete',
+            semanticButton: true,
+            child: TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(aikaStreamLocalDataDeleterProvider)();
+    } catch (_) {
+      if (!context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Could not delete local data'),
+          content: const Text(
+            'Try again, or clear Aika Stream storage in Android settings.',
+          ),
+          actions: [
+            TvFocusable(
+              autofocus: true,
+              onSelect: () => Navigator.of(dialogContext).pop(),
+              semanticLabel: 'OK',
+              semanticButton: true,
+              child: TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK'),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Local data deleted'),
+        content: const Text(
+          'Aika Stream on this device is reset. Restart the app if sources '
+          'or favorites still appear.',
+        ),
+        actions: [
+          TvFocusable(
+            autofocus: true,
+            onSelect: () => Navigator.of(dialogContext).pop(),
+            semanticLabel: 'OK',
+            semanticButton: true,
+            child: TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

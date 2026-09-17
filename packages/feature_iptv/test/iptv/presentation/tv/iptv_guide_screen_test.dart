@@ -1,5 +1,4 @@
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
-import 'package:core_entitlements/core_entitlements.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/application/epg_reminder_scheduler.dart';
 import 'package:feature_iptv/application/providers/epg_reminder_providers.dart';

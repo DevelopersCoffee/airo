@@ -5,10 +5,10 @@ packages:
     dependency: "direct main"
     description:
       name: airo_calendar
-      sha256: "3b226dbcad7cc0f4f334f109c19038c84e44c6bc8a710d8b7a9ebe0f15a891ea"
+      sha256: "0551df7aa63e02a5787d4b6d3d90f62eca13a3fbfaeaced46489f2c2d77a0bc2"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.1"
   async:
     dependency: transitive
     description:

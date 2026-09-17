@@ -57,6 +57,8 @@ sealed class MultiviewCastCommand extends Equatable {
           firstSlotId: _requireString(json, 'firstSlotId'),
           secondSlotId: _requireString(json, 'secondSlotId'),
         );
+      case 'multiview.mute_all':
+        return const MultiviewMuteAllCommand();
       case 'multiview.query_state':
         return const MultiviewQueryStateCommand();
       case 'multiview.set_layout':
@@ -123,6 +125,19 @@ class MultiviewPromoteCommand extends MultiviewCastCommand {
 
   @override
   List<Object?> get props => [slotId];
+}
+
+/// Silences every active tile on the receiver — no tile featured. Distinct
+/// from [MultiviewPromoteCommand], which always leaves exactly one tile
+/// audible; this leaves none.
+class MultiviewMuteAllCommand extends MultiviewCastCommand {
+  const MultiviewMuteAllCommand();
+
+  @override
+  Map<String, dynamic> toJson() => {'type': 'multiview.mute_all'};
+
+  @override
+  List<Object?> get props => [];
 }
 
 class MultiviewSwapCommand extends MultiviewCastCommand {

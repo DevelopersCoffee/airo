@@ -135,6 +135,27 @@ void main() {
     );
   });
 
+  test('mute_all leaves every slot unfeatured', () async {
+    bridge.start();
+    await link.sender.sendCommand(
+      const MultiviewSetSlotCommand(slotId: 'one', channelId: 'one'),
+    );
+    await link.sender.sendCommand(
+      const MultiviewSetSlotCommand(slotId: 'two', channelId: 'two'),
+    );
+    await pump();
+    expect(
+      publishedStates.last.slots.any((s) => s.featured),
+      isTrue,
+      reason: 'one slot should be auto-featured once channels are added',
+    );
+
+    await link.sender.sendCommand(const MultiviewMuteAllCommand());
+    await pump();
+
+    expect(publishedStates.last.slots.every((s) => !s.featured), isTrue);
+  });
+
   test('swap reorders the two slots', () async {
     bridge.start();
     await link.sender.sendCommand(

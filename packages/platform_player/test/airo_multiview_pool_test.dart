@@ -90,6 +90,25 @@ void main() {
     await pool.close();
   });
 
+  test('muteAll silences every session and clears featuredSessionId', () async {
+    final sessions = <String, _FakeSession>{};
+    final pool = AiroMultiviewPool(decoderBudget: 4);
+    for (final id in ['one', 'two', 'three']) {
+      await pool.add(
+        id: id,
+        openSession: () async =>
+            sessions.putIfAbsent(id, () => _FakeSession(id)),
+      );
+    }
+    expect(pool.state.featuredSessionId, isNotNull);
+
+    await pool.muteAll();
+
+    expect(pool.state.featuredSessionId, isNull);
+    expect(sessions.values.every((session) => !session.audible), isTrue);
+    await pool.close();
+  });
+
   test('rapid focus promotions serialize to the latest audible tile', () async {
     final sessions = <String, _FakeSession>{};
     final pool = AiroMultiviewPool(decoderBudget: 4);

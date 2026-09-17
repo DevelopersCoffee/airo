@@ -1,29 +1,89 @@
-# Core Protocol
+# Core Protocol (`airo_protocol`)
 
-Shared connected-node protocol contracts for Airo V2.
+[![pub package](https://img.shields.io/pub/v/airo_protocol.svg)](https://pub.dev/packages/airo_protocol)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-This package is platform/framework code. Airo TV, mobile companion, desktop
-companion, home node, local discovery, pairing, command routing, AI delegation,
-and future cloud coordination consume these contracts to describe device nodes
-without leaking private media or account data.
+Shared connected-node protocol contracts and plug-and-play local edge transport primitives for Airo V2 and cross-platform Flutter/Dart apps.
 
-## Scope
+---
 
-- Stable node identity records.
-- Node lifecycle states.
-- Privacy-safe capability advertisements.
-- Compatibility policies and deterministic blocker codes.
-- Edge Media Node placeholder profiles, service descriptors, policy blockers,
-  and fake/no-op registries for future home-node work.
-- Protobuf protocol schema descriptors for envelopes, commands, playback state,
-  route health, compact EPG sync, and acknowledgements.
-- Compatibility policy for schema/protocol version, replay sequence, payload
-  size, required fields, reserved fields, and stable ids.
-- Secure transport descriptors for WSS/HTTP3-compatible command and state sync.
-- Handshake/frame policies for proof presence, trusted peers, replay, frame
-  size, stale frames, and redacted diagnostics.
+## 🏗️ Architecture & Envelope Flowchart
 
-This package does not discover devices, open sockets, store trust records,
-render pairing UI, send commands, maintain presence leases, index media, relay
-traffic, record media, transcode, run AI workers, generate Protobuf code, or
-coordinate cloud state.
+The `ConnectedNodeEnvelope` sits between local edge devices (desktop, mobile, TV, IoT home nodes) to provide zero-copy Protobuf serialization, frame integrity, and security handshakes:
+
+```text
+┌────────────────────────┐                    ┌────────────────────────┐
+│      Node A (Mac)      │                    │     Node B (Phone)     │
+│ ┌────────────────────┐ │   ConnectedNode    │ ┌────────────────────┐ │
+│ │ Payload (Protobuf) │ │    Envelope        │ │ Payload (Protobuf) │ │
+│ └─────────┬──────────┘ │ ─────────────────> │ └─────────▲──────────┘ │
+│           │            │  (TCP Socket /     │           │            │
+│ ┌─────────▼──────────┐ │   WebSockets /     │ ┌─────────┴──────────┐ │
+│ │  Socket Transport  │ │   WebRTC Channel)  │ │  Socket Transport  │ │
+│ └────────────────────┘ │                    │ └────────────────────┘ │
+└────────────────────────┘                    └────────────────────────┘
+```
+
+---
+
+## ⚡ Quick Start: Socket Transport & Stream Buffering
+
+### 1. Plug-and-Play TCP Socket Transport Engine
+
+Expose incoming binary frames directly into a Flutter-friendly `Stream`:
+
+```dart
+import 'dart:io';
+import 'package:core_protocol/core_protocol.dart';
+
+final socket = await Socket.connect('192.168.1.50', 8080);
+
+final transportEngine = AiroSocketTransportEngine();
+transportEngine.bind(
+  rawInputStream: socket,
+  outgoingSink: socket,
+);
+
+// Listen to incoming length-prefixed frames
+transportEngine.incomingStream.listen((Uint8List payload) {
+  print('Received envelope payload bytes: ${payload.length}');
+});
+
+// Send outgoing binary frame
+final payload = Uint8List.fromList([1, 2, 3, 4]);
+transportEngine.send(payload);
+```
+
+### 2. Automatic Reconnection Buffer
+
+Queue outgoing messages when network dropouts occur and flush them automatically upon reconnection:
+
+```dart
+final buffer = AiroReconnectionBuffer(maxCapacity: 100);
+
+// Sends immediately if connected, or enqueues if offline
+buffer.sendOrEnqueue(transportEngine, payload);
+
+// Upon reconnecting:
+if (transportEngine.state == AiroTransportConnectionState.connected) {
+  final flushedCount = buffer.flush(transportEngine);
+  print('Flushed $flushedCount enqueued messages.');
+}
+```
+
+---
+
+## 📋 Scope & Capabilities
+
+- **Stable Node Identity Records**: Cryptographically verifiable device IDs and trust assertions.
+- **Node Lifecycle States**: Paired, connected, revoked, suspended, or unauthenticated lifecycle policies.
+- **Privacy-Safe Capability Advertisements**: Device capability matrices without exposing sensitive media data.
+- **Length-Prefixed Binary Framing**: Fast, Big-Endian unsigned integer header framing for sockets.
+- **Automatic Reconnection Buffer Queueing**: Resilience against local wireless dropouts.
+- **Secure Transport Policy Validation**: Replay prevention, frame size caps, and timestamp checks.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).

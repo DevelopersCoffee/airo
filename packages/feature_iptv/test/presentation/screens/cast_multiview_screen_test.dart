@@ -172,6 +172,71 @@ void main() {
     ]);
   });
 
+  testWidgets('tapping Mute all sends a mute_all command', (tester) async {
+    final link = FakeMultiviewCastLink();
+    addTearDown(link.dispose);
+    final receivedCommands = <MultiviewCastCommand>[];
+    link.receiver.commands.listen(receivedCommands.add);
+
+    await pump(tester, transport: link.sender);
+    await tester.pump();
+    await link.receiver.publishState(
+      const MultiviewCastState(
+        capacity: 2,
+        slots: [
+          MultiviewCastSlot(
+            slotId: 'aajtak-hd',
+            channelId: 'aajtak-hd',
+            channelName: 'Aaj Tak HD',
+            featured: true,
+          ),
+          MultiviewCastSlot(
+            slotId: 'yrf-music',
+            channelId: 'yrf-music',
+            channelName: 'YRF Music',
+            featured: false,
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('cast-multiview-mute-all')));
+    await tester.pump();
+
+    expect(receivedCommands, [const MultiviewMuteAllCommand()]);
+  });
+
+  testWidgets(
+    'Mute all is disabled once every tile is already unfeatured',
+    (tester) async {
+      final link = FakeMultiviewCastLink();
+      addTearDown(link.dispose);
+
+      await pump(tester, transport: link.sender);
+      await tester.pump();
+      await link.receiver.publishState(
+        const MultiviewCastState(
+          capacity: 2,
+          slots: [
+            MultiviewCastSlot(
+              slotId: 'aajtak-hd',
+              channelId: 'aajtak-hd',
+              channelName: 'Aaj Tak HD',
+              featured: false,
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+
+      final button = tester.widget<TextButton>(
+        find.byKey(const ValueKey('cast-multiview-mute-all')),
+      );
+      expect(button.onPressed, isNull);
+    },
+  );
+
   testWidgets('creating a layout saves it and it shows up in the list', (
     tester,
   ) async {
@@ -190,12 +255,25 @@ void main() {
       find.byKey(const ValueKey('cast-multiview-layout-name')),
       'News',
     );
-    await tester.tap(
-      find.byKey(const ValueKey('cast-multiview-channel-option-aajtak-hd')),
-    );
+    // The search field + category filter row can push the channel picker
+    // and Save button below the sheet's visible/hit-testable area on the
+    // default test surface. Invoking the widgets' own callbacks sidesteps
+    // pixel-perfect scroll-then-tap fragility (the same pattern the "Save
+    // button stays disabled" test below already uses).
+    tester
+        .widget<CheckboxListTile>(
+          find.byKey(
+            const ValueKey('cast-multiview-channel-option-aajtak-hd'),
+          ),
+        )
+        .onChanged!(true);
     await tester.pump();
 
-    await tester.tap(find.byKey(const ValueKey('cast-multiview-save-layout')));
+    tester
+        .widget<FilledButton>(
+          find.byKey(const ValueKey('cast-multiview-save-layout')),
+        )
+        .onPressed!();
     await tester.pumpAndSettle();
 
     expect(find.text('News'), findsOneWidget);
@@ -228,9 +306,13 @@ void main() {
       await tester.pump();
       expect(saveButton().onPressed, isNull);
 
-      await tester.tap(
-        find.byKey(const ValueKey('cast-multiview-channel-option-aajtak-hd')),
-      );
+      tester
+          .widget<CheckboxListTile>(
+            find.byKey(
+              const ValueKey('cast-multiview-channel-option-aajtak-hd'),
+            ),
+          )
+          .onChanged!(true);
       await tester.pump();
       expect(saveButton().onPressed, isNotNull);
     },

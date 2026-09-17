@@ -1,4 +1,3 @@
-import 'package:core_entitlements/core_entitlements.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:platform_epg/platform_epg.dart';
