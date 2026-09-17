@@ -38,12 +38,18 @@ class TvPlaylistQrPanel extends ConsumerStatefulWidget {
     this.onCancel,
     this.showHeading = true,
     this.showCancel = true,
+    this.restartAfterResult = false,
   });
 
-  final ValueChanged<String>? onUrlSubmitted;
+  final FutureOr<void> Function(String)? onUrlSubmitted;
   final VoidCallback? onCancel;
   final bool showHeading;
   final bool showCancel;
+
+  /// Embedded Home keeps this panel mounted after a phone submit, so a
+  /// new pairing session must replace the consumed QR. The dialog pops
+  /// instead and leaves this false.
+  final bool restartAfterResult;
 
   @override
   ConsumerState<TvPlaylistQrPanel> createState() => _TvPlaylistQrPanelState();
@@ -88,7 +94,11 @@ class _TvPlaylistQrPanelState extends ConsumerState<TvPlaylistQrPanel> {
       final submittedUrl = await server.result;
       if (!mounted) return;
       if (submittedUrl != null) {
-        widget.onUrlSubmitted?.call(submittedUrl);
+        await widget.onUrlSubmitted?.call(submittedUrl);
+        if (!mounted) return;
+        if (widget.restartAfterResult) {
+          unawaited(_startSession());
+        }
         return;
       }
       setState(() => _status = _PairingStatus.expired);

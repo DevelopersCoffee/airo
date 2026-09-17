@@ -4,13 +4,13 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
-import 'package:platform_media/platform_media.dart';
 
 import '../../application/providers/iptv_providers.dart';
 import '../../product_identity.dart';
 import '../widgets/channel_initials.dart';
 import '../widgets/channel_load_error_view.dart';
 import '../widgets/tv_playlist_qr_dialog.dart';
+import 'tv_local_media_browser.dart';
 import 'tv_playlist_import_success_dialog.dart';
 import 'tv_playlist_url_dialog.dart';
 
@@ -119,12 +119,9 @@ class _TvHomeEmptyLanding extends ConsumerWidget {
                           child: TvPlaylistQrPanel(
                             showHeading: false,
                             showCancel: false,
-                            onUrlSubmitted: (url) {
-                              if (!context.mounted) return;
-                              unawaited(
+                            restartAfterResult: true,
+                            onUrlSubmitted: (url) =>
                                 _openUrlImport(context, initialUrl: url),
-                              );
-                            },
                           ),
                         ),
                       ),
@@ -145,7 +142,7 @@ class _TvHomeEmptyLanding extends ConsumerWidget {
                             label: 'Browse USB',
                             icon: Icons.usb,
                             onSelect: () => unawaited(
-                              _browseUsb(context, ref, onPlayChannel),
+                              browseTvUsb(context, ref, onPlayChannel),
                             ),
                           ),
                         if (capabilities?.dlnaUpnp == true)
@@ -153,7 +150,7 @@ class _TvHomeEmptyLanding extends ConsumerWidget {
                             label: 'Browse network',
                             icon: Icons.devices_other,
                             onSelect: () => unawaited(
-                              _browseNetwork(context, ref, onPlayChannel),
+                              browseTvNetwork(context, ref, onPlayChannel),
                             ),
                           ),
                       ],
@@ -236,7 +233,10 @@ class _TvHomeDashboard extends ConsumerWidget {
           onSeeAll: () => onSeeAllLiveTv?.call(),
         ),
       if (favorites.isNotEmpty)
-        _HomeRailSpec(title: 'Your Favorites', channels: favorites),
+        _HomeRailSpec(
+          title: 'Your Favorites',
+          channels: favorites.take(_liveTvRailLimit).toList(growable: false),
+        ),
     ];
 
     var assignedAutofocus = false;
@@ -248,6 +248,7 @@ class _TvHomeDashboard extends ConsumerWidget {
           children: [
             for (final channel in rail.channels)
               MediaCard(
+                key: ValueKey(channel.id),
                 name: channel.name,
                 subtitle: channel.group,
                 logoUrl: channel.logoUrl,
@@ -375,210 +376,4 @@ Future<void> _openUrlImport(BuildContext context, {String? initialUrl}) async {
     context: navigator.context,
     builder: (_) => TvPlaylistImportSuccessDialog.fromSummary(summary),
   );
-}
-
-Future<void> _browseUsb(
-  BuildContext context,
-  WidgetRef ref,
-  ValueChanged<IPTVChannel>? onPlayChannel,
-) async {
-  final adapter = ref.read(localMediaLibraryAdapterProvider);
-  String? root;
-  try {
-    root = await adapter.requestRemovableStorageRoot();
-  } on LocalMediaAccessException {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'The selected media folder could not be opened. '
-          'Choose the folder again and allow read access.',
-        ),
-      ),
-    );
-    return;
-  }
-  if (!context.mounted || root == null) return;
-  final selected = await _selectLocalMedia(
-    context,
-    initialRoot: root,
-    title: 'Choose USB media',
-    browse: adapter.browse,
-  );
-  if (!context.mounted || selected == null) return;
-  _playLocalMedia(ref, selected, onPlayChannel);
-}
-
-Future<void> _browseNetwork(
-  BuildContext context,
-  WidgetRef ref,
-  ValueChanged<IPTVChannel>? onPlayChannel,
-) async {
-  final adapter = ref.read(dlnaUpnpLibraryAdapterProvider);
-  const discoveryRoot = 'dlna://discover';
-  final selected = await _selectLocalMedia(
-    context,
-    initialRoot: discoveryRoot,
-    title: 'Choose network media',
-    browse: (root) =>
-        root == discoveryRoot ? adapter.discover() : adapter.browse(root),
-  );
-  if (!context.mounted || selected == null) return;
-  _playLocalMedia(ref, selected, onPlayChannel);
-}
-
-Future<LocalMediaEntry?> _selectLocalMedia(
-  BuildContext context, {
-  required String initialRoot,
-  required String title,
-  required Future<List<LocalMediaEntry>> Function(String root) browse,
-}) async {
-  var currentRoot = initialRoot;
-  while (context.mounted) {
-    final selected = await showDialog<LocalMediaEntry>(
-      context: context,
-      builder: (_) => _TvLocalMediaBrowserDialog(
-        title: title,
-        loadEntries: () => browse(currentRoot),
-      ),
-    );
-    if (!context.mounted || selected == null) return null;
-    if (selected.kind == LocalMediaEntryKind.folder) {
-      final nextRoot = selected.childrenUri;
-      if (nextRoot == null) return null;
-      currentRoot = nextRoot;
-      continue;
-    }
-    return selected;
-  }
-  return null;
-}
-
-void _playLocalMedia(
-  WidgetRef ref,
-  LocalMediaEntry selected,
-  ValueChanged<IPTVChannel>? onPlayChannel,
-) {
-  final channel = IPTVChannel(
-    id: stableLocalMediaChannelId(selected.id),
-    name: selected.name,
-    streamUrl: selected.accessUri,
-    group: 'Local media',
-    isAudioOnly: selected.kind == LocalMediaEntryKind.audio,
-  );
-  ref.read(iptvStreamingServiceProvider).playChannel(channel);
-  onPlayChannel?.call(channel);
-}
-
-class _TvLocalMediaBrowserDialog extends StatefulWidget {
-  const _TvLocalMediaBrowserDialog({
-    required this.title,
-    required this.loadEntries,
-  });
-
-  final String title;
-  final Future<List<LocalMediaEntry>> Function() loadEntries;
-
-  @override
-  State<_TvLocalMediaBrowserDialog> createState() =>
-      _TvLocalMediaBrowserDialogState();
-}
-
-class _TvLocalMediaBrowserDialogState
-    extends State<_TvLocalMediaBrowserDialog> {
-  late Future<List<LocalMediaEntry>> _entries;
-
-  @override
-  void initState() {
-    super.initState();
-    _entries = widget.loadEntries();
-  }
-
-  void _retry() {
-    setState(() => _entries = widget.loadEntries());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screenSize = MediaQuery.sizeOf(context);
-    return AlertDialog(
-      title: Text(widget.title, style: AiroTypography.titleLarge),
-      content: SizedBox(
-        width: (screenSize.width * 0.72).clamp(280.0, 720.0).toDouble(),
-        height: (screenSize.height * 0.64).clamp(240.0, 480.0).toDouble(),
-        child: FutureBuilder<List<LocalMediaEntry>>(
-          future: _entries,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'This media library could not be reached. Check the '
-                    'connection or permission, then try again.',
-                    style: AiroTypography.bodyMedium,
-                  ),
-                  const SizedBox(height: AiroSpacing.md),
-                  TvFocusable(
-                    autofocus: true,
-                    semanticLabel: 'Try again',
-                    onSelect: _retry,
-                    child: OutlinedButton.icon(
-                      onPressed: _retry,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Try again'),
-                    ),
-                  ),
-                ],
-              );
-            }
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final entries = snapshot.data!;
-            if (entries.isEmpty) {
-              return Text(
-                'Find media shared on your network.',
-                style: AiroTypography.bodyMedium,
-              );
-            }
-            return ListView.builder(
-              itemCount: entries.length,
-              itemBuilder: (context, index) {
-                final entry = entries[index];
-                return TvFocusable(
-                  autofocus: index == 0,
-                  semanticLabel: entry.name,
-                  onSelect: () => Navigator.of(context).pop(entry),
-                  child: ListTile(
-                    leading: Icon(
-                      entry.kind == LocalMediaEntryKind.folder
-                          ? Icons.folder
-                          : Icons.movie_outlined,
-                    ),
-                    title: Text(
-                      entry.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => Navigator.of(context).pop(entry),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      ),
-      actions: [
-        TvFocusable(
-          semanticLabel: 'Cancel',
-          onSelect: () => Navigator.of(context).pop(),
-          child: TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ),
-      ],
-    );
-  }
 }

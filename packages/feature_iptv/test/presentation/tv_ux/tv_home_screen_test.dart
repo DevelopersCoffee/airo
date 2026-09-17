@@ -126,12 +126,54 @@ void main() {
   });
 
   testWidgets(
+    'canceling QR name dialog restarts pairing instead of a dead QR',
+    (tester) async {
+      final servers = <_FakePairingServer>[];
+
+      await pumpHome(
+        tester,
+        pairingFactory: () {
+          final server = servers.isEmpty
+              ? _FakePairingServer(resultUrl: 'https://example.com/news.m3u')
+              : _FakePairingServer(never: true);
+          servers.add(server);
+          return server;
+        },
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byType(TvPlaylistUrlDialog), findsOneWidget);
+      expect(servers, hasLength(1));
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(TvPlaylistUrlDialog), findsNothing);
+      expect(
+        find.byKey(const ValueKey('tv-playlist-qr-waiting')),
+        findsOneWidget,
+      );
+      expect(find.text('Waiting for your phone…'), findsOneWidget);
+      expect(
+        servers,
+        hasLength(2),
+        reason: 'embedded QR must start a new session',
+      );
+      expect(servers.first.stopped, isTrue);
+      expect(servers.last.stopped, isFalse);
+    },
+  );
+
+  testWidgets(
     'QR pairing import shows success and Start Watching does not open player',
     (tester) async {
       final channels = <IPTVChannel>[];
       var openedPlayer = false;
       IPTVChannel? played;
 
+      var pairingStarts = 0;
       await pumpHome(
         tester,
         channels: channels,
@@ -139,8 +181,12 @@ void main() {
           openedPlayer = true;
           played = channel;
         },
-        pairingFactory: () =>
-            _FakePairingServer(resultUrl: 'https://example.com/news.m3u'),
+        pairingFactory: () {
+          pairingStarts++;
+          return pairingStarts == 1
+              ? _FakePairingServer(resultUrl: 'https://example.com/news.m3u')
+              : _FakePairingServer(never: true);
+        },
         extraOverrides: [
           addM3uContentSourceProvider.overrideWith((ref, args) async {
             channels.add(_bbc);
