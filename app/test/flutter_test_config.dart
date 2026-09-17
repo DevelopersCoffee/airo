@@ -12,6 +12,7 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 /// actually cares about ever builds.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   SharedPreferences.setMockInitialValues({});
-  SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+  SharedPreferencesAsyncPlatform.instance =
+      InMemorySharedPreferencesAsync.empty();
   await testMain();
 }
