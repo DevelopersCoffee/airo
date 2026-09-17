@@ -9,6 +9,7 @@ import 'package:feature_iptv/presentation/tv_ux/tv_playlist_url_dialog.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/filter_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _bbc = IPTVChannel(
@@ -41,6 +42,7 @@ void main() {
     ValueChanged<IPTVChannel>? onPlayChannel,
     VoidCallback? onSeeAllLiveTv,
     TvPlaylistPairingServer Function()? pairingFactory,
+    List<Override> extraOverrides = const [],
     Size size = const Size(1280, 720),
   }) async {
     tester.view.physicalSize = size;
@@ -65,6 +67,7 @@ void main() {
           tvPlaylistPairingServerFactoryProvider.overrideWithValue(
             pairingFactory ?? () => _FakePairingServer(never: true),
           ),
+          ...extraOverrides,
         ],
         child: MaterialApp(
           home: TvHomeScreen(
@@ -112,6 +115,76 @@ void main() {
     expect(find.byType(FilterRow), findsNothing);
     expect(find.text('Your media. Your player.'), findsNothing);
   });
+
+  testWidgets('shows Continue Watching when recents exist', (tester) async {
+    await pumpHome(tester, channels: const [_bbc, _cnn], recents: const [_cnn]);
+
+    expect(find.text('Continue Watching'), findsOneWidget);
+    expect(find.text('CNN International'), findsWidgets);
+    expect(find.text('Live TV'), findsOneWidget);
+    expect(find.text('Recently Added'), findsNothing);
+  });
+
+  testWidgets(
+    'QR pairing import shows success and Start Watching does not open player',
+    (tester) async {
+      final channels = <IPTVChannel>[];
+      var openedPlayer = false;
+      IPTVChannel? played;
+
+      await pumpHome(
+        tester,
+        channels: channels,
+        onPlayChannel: (channel) {
+          openedPlayer = true;
+          played = channel;
+        },
+        pairingFactory: () =>
+            _FakePairingServer(resultUrl: 'https://example.com/news.m3u'),
+        extraOverrides: [
+          addM3uContentSourceProvider.overrideWith((ref, args) async {
+            channels.add(_bbc);
+            ref.invalidate(iptvChannelsProvider);
+          }),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byType(TvPlaylistUrlDialog), findsOneWidget);
+      expect(openedPlayer, isFalse);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('tv-home-playlist-label-field')),
+        'India news',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(TvPlaylistImportSuccessDialog), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(TvPlaylistImportSuccessDialog),
+          matching: find.text('India news'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Start Watching'), findsOneWidget);
+      expect(openedPlayer, isFalse);
+      expect(played, isNull);
+
+      await tester.tap(find.text('Start Watching'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(TvPlaylistImportSuccessDialog), findsNothing);
+      expect(find.byType(TvHomeScreen), findsOneWidget);
+      expect(find.text('Live TV'), findsOneWidget);
+      expect(openedPlayer, isFalse);
+      expect(played, isNull);
+    },
+  );
 
   testWidgets('Start Watching closes import summary and does not open player', (
     tester,

@@ -224,6 +224,8 @@ class _TvHomeDashboard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final liveTv = channels.take(_liveTvRailLimit).toList(growable: false);
+    // Recently Added stays hidden until a recency signal exists (import
+    // timestamp or stable new ids). Do not invent popularity.
     final rails = <_HomeRailSpec>[
       if (recents.isNotEmpty)
         _HomeRailSpec(title: 'Continue Watching', channels: recents),
@@ -271,6 +273,7 @@ class _TvHomeDashboard extends ConsumerWidget {
   }
 
   void _play(WidgetRef ref, IPTVChannel channel) {
+    // Watch owns the decoder after OK; Home has no preview player.
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
     onPlayChannel?.call(channel);
   }
@@ -350,6 +353,7 @@ class _HomeRail extends StatelessWidget {
 }
 
 Future<void> _openUrlImport(BuildContext context, {String? initialUrl}) async {
+  final navigator = Navigator.of(context);
   final summary = await showDialog<TvPlaylistImportSummary>(
     context: context,
     builder: (dialogContext) {
@@ -366,9 +370,9 @@ Future<void> _openUrlImport(BuildContext context, {String? initialUrl}) async {
       );
     },
   );
-  if (!context.mounted || summary == null) return;
+  if (!navigator.mounted || summary == null) return;
   await showDialog<void>(
-    context: context,
+    context: navigator.context,
     builder: (_) => TvPlaylistImportSuccessDialog.fromSummary(summary),
   );
 }
