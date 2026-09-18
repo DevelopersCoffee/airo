@@ -38,13 +38,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   bool _isBackgroundAudioMode = false;
 
   /// True for an instance that shares the device with another
-  /// already-playing instance (MultiView's non-featured tiles) — an
-  /// app-level mute already keeps only one tile audible (see
+  /// already-playing instance (MultiView tiles, Mini Guide preview) — an
+  /// app-level mute already keeps only one surface audible (see
   /// [setVolume]/[toggleMute]), so this instance must not also compete for
-  /// exclusive Android/iOS audio focus. Without it, the platform's own
-  /// focus-loss handling silently pauses whichever instance loses that
-  /// fight — freezing its video, not just its audio — and nothing in this
-  /// class's own state ever reflects that external pause, so raising this
+  /// exclusive Android/iOS audio focus, and [playChannel] must not request
+  /// [AudioFocusType.video]. Without it, the platform's own focus-loss
+  /// handling silently pauses whichever instance loses that fight —
+  /// freezing its video, not just its audio — and nothing in this class's
+  /// own state ever reflects that external pause, so raising this
   /// instance's volume afterward does not un-freeze it.
   final bool _mixWithOthers;
 
@@ -230,8 +231,11 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         _recordMetricsSource(source.sourceId);
       }
       try {
-        // Request video audio focus (pauses background music)
-        _audioContext.requestFocus(AudioFocusType.video);
+        // Exclusive Watch audio: mix-with-others tiles/previews must not
+        // steal video focus from the already-playing instance.
+        if (!_mixWithOthers) {
+          _audioContext.requestFocus(AudioFocusType.video);
+        }
 
         final externalSubtitles = <AiroPlaybackExternalSubtitle>[
           if (_pendingExternalSubtitle != null &&

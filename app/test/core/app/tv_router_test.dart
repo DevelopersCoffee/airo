@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:airo_app/core/app/tv_router.dart';
 import 'package:airo_app/core/platform/device_form_factor.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_iptv/application/providers/tv_playlist_pairing_provider.dart';
+import 'package:feature_iptv/application/services/tv_playlist_pairing_server.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +35,9 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => channels),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               StreamingState(
@@ -196,7 +203,6 @@ void main() {
         ],
       );
 
-      final railRect = tester.getRect(find.byKey(const Key('tv-sidebar-nav')));
       final leadingControls = <String, Finder>{
         'Search': find.byKey(const ValueKey('filter-chip-search')),
         'Sort': find.byKey(const ValueKey('channel-sort-trigger')),
@@ -225,9 +231,12 @@ void main() {
         final renderObject = primary!.context!.findRenderObject()! as RenderBox;
         final primaryRect =
             renderObject.localToGlobal(Offset.zero) & renderObject.size;
+        final focusedRail = tester.getRect(
+          find.byKey(const Key('tv-sidebar-nav')),
+        );
         expect(
           primaryRect.center.dx,
-          lessThan(railRect.right),
+          lessThan(focusedRail.right),
           reason: 'LEFT from ${entry.key} must enter the rail',
         );
       }
@@ -388,6 +397,9 @@ void main() {
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
+            tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+              () => _FakePairingServer(never: true),
+            ),
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
                 StreamingState(
@@ -420,113 +432,144 @@ void main() {
     },
   );
 
-  testWidgets(
-    'sidebar navigation overlays Guide without unmounting the live shell '
-    '(playback must never stop for a menu tap)',
-    (tester) async {
-      DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
-      addTearDown(DeviceFormFactorDetector.clearCache);
+  testWidgets('sidebar navigation to Guide unmounts the live shell', (
+    tester,
+  ) async {
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
 
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      await tester.binding.setSurfaceSize(const Size(960, 540));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await tester.binding.setSurfaceSize(const Size(960, 540));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            iptvChannelsProvider.overrideWith(
-              (ref) async => const [
-                IPTVChannel(
-                  id: 'ch1',
-                  name: 'Test Channel',
-                  streamUrl: 'https://example.com/ch1.m3u8',
-                ),
-              ],
-            ),
-            recentlyWatchedChannelsProvider.overrideWith(
-              (ref) async => const [],
-            ),
-            streamingStateProvider.overrideWith(
-              (ref) => Stream.value(
-                StreamingState(
-                  playbackState: PlaybackState.idle,
-                  isLiveStream: true,
-                ),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith(
+            (ref) async => const [
+              IPTVChannel(
+                id: 'ch1',
+                name: 'Test Channel',
+                streamUrl: 'https://example.com/ch1.m3u8',
+              ),
+            ],
+          ),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
               ),
             ),
-          ],
-          child: MaterialApp.router(
-            routerConfig: TvRouter.createRouter(
-              initialLocation: TvRouteNames.live,
-            ),
+          ),
+        ],
+        child: MaterialApp.router(
+          routerConfig: TvRouter.createRouter(
+            initialLocation: TvRouteNames.live,
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
-        findsOneWidget,
-      );
-
-      await tester.tap(find.text('Guide'));
-      await tester.pumpAndSettle();
-
-      // The live shell (and the video widget it hosts) is still in the
-      // tree underneath the Guide overlay — a sidebar tap must not tear
-      // it down and rebuild it from scratch.
-      expect(
-        find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
-        findsOneWidget,
-      );
-      expect(find.text('Guide'), findsWidgets);
-
-      await tester.tap(find.text('Home'));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
-        findsOneWidget,
-      );
-    },
-  );
-
-  testWidgets('redirects legacy login route to live TV', (tester) async {
-    await pumpTvRouter(
-      tester,
-      initialLocation: TvRouteNames.legacyLogin,
-      surfaceSize: const Size(1280, 720),
+    expect(
+      find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
+      findsOneWidget,
     );
 
-    expect(find.text('Add your playlist'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('tv-sidebar-nav')),
+        matching: find.byIcon(Icons.grid_view_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
+      findsNothing,
+    );
+    expect(find.byType(IPTVScreen), findsNothing);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('tv-sidebar-nav')),
+        matching: find.byIcon(Icons.home_outlined),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(IPTVScreen), findsNothing);
+    expect(find.text('Your media. Your player.'), findsNothing);
+    expect(find.text('Live TV'), findsOneWidget);
+    expect(find.text('Test Channel'), findsAtLeastNWidgets(1));
+    expect(find.text('Continue Watching'), findsNothing);
+  });
+
+  testWidgets('10-foot empty Home is QR-primary landing', (tester) async {
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTvRouter(tester, initialLocation: TvRouteNames.home);
+
+    expect(find.text('Aika Stream'), findsWidgets);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
+    expect(find.text('Or enter URL manually'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
+  });
+
+  testWidgets('redirects legacy login route to Home', (tester) async {
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTvRouter(tester, initialLocation: TvRouteNames.legacyLogin);
+
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
     expect(find.text('Welcome to Airo'), findsNothing);
   });
 
-  testWidgets('unmatched deep link offers a way back to live TV', (
-    tester,
-  ) async {
+  testWidgets('unmatched deep link offers a way back to Home', (tester) async {
     // The canonical link is registered with android:pathPrefix, so Android
     // delivers deeper paths under /airo/iptv even though only the exact path
     // is routable. These used to hit go_router's default error page, which
     // renders outside TvShell — no rail, and BACK closes the app.
-    await pumpTvRouter(
-      tester,
-      initialLocation: '/airo/iptv/watch/12345',
-      surfaceSize: const Size(1280, 720),
-    );
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTvRouter(tester, initialLocation: '/airo/iptv/watch/12345');
     await tester.pumpAndSettle();
 
     expect(find.text('That link could not be opened'), findsOneWidget);
 
-    await tester.tap(find.text('Go to Live TV'));
+    await tester.tap(find.text('Go to Home'));
     await tester.pumpAndSettle();
 
     expect(find.text('That link could not be opened'), findsNothing);
-    // Same landing the legacy-login redirect asserts: the live route with an
-    // empty playlist. The point is that the remote reached a real screen.
-    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsOneWidget);
+    expect(find.textContaining('same Wi-Fi'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsNothing);
   });
 
   testWidgets('favorites route renders the real favorites screen', (
@@ -543,7 +586,21 @@ void main() {
     expect(find.text('No favorite channels yet'), findsOneWidget);
   });
 
-  testWidgets('compact settings route shows a back button to live TV', (
+  testWidgets('compact default Home is the IPTV explorer', (tester) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.home,
+      surfaceSize: const Size(390, 844),
+    );
+
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Add playlist URL'), findsOneWidget);
+    expect(find.byType(IptvBottomNavBar), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsNothing);
+  });
+
+  testWidgets('compact settings route shows a back button to Home', (
     tester,
   ) async {
     await pumpTvRouter(
@@ -559,10 +616,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
-  testWidgets('compact settings route handles Android back by returning live', (
+  testWidgets('compact settings route handles Android back by returning Home', (
     tester,
   ) async {
     await pumpTvRouter(
@@ -575,10 +634,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
-  testWidgets('compact landscape settings Back returns to live TV', (
+  testWidgets('compact landscape settings Back returns to Home', (
     tester,
   ) async {
     await pumpTvRouter(
@@ -591,11 +652,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Your media. Your player.'), findsNothing);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
 
   testWidgets(
-    'compact landscape settings handles Android back by returning live',
+    'compact landscape settings handles Android back by returning Home',
     (tester) async {
       await pumpTvRouter(
         tester,
@@ -607,7 +670,45 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Add your playlist'), findsOneWidget);
+      expect(find.byType(IPTVScreen), findsOneWidget);
+      expect(find.text('Your media. Your player.'), findsNothing);
       expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
     },
   );
+}
+
+class _FakePairingServer implements TvPlaylistPairingServer {
+  _FakePairingServer({this.never = false});
+
+  final bool never;
+  final _resultCompleter = Completer<String?>();
+  bool stopped = false;
+
+  @override
+  Future<Uri> start() async {
+    return Uri.parse('http://192.168.1.5:8080/pair/fake-token');
+  }
+
+  @override
+  Future<String?> get result {
+    if (!never && !_resultCompleter.isCompleted) {
+      _resultCompleter.complete(null);
+    }
+    return _resultCompleter.future;
+  }
+
+  @override
+  Future<void> cancel() => stop();
+
+  @override
+  Future<void> stop() async {
+    stopped = true;
+    if (!_resultCompleter.isCompleted) _resultCompleter.complete(null);
+  }
+
+  @override
+  bool get isRunning => !stopped;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -4,31 +4,23 @@
 /// No bottom navigation - uses grid/sidebar navigation patterns.
 library;
 
+import 'dart:async';
+
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/iptv/phone_media_local_picker.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/tv/tv_settings_screen.dart';
 import '../platform/device_form_factor.dart';
+import 'tv_route_names.dart';
 import 'tv_shell.dart';
 
-/// TV-specific routes
-class TvRouteNames {
-  TvRouteNames._();
-
-  static const String home = '/';
-  static const String live = '/live';
-  static const String player = '/player';
-  static const String guide = '/guide';
-  static const String vod = '/vod';
-  static const String favorites = '/favorites';
-  static const String settings = '/settings';
-  static const String legacyLogin = '/login';
-}
+export 'tv_route_names.dart';
 
 /// Router for TV app
 class TvRouter {
@@ -37,7 +29,7 @@ class TvRouter {
   static final GoRouter router = createRouter();
 
   @visibleForTesting
-  static GoRouter createRouter({String initialLocation = TvRouteNames.live}) {
+  static GoRouter createRouter({String initialLocation = TvRouteNames.home}) {
     return GoRouter(
       initialLocation: initialLocation,
       // The canonical deep link is registered with `android:pathPrefix`, so
@@ -49,76 +41,76 @@ class TvRouter {
       // there is no navigation rail, and BACK closes the app.
       errorBuilder: (context, state) =>
           _TvRouteNotFoundScreen(location: state.uri.toString()),
-      redirect: (context, state) {
-        final location = state.matchedLocation;
-        if (location == TvRouteNames.home ||
-            location == TvRouteNames.legacyLogin) {
-          return TvRouteNames.live;
-        }
-
-        return null;
-      },
       routes: [
-        // Redirect root to live TV
-        GoRoute(
-          path: TvRouteNames.home,
-          redirect: (context, state) => TvRouteNames.live,
-        ),
         // Preserve old links but keep the TV release auth-free.
         GoRoute(
           path: TvRouteNames.legacyLogin,
-          redirect: (context, state) => TvRouteNames.live,
+          redirect: (context, state) => TvRouteNames.home,
         ),
         // Main TV shell with sidebar navigation
         ShellRoute(
           builder: (context, state, child) => _AdaptiveTvShell(child: child),
           routes: [
             GoRoute(
-              path: '/airo/iptv',
-              builder: (context, state) => _AdaptiveLiveTvScreen(
-                deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
-              ),
+              path: TvRouteNames.home,
+              name: 'tv_home',
+              builder: (context, state) => const _AdaptiveHomeScreen(),
             ),
-            GoRoute(
-              path: '/iptv',
-              builder: (context, state) => _AdaptiveLiveTvScreen(
-                deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
-              ),
+            // One Watch session for /live, /player, and the IPTV deep-link
+            // aliases. Moving between those URLs must not remount (and
+            // stop) playback; leaving the group to Home/Guide/Settings
+            // still disposes the scope.
+            ShellRoute(
+              builder: (context, state, child) =>
+                  _WatchPlaybackScope(child: child),
+              routes: [
+                GoRoute(
+                  path: '/airo/iptv',
+                  builder: (context, state) => _AdaptiveLiveTvScreen(
+                    deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+                  ),
+                ),
+                GoRoute(
+                  path: '/iptv',
+                  builder: (context, state) => _AdaptiveLiveTvScreen(
+                    deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+                  ),
+                ),
+                // Kept for deep links and tests. Watch itself is `/player`.
+                GoRoute(
+                  path: TvRouteNames.live,
+                  name: 'tv_live',
+                  builder: (context, state) => const _AdaptiveLiveTvScreen(),
+                ),
+                GoRoute(
+                  path: TvRouteNames.player,
+                  name: 'tv_player',
+                  builder: (context, state) => const _AdaptiveLiveTvScreen(),
+                ),
+              ],
             ),
-            // Live TV / IPTV (main screen)
-            GoRoute(
-              path: TvRouteNames.live,
-              name: 'tv_live',
-              builder: (context, state) => const _AdaptiveLiveTvScreen(),
-            ),
-            // Player route for fullscreen playback
-            GoRoute(
-              path: TvRouteNames.player,
-              name: 'tv_player',
-              builder: (context, state) => const _AdaptiveLiveTvScreen(),
-            ),
-            // Guide route
             GoRoute(
               path: TvRouteNames.guide,
               name: 'tv_guide',
               builder: (context, state) => IptvGuideScreen(
                 overrideFormFactor: AiroFormFactor.tv,
-                onChannelSelected: () => context.go(TvRouteNames.live),
+                onChannelSelected: () => context.go(TvRouteNames.player),
               ),
             ),
-            // VOD (movies/shows) route
             GoRoute(
               path: TvRouteNames.vod,
               name: 'tv_vod',
-              builder: (context, state) => const VodTvScreen(),
+              builder: (context, state) => VodTvScreen(
+                onItemSelected: () => context.go(TvRouteNames.player),
+              ),
             ),
-            // Favorites route
             GoRoute(
               path: TvRouteNames.favorites,
               name: 'tv_favorites',
-              builder: (context, state) => const TvFavoritesScreen(),
+              builder: (context, state) => TvFavoritesScreen(
+                onChannelSelected: () => context.go(TvRouteNames.player),
+              ),
             ),
-            // Settings route
             GoRoute(
               path: TvRouteNames.settings,
               name: 'tv_settings',
@@ -127,6 +119,146 @@ class TvRouter {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Compact (Pixel 9 / phone) Home is the existing IPTV explorer. 10-foot
+/// Home is the QR landing or silent dashboard rails.
+class _AdaptiveHomeScreen extends StatelessWidget {
+  const _AdaptiveHomeScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    if (_usesCompactPhoneLayout(context)) {
+      // Compact `/` is outside [_WatchPlaybackScope]. Leaving this
+      // explorer (Settings `go`, or any other unmount) must still stop
+      // audio — IPTVScreen.dispose does not.
+      return const _CompactExplorerPlaybackScope();
+    }
+    return TvHomeScreen(
+      onPlayChannel: (_) => context.go(TvRouteNames.player),
+      onSeeAllLiveTv: () => context.go(TvRouteNames.guide),
+    );
+  }
+}
+
+/// Stops compact Home playback on unmount. No PopScope: Home is the root
+/// route, and system Back must still finish the activity.
+class _CompactExplorerPlaybackScope extends ConsumerWidget {
+  const _CompactExplorerPlaybackScope();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final streamingService = ref.watch(iptvStreamingServiceProvider);
+    return _CompactExplorerSession(
+      streamingService: streamingService,
+      child: const _AdaptiveLiveTvScreen(),
+    );
+  }
+}
+
+class _CompactExplorerSession extends StatefulWidget {
+  const _CompactExplorerSession({
+    required this.streamingService,
+    required this.child,
+  });
+
+  final VideoPlayerStreamingService streamingService;
+  final Widget child;
+
+  @override
+  State<_CompactExplorerSession> createState() =>
+      _CompactExplorerSessionState();
+}
+
+class _CompactExplorerSessionState extends State<_CompactExplorerSession> {
+  @override
+  void initState() {
+    super.initState();
+    resetTvWatchStop(widget.streamingService);
+  }
+
+  @override
+  void dispose() {
+    unawaited(awaitTvWatchStop(widget.streamingService));
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// Owns the live playback session for `/player` and leftover `/live`.
+/// Unmounting this scope (rail `go`, Back, or any other leave) calls
+/// [VideoPlayerStreamingService.stop] so audio focus and the media session
+/// are released. [IPTVScreen.dispose] does not.
+class _WatchPlaybackScope extends ConsumerWidget {
+  const _WatchPlaybackScope({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final streamingService = ref.watch(iptvStreamingServiceProvider);
+    final isFullscreen = ref.watch(isFullscreenModeProvider);
+    return _WatchSession(
+      streamingService: streamingService,
+      isFullscreen: isFullscreen,
+      onLeaveWatch: () async {
+        await awaitTvWatchStop(streamingService);
+        if (!context.mounted) return;
+        ref.read(tvNavigationIndexProvider.notifier).state = 0;
+        context.go(TvRouteNames.home);
+      },
+      child: child,
+    );
+  }
+}
+
+class _WatchSession extends StatefulWidget {
+  const _WatchSession({
+    required this.streamingService,
+    required this.isFullscreen,
+    required this.onLeaveWatch,
+    required this.child,
+  });
+
+  final VideoPlayerStreamingService streamingService;
+  final bool isFullscreen;
+  final Future<void> Function() onLeaveWatch;
+  final Widget child;
+
+  @override
+  State<_WatchSession> createState() => _WatchSessionState();
+}
+
+class _WatchSessionState extends State<_WatchSession> {
+  @override
+  void initState() {
+    super.initState();
+    resetTvWatchStop(widget.streamingService);
+    clearTvWatchStopHistory(widget.streamingService);
+  }
+
+  @override
+  void dispose() {
+    unawaited(joinTvWatchStop(widget.streamingService));
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      // Fullscreen Back must reach IPTVScreen.didPopRoute ("exit
+      // fullscreen"), not pop Watch. A true canPop here made the last
+      // shell page poppable and dumped the live session.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop || widget.isFullscreen) return;
+        await widget.onLeaveWatch();
+      },
+      child: widget.child,
     );
   }
 }
@@ -174,8 +306,8 @@ class _TvRouteNotFoundScreen extends StatelessWidget {
                 const SizedBox(height: 28),
                 TvFocusable(
                   autofocus: true,
-                  onSelect: () => context.go(TvRouteNames.live),
-                  semanticLabel: 'Go to Live TV',
+                  onSelect: () => context.go(TvRouteNames.home),
+                  semanticLabel: 'Go to Home',
                   semanticButton: true,
                   borderRadius: 10,
                   child: Container(
@@ -188,7 +320,7 @@ class _TvRouteNotFoundScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      'Go to Live TV',
+                      'Go to Home',
                       style: TextStyle(
                         color: colors.onPrimaryContainer,
                         fontWeight: FontWeight.w600,
@@ -215,7 +347,7 @@ class AdaptiveTvSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     if (_usesCompactPhoneLayout(context)) {
       return SettingsHubScreen(
-        onRootBack: () => context.go(TvRouteNames.live),
+        onRootBack: () => context.go(TvRouteNames.home),
         shellId: ShellId.tv,
       );
     }
@@ -239,21 +371,28 @@ class _AdaptiveTvShell extends StatelessWidget {
   }
 }
 
-class _AdaptiveLiveTvScreen extends StatelessWidget {
+class _AdaptiveLiveTvScreen extends ConsumerWidget {
   const _AdaptiveLiveTvScreen({this.deepLinkIntent});
 
   final IptvDeepLinkIntent? deepLinkIntent;
 
+  Future<void> _openSettings(BuildContext context, WidgetRef ref) async {
+    final service = ref.read(iptvStreamingServiceProvider);
+    await awaitTvWatchStop(service);
+    if (!context.mounted) return;
+    // push (not go): settings needs a real Navigator entry so PopScope's
+    // canPop is true and the system back gesture (edge-swipe / predictive
+    // back) can pop it directly instead of relying on the onRootBack
+    // fallback, which only the hardware/AppBar back path exercised.
+    context.push(TvRouteNames.settings);
+    resetTvWatchStop(service);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (_usesCompactPhoneLayout(context)) {
       return IPTVScreen(
-        // push (not go): settings needs a real Navigator entry so
-        // PopScope's canPop is true and the system back gesture
-        // (edge-swipe / predictive back) can pop it directly instead of
-        // relying on the onRootBack fallback, which only the hardware/
-        // AppBar back path exercised.
-        onSettings: () => context.push(TvRouteNames.settings),
+        onSettings: () => unawaited(_openSettings(context, ref)),
         onPickLocalMediaForTv: isGoogleCastSenderPlatform
             ? pickPhoneLocalMediaForTv
             : null,
@@ -270,7 +409,7 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
     // "desktop mode" screenshot from a Pixel 9 on an external monitor).
     if (DeviceFormFactorDetector.isDesktopWindowedSync()) {
       return IPTVScreen(
-        onSettings: () => context.push(TvRouteNames.settings),
+        onSettings: () => unawaited(_openSettings(context, ref)),
         onPickLocalMediaForTv: isGoogleCastSenderPlatform
             ? pickPhoneLocalMediaForTv
             : null,

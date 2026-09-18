@@ -36,6 +36,7 @@ import '../tv_ux/iptv_resume_gate.dart';
 import '../tv_ux/sections/ways_to_watch_dialog.dart';
 import 'cast_multiview_screen.dart';
 import '../tv_ux/tv_loading_screen.dart';
+import '../tv_ux/tv_local_media_browser.dart';
 import 'mobile_favorites_screen.dart';
 import 'shared_channel_import_screen.dart';
 
@@ -1883,6 +1884,43 @@ Future<void> showPlaylistSourceSheet(
   String? initialUrl,
   bool absorbAndroidTvRawBack = false,
 }) async {
+  final tenFoot = MediaQuery.sizeOf(context).width >= 720;
+  if (tenFoot) {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !absorbAndroidTvRawBack,
+      builder: (dialogContext) {
+        final viewInsets = MediaQuery.viewInsetsOf(dialogContext);
+        final size = MediaQuery.sizeOf(dialogContext);
+        Widget panel = Dialog(
+          insetPadding: const EdgeInsets.all(AiroSpacing.lg),
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: 640,
+            height: (size.height - viewInsets.bottom - 96).clamp(320.0, 640.0),
+            child: PlaylistSourceManagerSheet(initialUrl: initialUrl),
+          ),
+        );
+        if (!absorbAndroidTvRawBack ||
+            defaultTargetPlatform != TargetPlatform.android) {
+          return panel;
+        }
+        return Shortcuts(
+          shortcuts: const {
+            SingleActivator(LogicalKeyboardKey.escape):
+                DoNothingAndStopPropagationIntent(),
+            SingleActivator(LogicalKeyboardKey.goBack):
+                DoNothingAndStopPropagationIntent(),
+            SingleActivator(LogicalKeyboardKey.browserBack):
+                DoNothingAndStopPropagationIntent(),
+          },
+          child: panel,
+        );
+      },
+    );
+    return;
+  }
+
   await showAdaptiveIptvSheet<void>(
     context: context,
     maxWidth: 640,
@@ -2102,6 +2140,7 @@ class _BringYourOwnPlaylistView extends ConsumerWidget {
       context,
       initialRoot: discoveryRoot,
       title: 'Choose network media',
+      isNetworkBrowse: true,
       browse: (root) =>
           root == discoveryRoot ? adapter.discover() : adapter.browse(root),
     );
@@ -2114,6 +2153,7 @@ class _BringYourOwnPlaylistView extends ConsumerWidget {
     required String initialRoot,
     required String title,
     required Future<List<LocalMediaEntry>> Function(String root) browse,
+    bool isNetworkBrowse = false,
   }) async {
     var currentRoot = initialRoot;
     while (context.mounted) {
@@ -2123,6 +2163,7 @@ class _BringYourOwnPlaylistView extends ConsumerWidget {
           title: title,
           loadEntries: () => browse(currentRoot),
           tenFootMode: tenFootMode,
+          isNetworkBrowse: isNetworkBrowse,
         ),
       );
       if (!context.mounted || selected == null) return null;
@@ -2168,11 +2209,13 @@ class _LocalMediaBrowserDialog extends StatefulWidget {
     required this.title,
     required this.loadEntries,
     required this.tenFootMode,
+    this.isNetworkBrowse = false,
   });
 
   final String title;
   final Future<List<LocalMediaEntry>> Function() loadEntries;
   final bool tenFootMode;
+  final bool isNetworkBrowse;
 
   @override
   State<_LocalMediaBrowserDialog> createState() =>
@@ -2236,6 +2279,12 @@ class _LocalMediaBrowserDialogState extends State<_LocalMediaBrowserDialog> {
             }
             final entries = snapshot.data!;
             if (entries.isEmpty) {
+              if (widget.isNetworkBrowse) {
+                return TvNetworkBrowseEmpty(
+                  onScanAgain: _retry,
+                  onHowItWorks: () => showTvNetworkBrowseHowItWorks(context),
+                );
+              }
               return const Text('No supported media was found here.');
             }
             return ListView.builder(

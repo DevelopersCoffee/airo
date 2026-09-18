@@ -13,4 +13,5 @@ export "src/mpv/media_kit_mpv_player_facade.dart";
 export "src/mpv/mpv_player_facade.dart";
 export "src/mpv_airo_playback_engine.dart";
 export "src/video_player_airo_playback_engine.dart";
+export "src/audio_context.dart";
 export "src/video_player_streaming_service.dart";

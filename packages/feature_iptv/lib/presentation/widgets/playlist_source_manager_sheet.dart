@@ -31,6 +31,7 @@ class _PlaylistSourceManagerSheetState
   final _urlFocusNode = FocusNode(debugLabel: 'playlist source URL');
   final _cancelFocusNode = FocusNode(debugLabel: 'playlist source cancel');
   final _saveFocusNode = FocusNode(debugLabel: 'playlist source save');
+  final _sourceFocusNodes = <String, FocusNode>{};
   bool _showAddForm = false;
   bool _isSaving = false;
   bool _initialTvFocusScheduled = false;
@@ -70,6 +71,9 @@ class _PlaylistSourceManagerSheetState
     _urlFocusNode.dispose();
     _cancelFocusNode.dispose();
     _saveFocusNode.dispose();
+    for (final node in _sourceFocusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -246,6 +250,12 @@ class _PlaylistSourceManagerSheetState
     final viewInsets = MediaQuery.viewInsetsOf(context);
     final colorScheme = Theme.of(context).colorScheme;
     final tenFootMode = _isTenFootMode;
+    final body = _buildPanelBody(
+      context,
+      sourcesAsync: sourcesAsync,
+      colorScheme: colorScheme,
+      tenFootMode: tenFootMode,
+    );
 
     return PopScope<void>(
       canPop: !tenFootMode || !_textFieldOwnsFocus,
@@ -258,148 +268,219 @@ class _PlaylistSourceManagerSheetState
           _urlFocusNode.unfocus();
         }
       },
-      child: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + viewInsets.bottom),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
+      child: tenFootMode
+          ? Scaffold(
+              backgroundColor: colorScheme.surface,
+              resizeToAvoidBottomInset: false,
+              body: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: viewInsets.bottom),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child: Text(
-                          'Playlist sources',
-                          style: Theme.of(context).textTheme.titleLarge,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                          child: body,
                         ),
                       ),
-                      _adaptiveAction(
-                        tenFootMode: tenFootMode,
-                        onSelect: () => Navigator.of(context).pop(),
-                        semanticLabel: 'Close playlist sources',
-                        child: IconButton(
-                          tooltip: 'Close playlist sources',
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close),
+                      Material(
+                        color: colorScheme.surface,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                          child: _buildPinnedActions(tenFootMode: true),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Combine multiple authorized M3U playlists. Duplicate '
-                    'channels are merged automatically.',
-                    style: TextStyle(color: colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 16),
-                  sourcesAsync.when(
-                    loading: () => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
-                    error: (_, _) => const Text(
-                      'Could not load playlist sources. Try reopening this panel.',
-                    ),
-                    data: (allSources) {
-                      final sources = allSources
-                          .where(
-                            (source) =>
-                                source.kind == ContentSourceKind.m3u &&
-                                !_removedSourceIds.contains(source.id),
-                          )
-                          .toList(growable: false);
-                      if (sources.isEmpty) {
-                        return DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Text(
-                              'No playlists yet. Add a URL to start watching.',
-                            ),
-                          ),
-                        );
-                      }
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            '${sources.length} playlist '
-                            'source${sources.length == 1 ? '' : 's'}',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          for (final source in sources)
-                            Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                minTileHeight: 64,
-                                leading: const Icon(Icons.playlist_play),
-                                title: Text(source.label),
-                                subtitle: Text(
-                                  _safeLocation(source.url),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: _adaptiveAction(
-                                  tenFootMode: tenFootMode,
-                                  onSelect: () => _removeSource(source),
-                                  semanticLabel: 'Remove ${source.label}',
-                                  child: SizedBox.square(
-                                    dimension: 48,
-                                    child: IconButton(
-                                      tooltip: 'Remove ${source.label}',
-                                      constraints: const BoxConstraints(
-                                        minWidth: 48,
-                                        minHeight: 48,
-                                      ),
-                                      onPressed: () => _removeSource(source),
-                                      icon: const Icon(Icons.delete_outline),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  if (!_showAddForm)
-                    SizedBox(
-                      height: 48,
-                      child: _adaptiveAction(
-                        tenFootMode: tenFootMode,
-                        focusNode: _addSourceFocusNode,
-                        autofocus: tenFootMode,
-                        onSelect: _openAddForm,
-                        semanticLabel: 'Add playlist source',
-                        child: FilledButton.icon(
-                          key: const ValueKey('playlist-source-add-button'),
-                          onPressed: _openAddForm,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add playlist source'),
-                        ),
-                      ),
-                    )
-                  else
-                    _buildAddForm(context, tenFootMode: tenFootMode),
-                ],
+                ),
               ),
+            )
+          : SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + viewInsets.bottom),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    body,
+                    const SizedBox(height: 12),
+                    _buildPinnedActions(tenFootMode: false),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildPanelBody(
+    BuildContext context, {
+    required AsyncValue<List<ContentSourceConfig>> sourcesAsync,
+    required ColorScheme colorScheme,
+    required bool tenFootMode,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Playlist sources',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            _adaptiveAction(
+              tenFootMode: tenFootMode,
+              onSelect: () => Navigator.of(context).pop(),
+              semanticLabel: 'Close playlist sources',
+              child: IconButton(
+                tooltip: 'Close playlist sources',
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Combine multiple authorized M3U playlists. Duplicate '
+          'channels are merged automatically.',
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 16),
+        sourcesAsync.when(
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (_, _) => const Text(
+            'Could not load playlist sources. Try reopening this panel.',
+          ),
+          data: (allSources) {
+            final sources = allSources
+                .where(
+                  (source) =>
+                      source.kind == ContentSourceKind.m3u &&
+                      !_removedSourceIds.contains(source.id),
+                )
+                .toList(growable: false);
+            if (sources.isEmpty) {
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No playlists yet. Add a URL to start watching.'),
+                ),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${sources.length} playlist '
+                  'source${sources.length == 1 ? '' : 's'}',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                for (final source in sources)
+                  _buildSourceRow(source, tenFootMode),
+              ],
             );
           },
+        ),
+        if (_showAddForm) ...[
+          const SizedBox(height: 12),
+          _buildAddForm(
+            context,
+            tenFootMode: tenFootMode,
+            includeActions: !tenFootMode,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSourceRow(ContentSourceConfig source, bool tenFootMode) {
+    final removeButton = SizedBox.square(
+      dimension: 48,
+      child: IconButton(
+        tooltip: 'Remove ${source.label}',
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        onPressed: () => _removeSource(source),
+        icon: const Icon(Icons.delete_outline),
+      ),
+    );
+    final card = Card(
+      key: ValueKey('playlist-source-row-${source.label}'),
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        minTileHeight: 64,
+        leading: const Icon(Icons.playlist_play),
+        title: Text(source.label),
+        subtitle: Text(
+          _safeLocation(source.url),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: tenFootMode
+            ? removeButton
+            : _adaptiveAction(
+                tenFootMode: false,
+                onSelect: () => _removeSource(source),
+                semanticLabel: 'Remove ${source.label}',
+                child: removeButton,
+              ),
+      ),
+    );
+    if (!tenFootMode) return card;
+    final focusNode = _sourceFocusNodes.putIfAbsent(
+      source.id,
+      () => FocusNode(debugLabel: 'playlist source ${source.label}'),
+    );
+    return TvFocusable(
+      focusNode: focusNode,
+      semanticLabel: source.label,
+      onSelect: () => _removeSource(source),
+      onSecondaryAction: () => _removeSource(source),
+      child: card,
+    );
+  }
+
+  Widget _buildPinnedActions({required bool tenFootMode}) {
+    if (_showAddForm) {
+      if (tenFootMode) return _buildAddFormActions(tenFootMode: true);
+      return const SizedBox.shrink();
+    }
+    return SizedBox(
+      height: 48,
+      child: _adaptiveAction(
+        tenFootMode: tenFootMode,
+        focusNode: _addSourceFocusNode,
+        autofocus: tenFootMode,
+        onSelect: _openAddForm,
+        semanticLabel: 'Add playlist source',
+        child: FilledButton.icon(
+          key: const ValueKey('playlist-source-add-button'),
+          onPressed: _openAddForm,
+          icon: const Icon(Icons.add),
+          label: const Text('Add playlist source'),
         ),
       ),
     );
   }
 
-  Widget _buildAddForm(BuildContext context, {required bool tenFootMode}) {
+  Widget _buildAddForm(
+    BuildContext context, {
+    required bool tenFootMode,
+    bool includeActions = true,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -463,44 +544,48 @@ class _PlaylistSourceManagerSheetState
               const LinearProgressIndicator(),
               const SizedBox(height: 12),
             ],
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              spacing: 8,
-              overflowSpacing: 8,
-              children: [
-                SizedBox(
-                  height: 48,
-                  child: _adaptiveAction(
-                    tenFootMode: tenFootMode,
-                    focusNode: _cancelFocusNode,
-                    onSelect: _isSaving ? null : _closeAddForm,
-                    semanticLabel: 'Cancel adding playlist source',
-                    child: TextButton(
-                      onPressed: _isSaving ? null : _closeAddForm,
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 48,
-                  child: _adaptiveAction(
-                    tenFootMode: tenFootMode,
-                    focusNode: _saveFocusNode,
-                    onSelect: _isSaving ? null : _addSource,
-                    semanticLabel: 'Add source',
-                    child: FilledButton.icon(
-                      key: const ValueKey('playlist-source-save-button'),
-                      onPressed: _isSaving ? null : _addSource,
-                      icon: const Icon(Icons.add),
-                      label: Text(_isSaving ? 'Adding…' : 'Add source'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            if (includeActions) _buildAddFormActions(tenFootMode: tenFootMode),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAddFormActions({required bool tenFootMode}) {
+    return OverflowBar(
+      alignment: MainAxisAlignment.end,
+      spacing: 8,
+      overflowSpacing: 8,
+      children: [
+        SizedBox(
+          height: 48,
+          child: _adaptiveAction(
+            tenFootMode: tenFootMode,
+            focusNode: _cancelFocusNode,
+            onSelect: _isSaving ? null : _closeAddForm,
+            semanticLabel: 'Cancel adding playlist source',
+            child: TextButton(
+              onPressed: _isSaving ? null : _closeAddForm,
+              child: const Text('Cancel'),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 48,
+          child: _adaptiveAction(
+            tenFootMode: tenFootMode,
+            focusNode: _saveFocusNode,
+            onSelect: _isSaving ? null : _addSource,
+            semanticLabel: 'Add source',
+            child: FilledButton.icon(
+              key: const ValueKey('playlist-source-save-button'),
+              onPressed: _isSaving ? null : _addSource,
+              icon: const Icon(Icons.add),
+              label: Text(_isSaving ? 'Adding…' : 'Add source'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
