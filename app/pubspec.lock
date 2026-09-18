@@ -83,11 +83,9 @@ packages:
   airo_notifications:
     dependency: transitive
     description:
-      path: "."
-      ref: main
-      resolved-ref: "6fad080ed4a788d893023691852ab99a8ebb4868"
-      url: "https://github.com/DevelopersCoffee/airo_notifications.git"
-    source: git
+      path: "../packages/airo_notifications"
+      relative: true
+    source: path
     version: "1.1.0"
   airo_pro_bootstrap:
     dependency: "direct main"
