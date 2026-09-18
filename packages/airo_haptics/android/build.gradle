@@ -25,6 +25,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
+    namespace 'com.developerscoffee.airo_haptics'
     compileSdkVersion 37
 
     compileOptions {
