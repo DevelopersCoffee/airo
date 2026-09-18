@@ -109,6 +109,33 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 | Pixel-line install and smoke | v0.0.1 preview UAT; Play hard release after listing graphics + internal track |
 | First Play AAB filename | Drop `Aika-Stream-0.0.1-14.aab` (rename of CI `Airo-TV-0.0.1-Play-Store.aab`, `versionCode` **14**). Remove any draft that used version 13 first. |
 
+## Play Console dual form-factor (`0.0.1+19`)
+
+Play already consumed `versionCode` **18**. The next test OBB is **19**
+(`0.0.1+19` in `app/pubspec_tv.yaml`). Do not bump `versionName` off
+`0.0.1`. Never reuse 18.
+
+Pixel 9 missing from the 18 test track is a Console gap, not a missing
+activity. The TV APK already keeps `android.software.leanback` and
+`android.hardware.touchscreen` `required="false"` and both `LAUNCHER` and
+`LEANBACK_LAUNCHER` in `app/android/app/src/tv/AndroidManifest.xml`. Do
+not flip leanback to required — that makes the listing TV-only again.
+
+Human Console checklist before declaring 19 installable on Bravia **and**
+Pixel 9:
+
+| Step | What to confirm |
+| --- | --- |
+| Form factors | Enable **Phone** and **TV** (same listing). Do not leave the app TV-only. |
+| Phone screenshots | Save a phone/tablet screenshot set (compact explorer). TV-only screenshots keep Pixel 9 out of the catalog. |
+| TV screenshots | Keep the existing TV set under `docs/store-assets/airo-tv/` (`01`–`04`, skip `05`). Console Save still required. |
+| Testers | Internal/test-track testers include both phone and TV accounts. |
+| Device catalog | Pixel 9 and the Sony Bravia appear as supported. If Pixel 9 is absent, form factors or screenshots are incomplete — do not cut another AAB with `leanback required=true`. |
+| Sideload vs Play | Testers must **uninstall sideloads** before installing from Play. Pixel sideload uses the upload key; Play-installed APKs use Play App Signing and will not upgrade in place (see Upgrade path above). |
+
+Cut the 19 OBB via `.github/workflows/aika-stream-release.yml` **after**
+this packet is green. Do not trigger that workflow from the version bump.
+
 ## Out of scope this wave
 
 - Renaming the Airo super-app, Coins, or Mind packages.

@@ -131,13 +131,56 @@ class _AdaptiveHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_usesCompactPhoneLayout(context)) {
-      return const _AdaptiveLiveTvScreen();
+      // Compact `/` is outside [_WatchPlaybackScope]. Leaving this
+      // explorer (Settings `go`, or any other unmount) must still stop
+      // audio — IPTVScreen.dispose does not.
+      return const _CompactExplorerPlaybackScope();
     }
     return TvHomeScreen(
       onPlayChannel: (_) => context.go(TvRouteNames.player),
       onSeeAllLiveTv: () => context.go(TvRouteNames.guide),
     );
   }
+}
+
+/// Stops compact Home playback on unmount. No PopScope: Home is the root
+/// route, and system Back must still finish the activity.
+class _CompactExplorerPlaybackScope extends ConsumerWidget {
+  const _CompactExplorerPlaybackScope();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final streamingService = ref.watch(iptvStreamingServiceProvider);
+    return _CompactExplorerSession(
+      streamingService: streamingService,
+      child: const _AdaptiveLiveTvScreen(),
+    );
+  }
+}
+
+class _CompactExplorerSession extends StatefulWidget {
+  const _CompactExplorerSession({
+    required this.streamingService,
+    required this.child,
+  });
+
+  final VideoPlayerStreamingService streamingService;
+  final Widget child;
+
+  @override
+  State<_CompactExplorerSession> createState() =>
+      _CompactExplorerSessionState();
+}
+
+class _CompactExplorerSessionState extends State<_CompactExplorerSession> {
+  @override
+  void dispose() {
+    unawaited(awaitTvWatchStop(widget.streamingService));
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Owns the live playback session for `/player` and leftover `/live`.
@@ -321,21 +364,28 @@ class _AdaptiveTvShell extends StatelessWidget {
   }
 }
 
-class _AdaptiveLiveTvScreen extends StatelessWidget {
+class _AdaptiveLiveTvScreen extends ConsumerWidget {
   const _AdaptiveLiveTvScreen({this.deepLinkIntent});
 
   final IptvDeepLinkIntent? deepLinkIntent;
 
+  Future<void> _openSettings(BuildContext context, WidgetRef ref) async {
+    final service = ref.read(iptvStreamingServiceProvider);
+    await awaitTvWatchStop(service);
+    if (!context.mounted) return;
+    // push (not go): settings needs a real Navigator entry so PopScope's
+    // canPop is true and the system back gesture (edge-swipe / predictive
+    // back) can pop it directly instead of relying on the onRootBack
+    // fallback, which only the hardware/AppBar back path exercised.
+    context.push(TvRouteNames.settings);
+    resetTvWatchStop(service);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (_usesCompactPhoneLayout(context)) {
       return IPTVScreen(
-        // push (not go): settings needs a real Navigator entry so
-        // PopScope's canPop is true and the system back gesture
-        // (edge-swipe / predictive back) can pop it directly instead of
-        // relying on the onRootBack fallback, which only the hardware/
-        // AppBar back path exercised.
-        onSettings: () => context.push(TvRouteNames.settings),
+        onSettings: () => unawaited(_openSettings(context, ref)),
         onPickLocalMediaForTv: isGoogleCastSenderPlatform
             ? pickPhoneLocalMediaForTv
             : null,
@@ -352,7 +402,7 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
     // "desktop mode" screenshot from a Pixel 9 on an external monitor).
     if (DeviceFormFactorDetector.isDesktopWindowedSync()) {
       return IPTVScreen(
-        onSettings: () => context.push(TvRouteNames.settings),
+        onSettings: () => unawaited(_openSettings(context, ref)),
         onPickLocalMediaForTv: isGoogleCastSenderPlatform
             ? pickPhoneLocalMediaForTv
             : null,

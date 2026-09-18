@@ -588,6 +588,243 @@ void main() {
     expect(streamingService.stopCount, 0);
   });
 
+  testWidgets(
+    'compact Home opening Settings awaits stop before leaving playback',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final router = TvRouter.createRouter(initialLocation: TvRouteNames.home);
+      final stopHold = Completer<void>();
+      final streamingService = _RecordingStreamingService(stopHold: stopHold);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvChannelsProvider.overrideWith((ref) async => const []),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+              () => _FakePairingServer(never: true),
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.idle,
+                  isLiveStream: true,
+                ),
+              ),
+            ),
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              ref.onDispose(streamingService.dispose);
+              return streamingService;
+            }),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(IPTVScreen), findsOneWidget);
+
+      tester.widget<IPTVScreen>(find.byType(IPTVScreen)).onSettings!.call();
+      await tester.pump();
+
+      expect(
+        find.widgetWithText(AppBar, 'Settings'),
+        findsNothing,
+        reason: 'Settings must wait until stop() completes',
+      );
+      expect(streamingService.stopCount, 1);
+
+      stopHold.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+      expect(streamingService.stopCount, 1);
+    },
+  );
+
+  testWidgets(
+    'compact pop Settings back still called stop on the explorer leave',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final router = TvRouter.createRouter(initialLocation: TvRouteNames.home);
+      final streamingService = _RecordingStreamingService();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvChannelsProvider.overrideWith((ref) async => const []),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+              () => _FakePairingServer(never: true),
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.idle,
+                  isLiveStream: true,
+                ),
+              ),
+            ),
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              ref.onDispose(streamingService.dispose);
+              return streamingService;
+            }),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      tester.widget<IPTVScreen>(find.byType(IPTVScreen)).onSettings!.call();
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+      expect(streamingService.stopCount, 1);
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(IPTVScreen), findsOneWidget);
+      expect(find.text('Add your playlist'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
+      expect(streamingService.stopCount, 1);
+    },
+  );
+
+  testWidgets('compact explorer go to Settings still calls stop()', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final router = TvRouter.createRouter(initialLocation: TvRouteNames.home);
+    final streamingService = _RecordingStreamingService();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => const []),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
+              ),
+            ),
+          ),
+          iptvStreamingServiceProvider.overrideWith((ref) {
+            ref.onDispose(streamingService.dispose);
+            return streamingService;
+          }),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IPTVScreen), findsOneWidget);
+
+    router.go(TvRouteNames.settings);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+    expect(streamingService.stopCount, 1);
+  });
+
+  testWidgets('compact Back from Watch still awaits stop()', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final router = TvRouter.createRouter(initialLocation: TvRouteNames.player);
+    final stopHold = Completer<void>();
+    final streamingService = _RecordingStreamingService(stopHold: stopHold);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => const []),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
+              ),
+            ),
+          ),
+          iptvStreamingServiceProvider.overrideWith((ref) {
+            ref.onDispose(streamingService.dispose);
+            return streamingService;
+          }),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IPTVScreen), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(
+      find.byType(IPTVScreen),
+      findsOneWidget,
+      reason: 'compact Back must await stop() before leaving Watch',
+    );
+    expect(streamingService.stopCount, 1);
+
+    stopHold.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IPTVScreen), findsOneWidget);
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(streamingService.stopCount, 1);
+  });
+
   testWidgets('BACK is left to the player while fullscreen', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
