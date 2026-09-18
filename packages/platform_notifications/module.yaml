@@ -5,7 +5,8 @@ reviewers:
   - Agent Skills Agent
   - Security and Privacy Agent
   - Chief QA Officer
-allowed_dependencies: []
+allowed_dependencies:
+  - airo_notifications
 forbidden_dependencies:
   - app
   - feature_mind
