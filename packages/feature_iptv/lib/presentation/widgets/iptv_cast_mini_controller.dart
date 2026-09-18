@@ -1,8 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_player/platform_player.dart';
 
+import '../../application/aika_haptics.dart';
+import '../../application/providers/aika_haptics_provider.dart';
 import '../../application/providers/iptv_cast_providers.dart';
+
+void _playAikaHaptic(WidgetRef ref, AikaHapticIntent intent) {
+  unawaited(ref.read(aikaHapticsProvider).play(intent));
+}
 
 Future<void> showIptvCastRemoteControlSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -51,6 +59,10 @@ class _IptvCastMiniControllerState
       final initialSession = ref.read(iptvCastProvider).session;
       if (initialSession.isConnected) {
         _confirmedDeviceId = initialSession.device?.id;
+        final id = initialSession.device?.id;
+        if (id != null) {
+          unawaited(ref.read(aikaHapticsProvider).attachCastSession(id: id));
+        }
       }
       _initialized = true;
     }
@@ -58,11 +70,21 @@ class _IptvCastMiniControllerState
     ref.listen<AiroCastSessionSnapshot>(
       iptvCastProvider.select((state) => state.session),
       (previous, next) {
+        final haptics = ref.read(aikaHapticsProvider);
+        if (next.phase == AiroCastSessionPhase.failed &&
+            previous?.phase != AiroCastSessionPhase.failed) {
+          unawaited(haptics.play(AikaHapticIntent.error));
+        }
         if (!next.isConnected) {
+          unawaited(haptics.detachCastSession());
           if (_confirmedDeviceId != null) {
             setState(() => _confirmedDeviceId = null);
           }
           return;
+        }
+        final deviceId = next.device?.id;
+        if (deviceId != null) {
+          unawaited(haptics.attachCastSession(id: deviceId));
         }
         final wasConnectedToSameDevice =
             previous != null &&
@@ -70,6 +92,7 @@ class _IptvCastMiniControllerState
             previous.device?.id == next.device?.id;
         if (!wasConnectedToSameDevice &&
             next.device?.id != _confirmedDeviceId) {
+          unawaited(haptics.play(AikaHapticIntent.castConnected));
           setState(() {}); // rebuild to evaluate the banner below
         }
       },
@@ -336,6 +359,7 @@ class _CompactCastController extends ConsumerWidget {
                               } else {
                                 isPaused ? notifier.play() : notifier.pause();
                               }
+                              _playAikaHaptic(ref, AikaHapticIntent.playPause);
                             },
                     ),
                   _CastControlButton(
@@ -344,7 +368,10 @@ class _CompactCastController extends ConsumerWidget {
                     label: 'Stop',
                     onPressed: isLoading
                         ? null
-                        : () => ref.read(iptvCastProvider.notifier).stop(),
+                        : () {
+                            ref.read(iptvCastProvider.notifier).stop();
+                            _playAikaHaptic(ref, AikaHapticIntent.stop);
+                          },
                   ),
                 ],
               ),
@@ -355,8 +382,10 @@ class _CompactCastController extends ConsumerWidget {
                   Expanded(
                     child: Slider(
                       value: session.volume.clamp(0.0, 1.0).toDouble(),
-                      onChanged: (value) =>
-                          ref.read(iptvCastProvider.notifier).setVolume(value),
+                      onChanged: (value) {
+                        _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+                        ref.read(iptvCastProvider.notifier).setVolume(value);
+                      },
                     ),
                   ),
                   const Icon(Icons.volume_up, size: 20),
@@ -439,6 +468,7 @@ class _CompactCastController extends ConsumerWidget {
                               } else {
                                 isPaused ? notifier.play() : notifier.pause();
                               }
+                              _playAikaHaptic(ref, AikaHapticIntent.playPause);
                             },
                       icon: Icon(
                         isPaused || isStopped ? Icons.play_arrow : Icons.pause,
@@ -446,7 +476,12 @@ class _CompactCastController extends ConsumerWidget {
                     ),
                   IconButton(
                     tooltip: 'Stop receiver media',
-                    onPressed: isLoading ? null : notifier.stop,
+                    onPressed: isLoading
+                        ? null
+                        : () {
+                            notifier.stop();
+                            _playAikaHaptic(ref, AikaHapticIntent.stop);
+                          },
                     icon: const Icon(Icons.stop),
                   ),
                   const Icon(Icons.volume_down, size: 20),
@@ -454,7 +489,10 @@ class _CompactCastController extends ConsumerWidget {
                     width: 180,
                     child: Slider(
                       value: session.volume.clamp(0.0, 1.0).toDouble(),
-                      onChanged: notifier.setVolume,
+                      onChanged: (value) {
+                        _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+                        notifier.setVolume(value);
+                      },
                     ),
                   ),
                   IconButton(
@@ -544,7 +582,10 @@ class _CastRemoteControlSheet extends ConsumerWidget {
             Expanded(
               child: Slider(
                 value: session.volume.clamp(0.0, 1.0).toDouble(),
-                onChanged: notifier.setVolume,
+                onChanged: (value) {
+                  _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+                  notifier.setVolume(value);
+                },
               ),
             ),
             const Icon(Icons.volume_up),
@@ -553,6 +594,7 @@ class _CastRemoteControlSheet extends ConsumerWidget {
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () {
+            unawaited(ref.read(aikaHapticsProvider).detachCastSession());
             notifier.disconnect();
             Navigator.of(context).pop();
           },
@@ -573,13 +615,24 @@ class _CastRemoteControlSheet extends ConsumerWidget {
         } else {
           isPaused ? notifier.play() : notifier.pause();
         }
+        _playAikaHaptic(ref, AikaHapticIntent.playPause);
       },
-      onVolumeUp: () =>
-          notifier.setVolume((session.volume + 0.1).clamp(0.0, 1.0).toDouble()),
-      onVolumeDown: () =>
-          notifier.setVolume((session.volume - 0.1).clamp(0.0, 1.0).toDouble()),
-      onMute: () => notifier.setVolume(0),
-      onStop: notifier.stop,
+      onVolumeUp: () {
+        _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+        notifier.setVolume((session.volume + 0.1).clamp(0.0, 1.0).toDouble());
+      },
+      onVolumeDown: () {
+        _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+        notifier.setVolume((session.volume - 0.1).clamp(0.0, 1.0).toDouble());
+      },
+      onMute: () {
+        _playAikaHaptic(ref, AikaHapticIntent.mute);
+        notifier.setVolume(0);
+      },
+      onStop: () {
+        _playAikaHaptic(ref, AikaHapticIntent.stop);
+        notifier.stop();
+      },
     );
 
     return SingleChildScrollView(

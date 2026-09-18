@@ -2,8 +2,32 @@ import "package:feature_iptv/feature_iptv.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:platform_haptics/platform_haptics.dart";
+import "package:platform_haptics/testing.dart";
+
+class RecordingAikaHaptics implements AikaHaptics {
+  final plays = <AikaHapticIntent>[];
+  final attached = <String>[];
+  var detached = 0;
+
+  @override
+  Future<void> play(AikaHapticIntent intent) async => plays.add(intent);
+
+  @override
+  Future<void> attachCastSession({required String id}) async =>
+      attached.add(id);
+
+  @override
+  Future<void> detachCastSession() async => detached++;
+}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    AiroHapticsPlatform.instance = FakeAiroHapticPlatform();
+  });
+
   const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
   final media = AiroCastMediaRequest(
     url: Uri.parse('https://example.com/live.m3u8'),
@@ -15,10 +39,14 @@ void main() {
     'shows the one-time "Playing on" confirmation on a live connect transition',
     (tester) async {
       final notifier = _MutableCastNotifier(const IptvCastState());
+      final haptics = RecordingAikaHaptics();
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
+          overrides: [
+            iptvCastProvider.overrideWith((ref) => notifier),
+            aikaHapticsProvider.overrideWith((ref) => haptics),
+          ],
           child: const MaterialApp(
             home: Scaffold(body: IptvCastMiniController()),
           ),
@@ -45,6 +73,8 @@ void main() {
       );
       expect(find.text('Browse channels'), findsOneWidget);
       expect(find.text('Open controls'), findsOneWidget);
+      expect(haptics.attached, ['tv-1']);
+      expect(haptics.plays, [AikaHapticIntent.castConnected]);
     },
   );
 
@@ -205,6 +235,7 @@ void main() {
     'no banner for a session that is already connected when the widget mounts '
     '(recovered session, not a live transition)',
     (tester) async {
+      final haptics = RecordingAikaHaptics();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -218,6 +249,7 @@ void main() {
                 ),
               ),
             ),
+            aikaHapticsProvider.overrideWith((ref) => haptics),
           ],
           child: const MaterialApp(
             home: Scaffold(body: IptvCastMiniController()),
@@ -227,6 +259,8 @@ void main() {
 
       expect(find.textContaining('Playing on'), findsNothing);
       expect(find.text('Casting to Sony Bravia'), findsOneWidget);
+      expect(haptics.attached, ['tv-1']);
+      expect(haptics.plays, isEmpty);
     },
   );
 

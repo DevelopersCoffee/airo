@@ -11,6 +11,7 @@ Next candidate: [`v0.0.7`](./AIRO_v0.0.7.md) (prepared, not tagged).
 | Android TV | Supported | Package `com.developerscoffee.tv.midas`; Leanback launcher enabled. |
 | Pixel/mobile fallback | Supported | Used for smoke testing and responsive layout coverage. |
 | Chromecast controls | Supported | Discovery, play, pause, stop, reload, new session, volume. |
+| Haptic feedback | Phone/tablet + Cast remote | Semantic play/pause, channel step, favorite, error, Cast connect/volume. TV silent. |
 | Favorites | Supported | Mark/unmark channels from browse and player flows; stored locally. |
 | XMLTV guide | Supported | User-configured XMLTV sources only; no bundled guide feed. |
 | Smart playlists and canonical channels | Supported | Local filtering and canonical identity matching help preserve personal organization across imports. |

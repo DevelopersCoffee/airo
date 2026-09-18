@@ -1,0 +1,14 @@
+name: airo_haptics
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+description: Standalone open-source Flutter cross-platform haptics engine.
+layer: framework
+stability: production
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+tests:
+  unit: true
+quality_gates: {}

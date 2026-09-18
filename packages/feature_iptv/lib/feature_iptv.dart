@@ -2,6 +2,8 @@ library;
 
 export "product_identity.dart";
 export "src/iptv.dart";
+export "application/aika_haptics.dart";
+export "application/providers/aika_haptics_provider.dart";
 export "domain/iptv_navigation_manifest.dart";
 export "domain/iptv_settings_manifest.dart";
 export "domain/local_iptv_search.dart";

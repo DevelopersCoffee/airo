@@ -8,13 +8,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Player MENU owns Player actions. The separate channel-actions overlay stays
 // reachable through Fire TV's long-press Select convention and the transport
 // bar's Info button.
+class RecordingAikaHaptics implements AikaHaptics {
+  final plays = <AikaHapticIntent>[];
+
+  @override
+  Future<void> play(AikaHapticIntent intent) async => plays.add(intent);
+
+  @override
+  Future<void> attachCastSession({required String id}) async {}
+
+  @override
+  Future<void> detachCastSession() async {}
+}
+
 void main() {
-  Future<ProviderContainer> pumpPlayer(WidgetTester tester) async {
+  Future<ProviderContainer> pumpPlayer(
+    WidgetTester tester, {
+    RecordingAikaHaptics? haptics,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        if (haptics != null) aikaHapticsProvider.overrideWith((ref) => haptics),
         streamingStateProvider.overrideWith(
           (ref) => Stream.value(
             StreamingState(
@@ -73,7 +90,8 @@ void main() {
 
   testWidgets('selecting Add to favorites toggles the favorite and closes '
       'the menu', (tester) async {
-    final container = await pumpPlayer(tester);
+    final haptics = RecordingAikaHaptics();
+    final container = await pumpPlayer(tester, haptics: haptics);
 
     await openContextMenu(tester);
 
@@ -85,6 +103,7 @@ void main() {
     expect(ids, contains('news-1'));
     expect(find.text('Actions for'), findsNothing);
     expect(find.text('City News Live added to favorites'), findsOneWidget);
+    expect(haptics.plays, [AikaHapticIntent.favoriteOn]);
   });
 
   testWidgets('Fire OS BACK pair closes the context menu without navigating', (

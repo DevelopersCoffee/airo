@@ -1,0 +1,15 @@
+name: platform_haptics
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+description: Monorepo shim package re-exporting airo_haptics engine.
+layer: framework
+stability: production
+allowed_dependencies:
+  - airo_haptics
+forbidden_dependencies:
+  - app
+tests:
+  unit: true
+quality_gates: {}
