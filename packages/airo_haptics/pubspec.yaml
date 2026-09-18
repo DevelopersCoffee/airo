@@ -27,7 +27,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.airo.airo_haptics
+        package: com.developerscoffee.airo_haptics
         pluginClass: AiroHapticsPlugin
       ios:
         pluginClass: AiroHapticsPlugin

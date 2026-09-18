@@ -25,7 +25,8 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
-    compileSdkVersion 34
+    namespace 'com.developerscoffee.airo_haptics'
+    compileSdkVersion 37
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -37,7 +38,7 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 21
+        minSdkVersion 26
     }
 }
 
