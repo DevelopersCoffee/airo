@@ -12,8 +12,10 @@ import 'package:flutter/services.dart'
         LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
+import '../../application/aika_haptics.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/channel_warmup_policy.dart';
+import '../../application/providers/aika_haptics_provider.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/dead_link_report_provider.dart';
@@ -494,6 +496,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
   }
 
+  void _togglePlayPause(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    if (state.isPlaying) {
+      service.pause();
+    } else {
+      service.resume();
+    }
+    unawaited(ref.read(aikaHapticsProvider).play(AikaHapticIntent.playPause));
+  }
+
   // Channel navigation button handlers
   void _goToNextChannel() {
     final streamingService = ref.read(iptvStreamingServiceProvider);
@@ -502,6 +516,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       streamingService.playChannel(nextChannel);
       _showChannelChangeOverlay(nextChannel.name);
       _scheduleAdjacentChannelWarmupFor(nextChannel);
+      unawaited(
+        ref.read(aikaHapticsProvider).play(AikaHapticIntent.channelStep),
+      );
     }
   }
 
@@ -512,6 +529,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       streamingService.playChannel(prevChannel);
       _showChannelChangeOverlay(prevChannel.name);
       _scheduleAdjacentChannelWarmupFor(prevChannel);
+      unawaited(
+        ref.read(aikaHapticsProvider).play(AikaHapticIntent.channelStep),
+      );
     }
   }
 
@@ -788,6 +808,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final toggle = ref.read(channelFavoriteTogglerProvider);
     final isNowFavorite = await toggle(channel.id);
     if (!mounted) return;
+    unawaited(
+      ref
+          .read(aikaHapticsProvider)
+          .play(
+            isNowFavorite
+                ? AikaHapticIntent.favoriteOn
+                : AikaHapticIntent.favoriteOff,
+          ),
+    );
     _closeContextMenu();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -972,6 +1001,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(streamingStateProvider, (previous, next) {
+      final wasError = previous?.asData?.value.hasError == true;
+      final isError = next.asData?.value.hasError == true;
+      if (isError && !wasError) {
+        unawaited(ref.read(aikaHapticsProvider).play(AikaHapticIntent.error));
+      }
+    });
     ref.watch(recentlyWatchedRecorderProvider);
     final streamingService = ref.watch(iptvStreamingServiceProvider);
     final streamingState = ref.watch(streamingStateProvider);
@@ -1053,7 +1089,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           Positioned.fill(
             child: state.diagnostic != null
                 ? _buildDiagnosticError(state)
-                : _buildError(state.errorMessage ?? 'Playback could not start.'),
+                : _buildError(
+                    state.errorMessage ?? 'Playback could not start.',
+                  ),
           )
         else if (state.isLoading)
           _buildLoading()
@@ -1211,13 +1249,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         state: _toPlayerViewState(state),
                         onBack:
                             widget.onBack ?? widget.onFullscreenToggle ?? () {},
-                        onPlayPause: () {
-                          if (state.isPlaying) {
-                            service.pause();
-                          } else {
-                            service.resume();
-                          }
-                        },
+                        onPlayPause: () => _togglePlayPause(service, state),
                         onReveal: _showControls,
                         showTopChrome: false,
                         showCenterControls: false,
@@ -1801,25 +1833,28 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 width: 96,
                 height: 96,
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.headphones, size: 72, color: Colors.white70),
+                errorBuilder: (context, error, stackTrace) => const Icon(
+                  Icons.headphones,
+                  size: 72,
+                  color: Colors.white70,
+                ),
               )
             else
               const Icon(Icons.headphones, size: 72, color: Colors.white70),
             const SizedBox(height: 16),
             Text(
               'Listening only',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.white),
             ),
             if (channel != null) ...[
               const SizedBox(height: 4),
               Text(
                 channel.name,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
               ),
             ],
           ],
@@ -2255,13 +2290,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         focusNode: _centerControlFocusNode,
         autofocus: true,
         onFocus: _startHideControlsTimer,
-        onSelect: () {
-          if (state.isPlaying) {
-            service.pause();
-          } else {
-            service.resume();
-          }
-        },
+        onSelect: () => _togglePlayPause(service, state),
         borderRadius: 10,
         semanticLabel: state.isPlaying ? 'Pause' : 'Play',
         child: _TvTransportButton(
@@ -2783,15 +2812,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       onSelect: () =>
                           unawaited(afterSheet(widget.onShowWaysToWatch!)),
                     ),
-                  if (widget.onShowHelp != null || widget.onOpenSettings != null)
+                  if (widget.onShowHelp != null ||
+                      widget.onOpenSettings != null)
                     const Divider(height: 1),
                   if (widget.onShowHelp != null)
                     _TvSheetListTile(
                       itemKey: const ValueKey('iptv-player-help-menu-action'),
                       leading: const Icon(Icons.help_outline),
                       title: const Text('Help'),
-                      onSelect: () =>
-                          unawaited(afterSheet(widget.onShowHelp!)),
+                      onSelect: () => unawaited(afterSheet(widget.onShowHelp!)),
                     ),
                   if (widget.onOpenSettings != null)
                     _TvSheetListTile(
@@ -3088,13 +3117,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
     // Standard play/pause button — translucent white circle behind a dark
     // glyph, matching the design handoff's player chrome.
-    void togglePlayPause() {
-      if (state.isPlaying) {
-        service.pause();
-      } else {
-        service.resume();
-      }
-    }
+    void togglePlayPause() => _togglePlayPause(service, state);
 
     return TvFocusable(
       focusNode: _centerControlFocusNode,
