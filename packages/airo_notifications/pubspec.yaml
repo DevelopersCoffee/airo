@@ -1,0 +1,41 @@
+name: airo_notifications
+description: Native-first local alert, notification grouping, task follow-up & scheduling execution engine for Flutter.
+version: 1.1.0
+homepage: https://developerscoffee.com
+repository: https://github.com/DevelopersCoffee/airo_notifications
+issue_tracker: https://github.com/DevelopersCoffee/airo_notifications/issues
+documentation: https://github.com/DevelopersCoffee/airo_notifications#readme
+
+topics:
+  - notifications
+  - alerts
+  - scheduling
+  - flutter
+  - tasks
+
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.0.0"
+
+dependencies:
+  equatable: ^2.1.0
+  flutter:
+    sdk: flutter
+  flutter_local_notifications: ^22.0.0
+  shared_preferences: ^2.3.0
+  timezone: ^0.11.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
