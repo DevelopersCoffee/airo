@@ -108,6 +108,11 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'XMLTV Guide Source',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
           Text('Browse guides', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           TextField(
