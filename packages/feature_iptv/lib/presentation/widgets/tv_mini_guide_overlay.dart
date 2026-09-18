@@ -171,8 +171,14 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
     _previewHasFrame = false;
     unawaited(sub?.cancel());
     if (preview == null) return;
-    unawaited(preview.stop().catchError((_) {}));
-    unawaited(preview.dispose().catchError((_) {}));
+    unawaited(() async {
+      try {
+        await preview.stop();
+      } catch (_) {}
+      try {
+        await preview.dispose();
+      } catch (_) {}
+    }());
   }
 
   Future<void> _startPreview(IPTVChannel channel, int epoch) async {

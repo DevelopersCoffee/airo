@@ -179,6 +179,7 @@ void main() {
       expect(previews, hasLength(1));
       expect(previews.single.stopCount, 1);
       expect(previews.single.disposed, isTrue);
+      expect(previews.single.teardownOrder, ['stop', 'dispose']);
 
       await tester.pump(const Duration(milliseconds: 500));
       await flushAsync(tester);
@@ -367,6 +368,7 @@ class _RecordingPreviewService extends VideoPlayerStreamingService {
   IPTVChannel? lastChannel;
   double? volumeBeforePlay;
   bool? mutedBeforePlay;
+  final teardownOrder = <String>[];
 
   @override
   Future<void> playChannel(IPTVChannel channel) async {
@@ -380,6 +382,10 @@ class _RecordingPreviewService extends VideoPlayerStreamingService {
   @override
   Future<void> stop() async {
     stopCount++;
+    // Yield so a parallel dispose() would finish first — sequential
+    // teardown must still record stop before dispose.
+    await Future<void>.value();
+    teardownOrder.add('stop');
     await super.stop();
   }
 
@@ -387,6 +393,7 @@ class _RecordingPreviewService extends VideoPlayerStreamingService {
   Future<void> dispose() async {
     if (disposed) return;
     disposed = true;
+    teardownOrder.add('dispose');
     await super.dispose();
   }
 }
