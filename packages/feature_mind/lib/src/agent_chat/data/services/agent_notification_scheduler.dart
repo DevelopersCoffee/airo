@@ -306,9 +306,35 @@ class LocalAgentNotificationScheduler
     }
     if (target == null) return null;
 
-    final updatedAlert = await _engine.markCompleted(target.id);
-    if (updatedAlert == null) return null;
-    return ScheduledAgentNotification.fromAiroAlert(updatedAlert);
+    // `AiroNotificationEngine.markCompleted` only flips status and cancels
+    // a `daily_until_done` follow-up -- it deliberately knows nothing about
+    // streaks or points. That bookkeeping is Mind-specific gamification, so
+    // it is computed and persisted here, on top of the generic engine.
+    final completedAlert = await _engine.markCompleted(target.id);
+    if (completedAlert == null) return null;
+
+    final today = _formatDate(DateTime.now());
+    if (target.completedDates.contains(today)) {
+      // Already recorded today's completion (e.g. a duplicate tap) -- return
+      // the alert as-is rather than double-counting streak/points.
+      return ScheduledAgentNotification.fromAiroAlert(completedAlert);
+    }
+
+    final yesterday = _formatDate(DateTime.now().subtract(const Duration(days: 1)));
+    final continuesStreak = target.completedDates.contains(yesterday);
+    final bookkept = completedAlert.copyWith(
+      completedDates: [...target.completedDates, today],
+      streakCount: continuesStreak ? target.streakCount + 1 : 1,
+      points: target.points + 10,
+    );
+    final persisted = await _engine.persist(bookkept);
+    return ScheduledAgentNotification.fromAiroAlert(persisted);
+  }
+
+  static String _formatDate(DateTime value) {
+    return '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
   }
 
   @override
