@@ -36,10 +36,9 @@ packages:
   airo_notifications:
     dependency: transitive
     description:
-      name: airo_notifications
-      sha256: "5cda7003ff41dd0b9e9d9d460e6a872f50af32a2bc7188bc7f14cabb6e4b4549"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../airo_notifications"
+      relative: true
+    source: path
     version: "1.1.0"
   analyzer:
     dependency: transitive
