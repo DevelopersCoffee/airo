@@ -412,7 +412,7 @@ class _TvSidebarLogo extends StatelessWidget {
     return TvFocusable(
       focusNode: focusNode,
       onSelect: onSelect,
-      semanticLabel: 'Aika Stream home',
+      semanticLabel: '${TvStoreProduct.displayName} home',
       semanticButton: true,
       child: Padding(
         padding: EdgeInsets.symmetric(
@@ -450,7 +450,7 @@ class _TvSidebarLogo extends StatelessWidget {
             if (expanded) ...[
               const SizedBox(width: AiroSpacing.sm),
               Text(
-                'Aika Stream',
+                TvStoreProduct.displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: labelStyle,

@@ -5,14 +5,15 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_media/platform_media.dart';
 
 import '../../application/providers/iptv_providers.dart';
+import '../../product_identity.dart';
 
-/// Folder-walking USB/DLNA picker used by 10-foot Home. Empty-network copy
-/// is the current Home string; Task 6 owns Browse Network empty-state work.
+/// Folder-walking USB/DLNA picker used by 10-foot Home and Explorer.
 Future<LocalMediaEntry?> showTvLocalMediaBrowser(
   BuildContext context, {
   required String initialRoot,
   required String title,
   required Future<List<LocalMediaEntry>> Function(String root) browse,
+  bool isNetworkBrowse = false,
 }) async {
   var currentRoot = initialRoot;
   while (context.mounted) {
@@ -21,6 +22,7 @@ Future<LocalMediaEntry?> showTvLocalMediaBrowser(
       builder: (_) => TvLocalMediaBrowserDialog(
         title: title,
         loadEntries: () => browse(currentRoot),
+        isNetworkBrowse: isNetworkBrowse,
       ),
     );
     if (!context.mounted || selected == null) return null;
@@ -78,6 +80,7 @@ Future<void> browseTvNetwork(
     context,
     initialRoot: discoveryRoot,
     title: 'Choose network media',
+    isNetworkBrowse: true,
     browse: (root) =>
         root == discoveryRoot ? adapter.discover() : adapter.browse(root),
   );
@@ -101,15 +104,103 @@ void playTvLocalMedia(
   onPlayChannel?.call(channel);
 }
 
+void showTvNetworkBrowseHowItWorks(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('How it works'),
+        content: Text(
+          'Share a folder from a Windows PC, Mac, NAS, or media server. '
+          'Keep this TV on the same network, then scan again so '
+          '${TvStoreProduct.displayName} can find it.',
+        ),
+        actions: [
+          TvFocusable(
+            autofocus: true,
+            semanticLabel: 'Close',
+            onSelect: () => Navigator.of(dialogContext).pop(),
+            child: TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// Browse Network empty: find-media copy plus Scan again / How it works.
+class TvNetworkBrowseEmpty extends StatelessWidget {
+  const TvNetworkBrowseEmpty({
+    super.key,
+    required this.onScanAgain,
+    required this.onHowItWorks,
+  });
+
+  final VoidCallback onScanAgain;
+  final VoidCallback onHowItWorks;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Find media shared on your network',
+          style: AiroTypography.titleMedium.copyWith(color: colors.onSurface),
+        ),
+        const SizedBox(height: AiroSpacing.sm),
+        Text(
+          'Windows / Mac / NAS / media server; same network',
+          style: AiroTypography.bodyMedium.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AiroSpacing.lg),
+        Row(
+          children: [
+            TvFocusable(
+              autofocus: true,
+              semanticLabel: 'Scan again',
+              semanticButton: true,
+              onSelect: onScanAgain,
+              child: FilledButton.icon(
+                onPressed: onScanAgain,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Scan again'),
+              ),
+            ),
+            const SizedBox(width: AiroSpacing.md),
+            TvFocusable(
+              semanticLabel: 'How it works',
+              semanticButton: true,
+              onSelect: onHowItWorks,
+              child: OutlinedButton(
+                onPressed: onHowItWorks,
+                child: const Text('How it works'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class TvLocalMediaBrowserDialog extends StatefulWidget {
   const TvLocalMediaBrowserDialog({
     super.key,
     required this.title,
     required this.loadEntries,
+    this.isNetworkBrowse = false,
   });
 
   final String title;
   final Future<List<LocalMediaEntry>> Function() loadEntries;
+  final bool isNetworkBrowse;
 
   @override
   State<TvLocalMediaBrowserDialog> createState() =>
@@ -126,7 +217,10 @@ class _TvLocalMediaBrowserDialogState extends State<TvLocalMediaBrowserDialog> {
   }
 
   void _retry() {
-    setState(() => _entries = widget.loadEntries());
+    final next = widget.loadEntries();
+    setState(() {
+      _entries = next;
+    });
   }
 
   @override
@@ -168,10 +262,13 @@ class _TvLocalMediaBrowserDialogState extends State<TvLocalMediaBrowserDialog> {
             }
             final entries = snapshot.data!;
             if (entries.isEmpty) {
-              return Text(
-                'Find media shared on your network.',
-                style: AiroTypography.bodyMedium,
-              );
+              if (widget.isNetworkBrowse) {
+                return TvNetworkBrowseEmpty(
+                  onScanAgain: _retry,
+                  onHowItWorks: () => showTvNetworkBrowseHowItWorks(context),
+                );
+              }
+              return const Text('No supported media was found here.');
             }
             return ListView.builder(
               itemCount: entries.length,

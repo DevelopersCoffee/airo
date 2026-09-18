@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:airo_app/core/app/tv_router.dart';
 import 'package:airo_app/core/app/tv_shell.dart';
@@ -776,6 +777,9 @@ void main() {
         find.descendant(of: _tvSidebar(), matching: find.text('Aika Stream')),
         findsOneWidget,
       );
+      expect(find.text('Airo TV'), findsNothing);
+      expect(find.text('AIRO TV'), findsNothing);
+      expect(find.text('Midas Stream'), findsNothing);
       for (final label in [
         'Home',
         'Guide',
@@ -790,6 +794,62 @@ void main() {
       }
     },
   );
+
+  testWidgets(
+    'Home QR landing chrome is Aika Stream, not Airo TV or Midas Stream',
+    (tester) async {
+      _setTenFootView(tester);
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final router = TvRouter.createRouter(initialLocation: TvRouteNames.home);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvChannelsProvider.overrideWith((ref) async => const []),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+              () => _FakePairingServer(never: true),
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.idle,
+                  isLiveStream: true,
+                ),
+              ),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(TvStoreProduct.displayName), findsWidgets);
+      expect(find.text('Your media. Your player.'), findsOneWidget);
+      expect(find.textContaining('same Wi-Fi'), findsOneWidget);
+      expect(find.text('Airo TV'), findsNothing);
+      expect(find.text('AIRO TV'), findsNothing);
+      expect(find.text('Midas Stream'), findsNothing);
+    },
+  );
+
+  test('tv_shell.dart user-facing literals are Aika Stream', () {
+    final source = File('lib/core/app/tv_shell.dart').readAsStringSync();
+    final literals = RegExp(
+      r"""'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*" """,
+    ).allMatches(source).map((match) => match.group(0)!);
+    for (final literal in literals) {
+      expect(literal.contains('Airo TV'), isFalse, reason: literal);
+      expect(literal.contains('AIRO TV'), isFalse, reason: literal);
+      expect(literal.contains('Midas Stream'), isFalse, reason: literal);
+    }
+    expect(source.contains('TvStoreProduct.displayName'), isTrue);
+  });
 }
 
 class _RecordingStreamingService extends VideoPlayerStreamingService {

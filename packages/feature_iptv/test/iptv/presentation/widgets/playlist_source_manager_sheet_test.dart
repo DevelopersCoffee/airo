@@ -245,6 +245,88 @@ void main() {
     expect(labelField.focusNode?.hasPrimaryFocus, isTrue);
   });
 
+  testWidgets('TV playlist panel keeps Save and Cancel above the IME', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                size: const Size(1280, 720),
+                viewInsets: const EdgeInsets.only(bottom: 280),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+          home: const PlaylistSourceManagerSheet(
+            initialUrl: 'https://example.com/news.m3u',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add playlist'), findsOneWidget);
+    final saveRect = tester.getRect(
+      find.byKey(const ValueKey('playlist-source-save-button')),
+    );
+    final cancelRect = tester.getRect(find.text('Cancel'));
+    const keyboardTop = 720.0 - 280.0;
+    expect(saveRect.bottom, lessThanOrEqualTo(keyboardTop));
+    expect(cancelRect.bottom, lessThanOrEqualTo(keyboardTop));
+  });
+
+  testWidgets('TV playlist source rows stay D-pad reachable', (tester) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'News',
+        url: 'https://example.com/news.m3u',
+      )).future,
+    );
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'Sports',
+        url: 'https://example.com/sports.m3u',
+      )).future,
+    );
+    await pumpTvManagerDialog(tester, container);
+
+    expect(find.text('News'), findsOneWidget);
+    expect(find.text('Sports'), findsOneWidget);
+
+    final newsRow = find.ancestor(
+      of: find.byKey(const ValueKey('playlist-source-row-News')),
+      matching: find.byType(TvFocusable),
+    );
+    final sportsRow = find.ancestor(
+      of: find.byKey(const ValueKey('playlist-source-row-Sports')),
+      matching: find.byType(TvFocusable),
+    );
+    final newsFocus = tester.widget<TvFocusable>(newsRow);
+    newsFocus.focusNode!.requestFocus();
+    await tester.pump();
+    expect(newsFocus.focusNode!.hasPrimaryFocus, isTrue);
+
+    final sportsFocus = tester.widget<TvFocusable>(sportsRow);
+    sportsFocus.focusNode!.requestFocus();
+    await tester.pump();
+    expect(sportsFocus.focusNode!.hasPrimaryFocus, isTrue);
+  });
+
   testWidgets(
     'Fire TV BACK leaves the playlist form after dismissing its keyboard',
     (tester) async {
