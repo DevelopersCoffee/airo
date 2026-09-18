@@ -8,42 +8,42 @@ import 'package:platform_downloads/platform_downloads.dart';
 
 class MockModelStorageManager extends Mock implements ModelStorageManager {}
 
-class FakeBackgroundDownloads implements BackgroundDownloads {
-  final eventController = StreamController<DownloadProgress>.broadcast();
-  final requests = <DownloadArtifactRequest>[];
+class FakeAiroPlatformBridge extends AiroPlatformBridge {
+  final eventController = StreamController<AiroDownload>.broadcast();
+  final requests = <AiroDownloadRequest>[];
   final actions = <String>[];
-  var queue = const DownloadQueueSnapshot(entries: []);
+  var downloads = <AiroDownload>[];
 
   @override
-  Stream<DownloadProgress> get events => eventController.stream;
+  Stream<AiroDownload> get events => eventController.stream;
 
   @override
-  Future<void> enqueue(DownloadArtifactRequest request) async {
+  Future<void> enqueue(AiroDownloadRequest request) async {
     requests.add(request);
   }
 
   @override
-  Future<void> pause(String artifactId) async {
-    actions.add('pause:$artifactId');
+  Future<void> pause(String id) async {
+    actions.add('pause:$id');
   }
 
   @override
-  Future<void> resume(String artifactId) async {
-    actions.add('resume:$artifactId');
+  Future<void> resume(String id) async {
+    actions.add('resume:$id');
   }
 
   @override
-  Future<void> retry(String artifactId) async {
-    actions.add('retry:$artifactId');
+  Future<void> retry(String id) async {
+    actions.add('retry:$id');
   }
 
   @override
-  Future<void> cancel(String artifactId) async {
-    actions.add('cancel:$artifactId');
+  Future<void> cancel(String id) async {
+    actions.add('cancel:$id');
   }
 
   @override
-  Future<DownloadQueueSnapshot> getQueue() async => queue;
+  Future<List<AiroDownload>> getAll() async => List.unmodifiable(downloads);
 
   @override
   Future<int?> getAvailableBytes() async => 10 * 1024 * 1024 * 1024;
@@ -51,10 +51,36 @@ class FakeBackgroundDownloads implements BackgroundDownloads {
   Future<void> dispose() => eventController.close();
 }
 
+AiroDownload _transfer({
+  required String id,
+  required AiroDownloadStatus status,
+  int downloadedBytes = 0,
+  int totalBytes = 0,
+  double speedBytesPerSecond = 0,
+  int retryCount = 0,
+  AiroFailureReason? failureReason,
+  String? failureMessage,
+}) {
+  return AiroDownload(
+    request: AiroDownloadRequest(
+      id: id,
+      url: Uri.parse('https://example.com/$id'),
+      destination: '/sandbox/$id',
+    ),
+    status: status,
+    downloadedBytes: downloadedBytes,
+    totalBytes: totalBytes,
+    speedBytesPerSecond: speedBytesPerSecond,
+    retryCount: retryCount,
+    failureReason: failureReason,
+    failureMessage: failureMessage,
+  );
+}
+
 void main() {
   late ModelDownloadService downloadService;
   late MockModelStorageManager storage;
-  late FakeBackgroundDownloads downloads;
+  late FakeAiroPlatformBridge bridge;
 
   final model = OfflineModelInfo(
     id: 'model-a',
@@ -71,7 +97,7 @@ void main() {
 
   setUp(() {
     storage = MockModelStorageManager();
-    downloads = FakeBackgroundDownloads();
+    bridge = FakeAiroPlatformBridge();
     when(
       () => storage.verifyModelIntegrity(model),
     ).thenAnswer((_) async => false);
@@ -96,63 +122,61 @@ void main() {
       ),
     ).thenAnswer((_) async => <String>[]);
     downloadService = ModelDownloadService(
-      downloads: downloads,
+      engine: AiroDownloadEngine(bridge: bridge),
       storageManager: storage,
     );
   });
 
   tearDown(() async {
     await downloadService.dispose();
-    await downloads.dispose();
+    await bridge.dispose();
   });
 
   test(
-    'downloadModel delegates a verified request to platform_downloads',
+    'downloadModel delegates a verified request to AiroDownloadEngine',
     () async {
       final firstProgress = downloadService.downloadModel(model).first;
 
       await Future<void>.delayed(Duration.zero);
 
-      expect(downloads.requests, hasLength(1));
-      final request = downloads.requests.single;
-      expect(request.artifactId, model.id);
-      expect(request.source, Uri.parse(model.downloadUrl!));
-      expect(request.destinationPath, '/sandbox/model-a.gguf');
+      expect(bridge.requests, hasLength(1));
+      final request = bridge.requests.single;
+      expect(request.id, model.id);
+      expect(request.url, Uri.parse(model.downloadUrl!));
+      expect(request.destination, '/sandbox/model-a.gguf');
       expect(request.expectedBytes, model.fileSizeBytes);
-      expect(request.expectedSha256, model.sha256);
+      expect(request.checksum?.algorithm, AiroChecksumAlgorithm.sha256);
+      expect(request.checksum?.value, model.sha256);
       expect((await firstProgress).status, ModelDownloadStatus.pending);
     },
   );
 
-  test(
-    'platform progress maps to model progress without path leakage',
-    () async {
-      final progressValues = <ModelDownloadProgress>[];
-      final subscription = downloadService
-          .downloadModel(model)
-          .listen(progressValues.add);
-      await Future<void>.delayed(Duration.zero);
+  test('engine progress maps to model progress without path leakage', () async {
+    final progressValues = <ModelDownloadProgress>[];
+    final subscription = downloadService
+        .downloadModel(model)
+        .listen(progressValues.add);
+    await Future<void>.delayed(Duration.zero);
 
-      downloads.eventController.add(
-        const DownloadProgress(
-          artifactId: 'model-a',
-          status: DownloadStatus.downloading,
-          downloadedBytes: 500,
-          totalBytes: 1000,
-          speedBytesPerSecond: 100,
-          retryCount: 1,
-        ),
-      );
-      await Future<void>.delayed(Duration.zero);
+    bridge.eventController.add(
+      _transfer(
+        id: 'model-a',
+        status: AiroDownloadStatus.downloading,
+        downloadedBytes: 500,
+        totalBytes: 1000,
+        speedBytesPerSecond: 100,
+        retryCount: 1,
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
 
-      expect(progressValues.last.modelId, model.id);
-      expect(progressValues.last.status, ModelDownloadStatus.downloading);
-      expect(progressValues.last.downloadedBytes, 500);
-      expect(progressValues.last.speedBytesPerSecond, 100);
-      expect(progressValues.last.error, isNull);
-      await subscription.cancel();
-    },
-  );
+    expect(progressValues.last.modelId, model.id);
+    expect(progressValues.last.status, ModelDownloadStatus.downloading);
+    expect(progressValues.last.downloadedBytes, 500);
+    expect(progressValues.last.speedBytesPerSecond, 100);
+    expect(progressValues.last.error, isNull);
+    await subscription.cancel();
+  });
 
   test(
     'download progress records last byte movement for stall recovery',
@@ -163,25 +187,23 @@ void main() {
           .listen(progressValues.add);
       await Future<void>.delayed(Duration.zero);
 
-      downloads.eventController.add(
-        const DownloadProgress(
-          artifactId: 'model-a',
-          status: DownloadStatus.downloading,
+      bridge.eventController.add(
+        _transfer(
+          id: 'model-a',
+          status: AiroDownloadStatus.downloading,
           downloadedBytes: 400,
           totalBytes: 1000,
-          speedBytesPerSecond: 0,
         ),
       );
       await Future<void>.delayed(Duration.zero);
       final firstMovement = progressValues.last.lastProgressAt;
 
-      downloads.eventController.add(
-        const DownloadProgress(
-          artifactId: 'model-a',
-          status: DownloadStatus.downloading,
+      bridge.eventController.add(
+        _transfer(
+          id: 'model-a',
+          status: AiroDownloadStatus.downloading,
           downloadedBytes: 400,
           totalBytes: 1000,
-          speedBytesPerSecond: 0,
         ),
       );
       await Future<void>.delayed(Duration.zero);
@@ -192,7 +214,7 @@ void main() {
     },
   );
 
-  test('completed platform transfer records an install receipt', () async {
+  test('completed engine transfer records an install receipt', () async {
     var verificationCalls = 0;
     when(
       () => storage.verifyModelIntegrity(model),
@@ -203,10 +225,10 @@ void main() {
         .listen(progressValues.add);
     await Future<void>.delayed(Duration.zero);
 
-    downloads.eventController.add(
-      const DownloadProgress(
-        artifactId: 'model-a',
-        status: DownloadStatus.completed,
+    bridge.eventController.add(
+      _transfer(
+        id: 'model-a',
+        status: AiroDownloadStatus.completed,
         downloadedBytes: 1000,
         totalBytes: 1000,
       ),
@@ -218,36 +240,33 @@ void main() {
     await subscription.cancel();
   });
 
-  test(
-    'completed platform transfer is rejected when integrity fails',
-    () async {
-      final progressValues = <ModelDownloadProgress>[];
-      final subscription = downloadService
-          .downloadModel(model)
-          .listen(progressValues.add);
-      await Future<void>.delayed(Duration.zero);
+  test('completed engine transfer is rejected when integrity fails', () async {
+    final progressValues = <ModelDownloadProgress>[];
+    final subscription = downloadService
+        .downloadModel(model)
+        .listen(progressValues.add);
+    await Future<void>.delayed(Duration.zero);
 
-      downloads.eventController.add(
-        const DownloadProgress(
-          artifactId: 'model-a',
-          status: DownloadStatus.completed,
-          downloadedBytes: 1000,
-          totalBytes: 1000,
-        ),
-      );
-      await Future<void>.delayed(Duration.zero);
+    bridge.eventController.add(
+      _transfer(
+        id: 'model-a',
+        status: AiroDownloadStatus.completed,
+        downloadedBytes: 1000,
+        totalBytes: 1000,
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
 
-      expect(progressValues, hasLength(3));
-      expect(progressValues[1].status, ModelDownloadStatus.verifying);
-      expect(progressValues.last.status, ModelDownloadStatus.failed);
-      expect(progressValues.last.failureCode, 'integrity_mismatch');
-      verifyNever(() => storage.writeInstallReceipt(model));
-      await subscription.cancel();
-    },
-  );
+    expect(progressValues, hasLength(3));
+    expect(progressValues[1].status, ModelDownloadStatus.verifying);
+    expect(progressValues.last.status, ModelDownloadStatus.failed);
+    expect(progressValues.last.failureCode, 'integrity_mismatch');
+    verifyNever(() => storage.writeInstallReceipt(model));
+    await subscription.cancel();
+  });
 
   test(
-    'pause resume retry and cancel delegate to the shared controller',
+    'pause resume retry and cancel delegate to the transfer engine',
     () async {
       downloadService.downloadModel(model);
       await Future<void>.delayed(Duration.zero);
@@ -257,7 +276,7 @@ void main() {
       await downloadService.retryDownload(model.id);
       await downloadService.cancelDownload(model.id);
 
-      expect(downloads.actions, [
+      expect(bridge.actions, [
         'pause:model-a',
         'resume:model-a',
         'retry:model-a',
@@ -276,7 +295,7 @@ void main() {
       final progress = await downloadService.downloadModel(model).first;
 
       expect(progress.status, ModelDownloadStatus.completed);
-      expect(downloads.requests, isEmpty);
+      expect(bridge.requests, isEmpty);
     },
   );
 
@@ -337,7 +356,7 @@ void main() {
 
     expect(progress.status, ModelDownloadStatus.failed);
     expect(progress.error, contains('Insufficient disk space'));
-    expect(downloads.requests, isEmpty);
+    expect(bridge.requests, isEmpty);
   });
 
   test('downloadModel enforces the storage quota, protecting the incoming '
@@ -353,15 +372,11 @@ void main() {
     ).captured;
 
     expect(captured.single, {model.id});
-    expect(downloads.requests, hasLength(1));
+    expect(bridge.requests, hasLength(1));
   });
 
   test('a quota-exceeding model still fails cleanly if eviction cannot make '
       'room', () async {
-    // Even after enforceStorageQuota runs, disk space can still be short
-    // (e.g. every other artifact was protected). hasEnoughDiskSpace is the
-    // final gate and must still fail the download rather than silently
-    // downloading over budget.
     when(
       () => storage.hasEnoughDiskSpace(model.fileSizeBytes),
     ).thenAnswer((_) async => false);
@@ -399,7 +414,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      downloads.requests.single.destinationPath,
+      bridge.requests.single.destination,
       '/sandbox/gemma-litert.litertlm',
     );
   });
@@ -413,9 +428,9 @@ void main() {
       await downloadService.retryDownload(model.id, model: model);
       await Future<void>.delayed(Duration.zero);
 
-      expect(downloads.actions, contains('cancel:model-a'));
-      expect(downloads.requests, hasLength(2));
-      expect(downloads.requests.last.expectedBytes, model.fileSizeBytes);
+      expect(bridge.actions, contains('cancel:model-a'));
+      expect(bridge.requests, hasLength(2));
+      expect(bridge.requests.last.expectedBytes, model.fileSizeBytes);
     },
   );
 
@@ -427,27 +442,23 @@ void main() {
     await downloadService.repairModel(model);
     await Future<void>.delayed(Duration.zero);
 
-    expect(downloads.actions, contains('cancel:model-a'));
-    expect(downloads.requests, hasLength(1));
+    expect(bridge.actions, contains('cancel:model-a'));
+    expect(bridge.requests, hasLength(1));
     verify(() => storage.deleteInstallReceipt(model.id)).called(1);
   });
 
   test(
-    'restoreQueue maps persisted platform state after engine restart',
+    'restoreQueue maps persisted engine state after process restart',
     () async {
-      downloads.queue = const DownloadQueueSnapshot(
-        entries: [
-          DownloadProgress(
-            artifactId: 'model-a',
-            status: DownloadStatus.paused,
-            downloadedBytes: 400,
-            totalBytes: 1000,
-            queuePosition: 0,
-            retryCount: 2,
-            resumeSupported: true,
-          ),
-        ],
-      );
+      bridge.downloads = [
+        _transfer(
+          id: 'model-a',
+          status: AiroDownloadStatus.paused,
+          downloadedBytes: 400,
+          totalBytes: 1000,
+          retryCount: 2,
+        ),
+      ];
 
       final restored = await downloadService.restoreQueue();
 
@@ -462,17 +473,14 @@ void main() {
   test(
     'restoreQueue keeps failed entries resumable without blocking re-enqueue',
     () async {
-      downloads.queue = DownloadQueueSnapshot(
-        entries: [
-          DownloadProgress(
-            artifactId: model.id,
-            status: DownloadStatus.failed,
-            downloadedBytes: 400,
-            totalBytes: 1000,
-            resumeSupported: true,
-          ),
-        ],
-      );
+      bridge.downloads = [
+        _transfer(
+          id: model.id,
+          status: AiroDownloadStatus.failed,
+          downloadedBytes: 400,
+          totalBytes: 1000,
+        ),
+      ];
 
       final restored = await downloadService.restoreQueue(
         catalogModels: [model],
@@ -484,37 +492,31 @@ void main() {
       downloadService.downloadModel(model);
       await Future<void>.delayed(Duration.zero);
 
-      expect(downloads.requests, hasLength(1));
+      expect(bridge.requests, hasLength(1));
     },
   );
 
-  test(
-    'recoverDownload resumes when the platform retained a partial',
-    () async {
-      downloads.queue = DownloadQueueSnapshot(
-        entries: [
-          DownloadProgress(
-            artifactId: model.id,
-            status: DownloadStatus.failed,
-            downloadedBytes: 400,
-            totalBytes: 1000,
-            resumeSupported: true,
-          ),
-        ],
-      );
+  test('recoverDownload resumes when the engine retained a partial', () async {
+    bridge.downloads = [
+      _transfer(
+        id: model.id,
+        status: AiroDownloadStatus.failed,
+        downloadedBytes: 400,
+        totalBytes: 1000,
+      ),
+    ];
 
-      await downloadService.recoverDownload(model.id, model: model);
+    await downloadService.recoverDownload(model.id, model: model);
 
-      expect(downloads.actions, ['resume:model-a']);
-      expect(downloads.requests, isEmpty);
-    },
-  );
+    expect(bridge.actions, ['resume:model-a']);
+    expect(bridge.requests, isEmpty);
+  });
 
   test('recoverDownload retries when resume is not available', () async {
     await downloadService.recoverDownload(model.id, model: model);
     await Future<void>.delayed(Duration.zero);
 
-    expect(downloads.actions, contains('cancel:model-a'));
-    expect(downloads.requests, hasLength(1));
+    expect(bridge.actions, contains('cancel:model-a'));
+    expect(bridge.requests, hasLength(1));
   });
 }

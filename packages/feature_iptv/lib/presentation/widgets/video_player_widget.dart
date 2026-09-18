@@ -12,8 +12,10 @@ import 'package:flutter/services.dart'
         LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
+import '../../application/aika_haptics.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/channel_warmup_policy.dart';
+import '../../application/providers/aika_haptics_provider.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/dead_link_report_provider.dart';
@@ -111,6 +113,16 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   /// active; leave it null otherwise.
   final VoidCallback? onShowMultiviewLayout;
 
+  /// Adds a "Ways to Watch" entry to this widget's own player-actions
+  /// sheet, for the same reason as [onShowHelp] -- the ten-foot layout
+  /// reaches that same dialog (fit/fullscreen/PiP/Cast/Cast MultiView) via
+  /// [ChannelInfoBar]'s own "Ways to Watch" button, which only renders in
+  /// that layout (`AiroTvShell.showInfoBar` is `!showVideoStage`, true only
+  /// for the grid-first ten-foot case). The phone/compact layout renders no
+  /// [ChannelInfoBar] at all, so without this entry Cast MultiView (reached
+  /// through this same dialog) has no reachable UI on a phone screen.
+  final VoidCallback? onShowWaysToWatch;
+
   const VideoPlayerWidget({
     super.key,
     this.showControls = true,
@@ -130,6 +142,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.onShowHelp,
     this.onOpenSettings,
     this.onShowMultiviewLayout,
+    this.onShowWaysToWatch,
   });
 
   @override
@@ -486,6 +499,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
   }
 
+  void _togglePlayPause(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    if (state.isPlaying) {
+      service.pause();
+    } else {
+      service.resume();
+    }
+    unawaited(ref.read(aikaHapticsProvider).play(AikaHapticIntent.playPause));
+  }
+
   // Channel navigation button handlers
   void _goToNextChannel() {
     final streamingService = ref.read(iptvStreamingServiceProvider);
@@ -494,6 +519,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       streamingService.playChannel(nextChannel);
       _showChannelChangeOverlay(nextChannel.name);
       _scheduleAdjacentChannelWarmupFor(nextChannel);
+      unawaited(
+        ref.read(aikaHapticsProvider).play(AikaHapticIntent.channelStep),
+      );
     }
   }
 
@@ -504,6 +532,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       streamingService.playChannel(prevChannel);
       _showChannelChangeOverlay(prevChannel.name);
       _scheduleAdjacentChannelWarmupFor(prevChannel);
+      unawaited(
+        ref.read(aikaHapticsProvider).play(AikaHapticIntent.channelStep),
+      );
     }
   }
 
@@ -791,6 +822,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final toggle = ref.read(channelFavoriteTogglerProvider);
     final isNowFavorite = await toggle(channel.id);
     if (!mounted) return;
+    unawaited(
+      ref
+          .read(aikaHapticsProvider)
+          .play(
+            isNowFavorite
+                ? AikaHapticIntent.favoriteOn
+                : AikaHapticIntent.favoriteOff,
+          ),
+    );
     _closeContextMenu();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -975,6 +1015,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(streamingStateProvider, (previous, next) {
+      final wasError = previous?.asData?.value.hasError == true;
+      final isError = next.asData?.value.hasError == true;
+      if (isError && !wasError) {
+        unawaited(ref.read(aikaHapticsProvider).play(AikaHapticIntent.error));
+      }
+    });
     ref.watch(recentlyWatchedRecorderProvider);
     final streamingService = ref.watch(iptvStreamingServiceProvider);
     final streamingState = ref.watch(streamingStateProvider);
@@ -1216,13 +1263,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         state: _toPlayerViewState(state),
                         onBack:
                             widget.onBack ?? widget.onFullscreenToggle ?? () {},
-                        onPlayPause: () {
-                          if (state.isPlaying) {
-                            service.pause();
-                          } else {
-                            service.resume();
-                          }
-                        },
+                        onPlayPause: () => _togglePlayPause(service, state),
                         onReveal: _showControls,
                         showTopChrome: false,
                         showCenterControls: false,
@@ -2148,13 +2189,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         focusNode: _centerControlFocusNode,
         autofocus: true,
         onFocus: _startHideControlsTimer,
-        onSelect: () {
-          if (state.isPlaying) {
-            service.pause();
-          } else {
-            service.resume();
-          }
-        },
+        onSelect: () => _togglePlayPause(service, state),
         borderRadius: AiroSpacing.radiusSm,
         semanticLabel: state.isPlaying ? 'Pause' : 'Play',
         child: TvTransportActionButton(
@@ -2725,6 +2760,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       onSelect: () =>
                           unawaited(afterSheet(widget.onShowMultiviewLayout!)),
                     ),
+                  if (widget.onShowWaysToWatch != null)
+                    _TvSheetListTile(
+                      itemKey: const ValueKey(
+                        'iptv-player-ways-to-watch-menu-action',
+                      ),
+                      leading: const Icon(Icons.monitor_outlined),
+                      title: const Text('Ways to Watch'),
+                      onSelect: () =>
+                          unawaited(afterSheet(widget.onShowWaysToWatch!)),
+                    ),
                   if (widget.onShowHelp != null ||
                       widget.onOpenSettings != null)
                     const Divider(height: 1),
@@ -3030,13 +3075,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
     // Standard play/pause button — translucent white circle behind a dark
     // glyph, matching the design handoff's player chrome.
-    void togglePlayPause() {
-      if (state.isPlaying) {
-        service.pause();
-      } else {
-        service.resume();
-      }
-    }
+    void togglePlayPause() => _togglePlayPause(service, state);
 
     return TvFocusable(
       focusNode: _centerControlFocusNode,

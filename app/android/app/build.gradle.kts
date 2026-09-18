@@ -393,8 +393,8 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // enableEdgeToEdge() for MainActivity/CoinsActivity/AnyaActivity (Android
-    // 15 / targetSdk 35 edge-to-edge enforcement -- Play Console pre-launch
-    // report flags this if not called explicitly).
+    // 15 edge-to-edge enforcement, introduced at target SDK level 35+ -- Play
+    // Console pre-launch report flags this if not called explicitly).
     implementation("androidx.activity:activity-ktx:1.9.3")
 
     testImplementation("junit:junit:4.13.2")

@@ -1,0 +1,21 @@
+name: airo_haptics_example
+description: Demonstrates how to use the airo_haptics package.
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.0.0"
+
+dependencies:
+  airo_haptics:
+    path: ../
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,13 @@
+name: platform_notifications
+owner: Framework Agent
+reviewers:
+  - Chief Architect
+  - Agent Skills Agent
+  - Security and Privacy Agent
+  - Chief QA Officer
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+  - feature_mind
+  - feature_anya
+quality_gates: {}

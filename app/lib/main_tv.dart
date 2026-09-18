@@ -245,8 +245,14 @@ List<Override> buildTvProviderOverrides({
     realCastMultiviewReceiverOverride(),
     iptvAdPlacementsProvider.overrideWithValue(
       const IptvAdPlacements(
-        browseCard: AikaNativeAdCard(placement: AikaAdPlacement.browse),
-        pauseCard: AikaNativeAdCard(placement: AikaAdPlacement.pause),
+        browseCard: AikaNativeAdCard(
+          placement: AikaAdPlacement.browse,
+          isLeanback: true,
+        ),
+        pauseCard: AikaNativeAdCard(
+          placement: AikaAdPlacement.pause,
+          isLeanback: true,
+        ),
       ),
     ),
     if (debugPlaylistUrl.isNotEmpty)
@@ -372,11 +378,16 @@ void scheduleAikaAdsInitialization({
   void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
   void Function(String message)? log,
 }) {
+  // Pin TV before any NativeAdCard mounts. airo_ads defaults initialize()
+  // to mobile, which would load the GMA SDK on leanback.
+  final initialization = AikaAdManager.instance.initialize(
+    formFactor: AiroDeviceFormFactor.tv,
+  );
   scheduleDeferredStartupTask(
     debugName: 'aika_admob_native',
     addPostFrameCallback: addPostFrameCallback,
     log: log,
-    task: () => AikaAdManager.instance.initialize(),
+    task: () => initialization,
   );
 }
 

@@ -1,7 +1,4 @@
-import 'package:airo_app/aika_ads/aika_ad_manager.dart';
-import 'package:airo_app/aika_ads/aika_ad_policy.dart';
-import 'package:airo_app/aika_ads/aika_ad_sdk.dart';
-import 'package:core_app_shell/core_app_shell.dart';
+import 'package:airo_app/aika_ads/aika_ads.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -16,11 +13,11 @@ void main() {
       ),
     );
 
-    await manager.initialize(formFactor: DeviceFormFactor.tv);
+    await manager.initialize(formFactor: AiroDeviceFormFactor.tv);
     expect(initialized, isFalse);
     expect(manager.isSdkReady, isFalse);
 
-    await manager.initialize(formFactor: DeviceFormFactor.desktop);
+    await manager.initialize(formFactor: AiroDeviceFormFactor.desktop);
     expect(initialized, isFalse);
   });
 
@@ -32,7 +29,7 @@ void main() {
       sdk: AikaAdSdk(initializeFn: () async => true),
     );
 
-    await manager.initialize(formFactor: DeviceFormFactor.mobile);
+    await manager.initialize(formFactor: AiroDeviceFormFactor.mobile);
     expect(manager.isSdkReady, isTrue);
     expect(
       manager.shouldShowAd(isLeanback: false, isCasting: false),

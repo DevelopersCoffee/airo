@@ -39,6 +39,8 @@ dependencies:
     path: ../platform_epg
   platform_favorites:
     path: ../platform_favorites
+  platform_haptics:
+    path: ../platform_haptics
   platform_history:
     path: ../platform_history
   platform_iptv_org_api:

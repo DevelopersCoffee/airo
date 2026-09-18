@@ -145,6 +145,9 @@ class MultiviewController extends StateNotifier<MultiviewState> {
 
   Future<void> promote(String channelId) => _pool.promote(channelId);
 
+  /// Silences every active tile — see [AiroMultiviewPool.muteAll].
+  Future<void> muteAll() => _pool.muteAll();
+
   void swap(String firstChannelId, String secondChannelId) =>
       _pool.swap(firstChannelId, secondChannelId);
 

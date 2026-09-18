@@ -67,6 +67,8 @@ dependencies:
     path: ../core_workers
   platform_calendar:
     path: ../platform_calendar
+  platform_notifications:
+    path: ../platform_notifications
   # Share-sheet + save-to-folder for markdown export (#1663). Same package,
   # same pinned version, as feature_iptv's backup/restore export -- see
   # platform_backup_document_gateway.dart there for the house pattern this
@@ -135,7 +137,7 @@ dev_dependencies:
   freezed: ^3.0.0
   build_runner: ^2.4.13
   mocktail: ^1.0.4
-  # Test doubles construct DownloadArtifactRequest/DownloadProgress directly.
+  # Test doubles construct AiroDownloadRequest/AiroDownload directly.
   platform_downloads:
     path: ../platform_downloads
   # mind_service_test.dart fakes path_provider's platform channel directly.

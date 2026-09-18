@@ -29,7 +29,7 @@ allowed_dependencies:
   - core_completion
   # Pro Indic intelligence gates (Sarvam-1 optional generation, Profile settings).
   - core_entitlements
-  # Dev-only: DownloadArtifactRequest/DownloadProgress, constructed directly by
+  # Dev-only: AiroDownloadRequest/AiroDownload, constructed directly by
   # DownloadModelProvider's test doubles. Not linked into the shipped package.
   - platform_downloads
   # Below: brought in from feature_assistant on the Phase 2 merge
@@ -44,6 +44,9 @@ allowed_dependencies:
   - core_workers
   - platform_calendar
   - youtube_explode_dart
+  # Agent chat reminders/task follow-ups: LocalAgentNotificationScheduler
+  # wraps airo_notifications' LocalAiroNotificationEngine via this shim.
+  - platform_notifications
 forbidden_dependencies:
   - app
 quality_gates: {}

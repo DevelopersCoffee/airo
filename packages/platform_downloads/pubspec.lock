@@ -5,10 +5,10 @@ packages:
     dependency: "direct main"
     description:
       name: airo_background_downloads
-      sha256: "825644c6c63f5e3bfc7b7ed0dcc88143690aaca0ee8a8891782302237daacaae"
+      sha256: "6e8df9b7b664d9894790ace23c92ddef102f263b813b9c08b1339e5606ddc950"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.2.0"
   async:
     dependency: transitive
     description:

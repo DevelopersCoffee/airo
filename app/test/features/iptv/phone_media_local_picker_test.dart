@@ -347,6 +347,9 @@ final class _TestPlatformFile extends PlatformFile {
   Future<int> length() async => size;
 
   @override
+  int lengthSync() => size;
+
+  @override
   Stream<Uint8List> readAsByteStream() => const Stream.empty();
 
   @override

@@ -1,0 +1,13 @@
+name: platform_ads
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+  - Chief Open Source Officer
+  - Chief QA Officer
+  - Chief Documentation Officer
+forbidden_dependencies:
+  - app
+  - core_ai
+  - feature_coin
+quality_gates: {}

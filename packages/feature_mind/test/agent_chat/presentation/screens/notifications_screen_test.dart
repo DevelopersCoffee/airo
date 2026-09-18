@@ -9,6 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:shared_preferences_platform_interface/types.dart';
+import 'package:feature_mind/src/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../../support/gemini_nano_channel.dart';
 import '../../../support/fake_assistant_host_adapter.dart';
 
@@ -34,10 +37,18 @@ void main() {
   testWidgets('notification card opens chat with a prefilled composer', (
     tester,
   ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 1000);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
     stubGeminiNanoChannel();
     SharedPreferences.setMockInitialValues({
       'selected_assistant_model_id': geminiNanoAssistantModelId,
     });
+    SharedPreferencesAsyncPlatform.instance = _InMemoryPreferencesAsyncPlatform();
 
     final router = GoRouter(
       initialLocation: '/assistant/notifications',
@@ -45,6 +56,10 @@ void main() {
         GoRoute(
           path: '/assistant/notifications',
           builder: (context, state) => NotificationsScreen(
+            permissionService: _FakeNotificationPermissionService(
+              status: AgentNotificationPermissionStatus.enabled,
+              grantOnRequest: true,
+            ),
             scheduler: _FakeNotificationScheduler([
               ScheduledAgentNotification(
                 id: 1,
@@ -76,6 +91,9 @@ void main() {
           assistantHostAdapterProvider.overrideWithValue(
             FakeAssistantHostAdapter(),
           ),
+          assistantModelLibraryProvider.overrideWith(
+            (ref) async => _chatLibraryState,
+          ),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
           ),
@@ -86,6 +104,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Pay rent'), findsOneWidget);
+    await tester.ensureVisible(find.text('Open in chat'));
     await tester.tap(find.text('Open in chat'));
     await tester.pumpAndSettle();
 
@@ -130,6 +149,10 @@ void main() {
       MaterialApp(
         home: NotificationsScreen(
           scheduler: scheduler,
+          permissionService: _FakeNotificationPermissionService(
+            status: AgentNotificationPermissionStatus.enabled,
+            grantOnRequest: true,
+          ),
           initialCategory: 'recording',
         ),
       ),
@@ -312,5 +335,147 @@ final class _FakeNotificationPermissionService
       status = AgentNotificationPermissionStatus.enabled;
     }
     return grantOnRequest;
+  }
+}
+
+const _chatCandidate = AssistantModelCandidate(
+  id: geminiNanoAssistantModelId,
+  name: 'Gemini Nano',
+  runtime: 'AICore on-device',
+  description: 'System runtime',
+  bestFor: [AssistantTask.chat],
+  tags: ['Local'],
+  privacyLabel: 'Prompt stays on device',
+  sizeLabel: 'System managed',
+  available: true,
+  actionLabel: 'Start',
+  local: true,
+);
+
+const _chatLibraryState = AssistantModelLibraryState(
+  task: AssistantTask.chat,
+  deviceLabel: 'Google Pixel 9',
+  platformLabel: 'ANDROID',
+  candidates: [_chatCandidate],
+  recommended: _chatCandidate,
+  defaultPackages: {},
+);
+
+final class _InMemoryPreferencesAsyncPlatform
+    extends SharedPreferencesAsyncPlatform {
+  final Map<String, Object> _values = {};
+
+  @override
+  Future<void> clear(
+    ClearPreferencesParameters parameters,
+    SharedPreferencesOptions options,
+  ) async {
+    final allowList = parameters.filter.allowList;
+    if (allowList == null) {
+      _values.clear();
+      return;
+    }
+    _values.removeWhere((key, _) => allowList.contains(key));
+  }
+
+  @override
+  Future<bool?> getBool(String key, SharedPreferencesOptions options) async {
+    return _values[key] as bool?;
+  }
+
+  @override
+  Future<double?> getDouble(
+    String key,
+    SharedPreferencesOptions options,
+  ) async {
+    return _values[key] as double?;
+  }
+
+  @override
+  Future<int?> getInt(String key, SharedPreferencesOptions options) async {
+    return _values[key] as int?;
+  }
+
+  @override
+  Future<Map<String, Object>> getPreferences(
+    GetPreferencesParameters parameters,
+    SharedPreferencesOptions options,
+  ) async {
+    final allowList = parameters.filter.allowList;
+    if (allowList == null) {
+      return Map<String, Object>.from(_values);
+    }
+    return Map<String, Object>.fromEntries(
+      _values.entries.where((entry) => allowList.contains(entry.key)),
+    );
+  }
+
+  @override
+  Future<Set<String>> getKeys(
+    GetPreferencesParameters parameters,
+    SharedPreferencesOptions options,
+  ) async {
+    return (await getPreferences(parameters, options)).keys.toSet();
+  }
+
+  @override
+  Future<String?> getString(
+    String key,
+    SharedPreferencesOptions options,
+  ) async {
+    return _values[key] as String?;
+  }
+
+  @override
+  Future<List<String>?> getStringList(
+    String key,
+    SharedPreferencesOptions options,
+  ) async {
+    return (_values[key] as List<Object?>?)?.cast<String>();
+  }
+
+  @override
+  Future<void> setBool(
+    String key,
+    bool value,
+    SharedPreferencesOptions options,
+  ) async {
+    _values[key] = value;
+  }
+
+  @override
+  Future<void> setDouble(
+    String key,
+    double value,
+    SharedPreferencesOptions options,
+  ) async {
+    _values[key] = value;
+  }
+
+  @override
+  Future<void> setInt(
+    String key,
+    int value,
+    SharedPreferencesOptions options,
+  ) async {
+    _values[key] = value;
+  }
+
+  @override
+  Future<void> setString(
+    String key,
+    String value,
+    SharedPreferencesOptions options,
+  ) async {
+    _values[key] = value;
+  }
+
+  @override
+  Future<void> setStringList(
+    String key,
+    List<String> value,
+    SharedPreferencesOptions options,
+  ) async {
+    _values[key] = List<String>.from(value);
   }
 }

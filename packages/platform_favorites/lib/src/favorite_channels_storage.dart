@@ -97,6 +97,12 @@ class FavoriteChannelsStorage {
     return isNowFavorite;
   }
 
+  /// Clears every favorite and not-for-me flag. Used by Aika Stream's
+  /// local data-deletion path.
+  Future<void> clearAll() async {
+    await Future.wait([_saveFavorites(const []), _saveNotForMe(<String>{})]);
+  }
+
   /// Replaces the complete favorite list for an import/restore operation,
   /// preserving the given order. Also removes every (re)added id from the
   /// not-for-me set, mirroring [setFavorite]'s single-id exclusion -- without

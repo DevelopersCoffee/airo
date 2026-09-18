@@ -1,10 +1,5 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:timezone/data/latest.dart' as tz_data;
-import 'package:timezone/timezone.dart' as tz;
+import 'package:platform_notifications/platform_notifications.dart';
 
 class ScheduledAgentNotification {
   const ScheduledAgentNotification({
@@ -125,6 +120,31 @@ class ScheduledAgentNotification {
           DateTime.now(),
     );
   }
+
+  factory ScheduledAgentNotification.fromAiroAlert(AiroAlert alert) {
+    final sched = alert.scheduledAt ?? alert.createdAt;
+    final intId = int.tryParse(alert.id) ?? (alert.id.hashCode & 0x7fffffff);
+    return ScheduledAgentNotification(
+      id: intId,
+      title: alert.title,
+      message: alert.body ?? '',
+      hour: sched.hour,
+      minute: sched.minute,
+      repeatDaily: alert.repeatDaily,
+      scheduledAt: alert.scheduledAt ?? alert.createdAt,
+      createdAt: alert.createdAt,
+      category: (alert.metadata['category'] as String?) ?? alert.groupId ?? 'general',
+      scheduleType: (alert.metadata['schedule_type'] as String?) ?? alert.type.stableId,
+      groupId: alert.groupId,
+      metadata: alert.metadata,
+      requiresCompletion: alert.requiresCompletion,
+      followUpPolicy: alert.followUpPolicy,
+      completedDates: alert.completedDates,
+      streakCount: alert.streakCount,
+      points: alert.points,
+      date: alert.metadata['date'] as String?,
+    );
+  }
 }
 
 class ScheduleAgentNotificationRequest {
@@ -185,67 +205,35 @@ abstract interface class AgentNotificationPermissionService {
   Future<bool> requestNotificationPermission();
 }
 
-class NotificationPermissionDeniedException implements Exception {
-  const NotificationPermissionDeniedException();
-}
-
 class LocalAgentNotificationScheduler
     implements
         AgentNotificationSchedulingService,
         AgentNotificationRuntimeService,
         AgentNotificationPermissionService {
   LocalAgentNotificationScheduler({
+    AiroNotificationEngine? engine,
     FlutterLocalNotificationsPlugin? notificationsPlugin,
-    SharedPreferencesAsync? preferences,
-  }) : this._internal(notificationsPlugin, preferences);
-
-  LocalAgentNotificationScheduler._internal(
-    FlutterLocalNotificationsPlugin? notificationsPlugin,
-    this._preferences,
-  ) : _notificationsPlugin =
-          notificationsPlugin ?? FlutterLocalNotificationsPlugin();
+    dynamic preferences,
+  }) : _engine = engine ??
+            LocalAiroNotificationEngine(
+              plugin: notificationsPlugin,
+            );
 
   static final LocalAgentNotificationScheduler instance =
       LocalAgentNotificationScheduler();
 
-  static const _storageKey = 'agent_scheduled_notifications_v1';
-  static const _channelId = 'agent_reminders';
-  static const _channelName = 'Agent Reminders';
-  static const _channelDescription = 'Reminders scheduled by Airo agent skills';
-
-  final FlutterLocalNotificationsPlugin _notificationsPlugin;
-  SharedPreferencesAsync? _preferences;
-  bool _initialized = false;
-  bool _timeZoneInitialized = false;
-  void Function(String payload)? _onNotificationPayload;
-
-  SharedPreferencesAsync get _asyncPreferences {
-    return _preferences ??= SharedPreferencesAsync();
-  }
+  final AiroNotificationEngine _engine;
 
   @override
   Future<void> initialize({
     void Function(String payload)? onNotificationPayload,
   }) async {
-    if (onNotificationPayload != null) {
-      _onNotificationPayload = onNotificationPayload;
-    }
-    await _ensureInitialized();
+    await _engine.initialize(onNotificationPayload: onNotificationPayload);
   }
 
   @override
   Future<String?> getLaunchPayload() async {
-    await _ensureInitialized();
-    final details = await _notificationsPlugin
-        .getNotificationAppLaunchDetails();
-    if (details == null || !details.didNotificationLaunchApp) {
-      return null;
-    }
-    final payload = details.notificationResponse?.payload;
-    if (payload == null || payload.trim().isEmpty) {
-      return null;
-    }
-    return payload;
+    return _engine.getLaunchPayload();
   }
 
   @override
@@ -253,299 +241,125 @@ class LocalAgentNotificationScheduler
     ScheduleAgentNotificationRequest request,
   ) async {
     _validate(request);
-    final existingNotifications = await getScheduledNotifications();
-    ScheduledAgentNotification? duplicate;
-    for (final notification in existingNotifications) {
-      if (_matchesRequest(notification, request)) {
-        duplicate = notification;
-        break;
-      }
-    }
-    if (duplicate != null) {
-      return duplicate;
-    }
-
-    await _ensureInitialized();
-    final hasPermission = await requestNotificationPermission();
-    if (!hasPermission) {
-      throw const NotificationPermissionDeniedException();
-    }
-
-    final createdAt = DateTime.now();
     final scheduledDate = _scheduledDateFor(request);
-    if (!request.repeatDaily &&
-        !scheduledDate.isAfter(tz.TZDateTime.now(tz.local))) {
-      throw ArgumentError.value(
-        request.date,
-        'date',
-        'Reminder time is in the past.',
-      );
-    }
 
-    final notification = ScheduledAgentNotification(
-      id: _notificationId(createdAt),
+    final alertId = '${request.category}-${request.title.hashCode}-${request.hour}-${request.minute}';
+    final alert = AiroAlert(
+      id: alertId,
       title: request.title,
-      message: request.message,
-      hour: request.hour,
-      minute: request.minute,
+      body: request.message,
+      scheduledAt: scheduledDate,
       repeatDaily: request.repeatDaily,
-      date: request.date,
-      scheduledAt: scheduledDate.toLocal(),
-      createdAt: createdAt,
-      category: request.category,
-      scheduleType: request.scheduleType,
-      groupId: request.groupId,
-      metadata: request.metadata,
+      groupId: request.groupId ?? request.category,
       requiresCompletion: request.requiresCompletion,
       followUpPolicy: request.followUpPolicy,
+      metadata: {
+        'category': request.category,
+        'schedule_type': request.scheduleType,
+        if (request.date != null) 'date': request.date,
+        ...request.metadata,
+      },
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      id: notification.id,
-      title: notification.title,
-      body: notification.message,
-      scheduledDate: scheduledDate,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: request.repeatDaily
-          ? DateTimeComponents.time
-          : null,
-      payload: _payloadFor(notification),
-    );
-
-    await _saveScheduledNotifications([
-      ...existingNotifications.where((item) => item.id != notification.id),
-      notification,
-    ]);
-
-    return notification;
+    try {
+      final scheduledAlert = await _engine.schedule(alert);
+      return ScheduledAgentNotification.fromAiroAlert(scheduledAlert);
+    } catch (e) {
+      if (e is NotificationPermissionDeniedException ||
+          e.toString().contains('NotificationPermissionDeniedException')) {
+        throw const NotificationPermissionDeniedException();
+      }
+      rethrow;
+    }
   }
 
   @override
   Future<List<ScheduledAgentNotification>> getScheduledNotifications() async {
-    final raw = await _asyncPreferences.getString(_storageKey);
-    if (raw == null || raw.isEmpty) return const [];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      final notifications = decoded.whereType<Map>().map((item) {
-        return ScheduledAgentNotification.fromJson(
-          item.cast<String, dynamic>(),
-        );
-      }).toList();
-      notifications.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-      return notifications;
-    } catch (_) {
-      return const [];
-    }
+    final alerts = await _engine.query(includeDelivered: true);
+    final notifications = alerts.map((a) => ScheduledAgentNotification.fromAiroAlert(a)).toList();
+    notifications.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    return notifications;
   }
 
   @override
   Future<void> cancelNotification(int id) async {
-    await _ensureInitialized();
-    await _notificationsPlugin.cancel(id: id);
-    final notifications = await getScheduledNotifications();
-    await _saveScheduledNotifications(
-      notifications.where((item) => item.id != id).toList(),
-    );
+    final alerts = await _engine.query(includeDelivered: true);
+    for (final alert in alerts) {
+      final alertIntId = int.tryParse(alert.id) ?? (alert.id.hashCode & 0x7fffffff);
+      if (alertIntId == id || alert.id == id.toString()) {
+        await _engine.cancel(alert.id);
+        break;
+      }
+    }
   }
 
   @override
   Future<ScheduledAgentNotification?> markNotificationComplete(int id) async {
-    final notifications = await getScheduledNotifications();
-    final index = notifications.indexWhere((item) => item.id == id);
-    if (index == -1) return null;
+    final alerts = await _engine.query(includeDelivered: true);
+    AiroAlert? target;
+    for (final alert in alerts) {
+      final alertIntId = int.tryParse(alert.id) ?? (alert.id.hashCode & 0x7fffffff);
+      if (alertIntId == id || alert.id == id.toString()) {
+        target = alert;
+        break;
+      }
+    }
+    if (target == null) return null;
+
+    // `AiroNotificationEngine.markCompleted` only flips status and cancels
+    // a `daily_until_done` follow-up -- it deliberately knows nothing about
+    // streaks or points. That bookkeeping is Mind-specific gamification, so
+    // it is computed and persisted here, on top of the generic engine.
+    final completedAlert = await _engine.markCompleted(target.id);
+    if (completedAlert == null) return null;
 
     final today = _formatDate(DateTime.now());
-    final notification = notifications[index];
-    if (notification.completedDates.contains(today)) {
-      return notification;
+    if (target.completedDates.contains(today)) {
+      // Already recorded today's completion (e.g. a duplicate tap) -- return
+      // the alert as-is rather than double-counting streak/points.
+      return ScheduledAgentNotification.fromAiroAlert(completedAlert);
     }
 
-    final lastCompletedDate = notification.completedDates.isEmpty
-        ? null
-        : DateTime.tryParse(notification.completedDates.last);
-    final yesterday = DateTime.now().subtract(const Duration(days: 1));
-    final continuesStreak =
-        lastCompletedDate != null &&
-        _formatDate(lastCompletedDate) == _formatDate(yesterday);
-
-    final updated = notification.copyWith(
-      completedDates: [...notification.completedDates, today],
-      streakCount: continuesStreak ? notification.streakCount + 1 : 1,
-      points: notification.points + 10,
+    final yesterday = _formatDate(DateTime.now().subtract(const Duration(days: 1)));
+    final continuesStreak = target.completedDates.contains(yesterday);
+    final bookkept = completedAlert.copyWith(
+      completedDates: [...target.completedDates, today],
+      streakCount: continuesStreak ? target.streakCount + 1 : 1,
+      points: target.points + 10,
     );
-    notifications[index] = updated;
-    if (updated.requiresCompletion &&
-        updated.followUpPolicy == 'daily_until_done') {
-      await _ensureInitialized();
-      await _notificationsPlugin.cancel(id: id);
-    }
-    await _saveScheduledNotifications(notifications);
-    return updated;
+    final persisted = await _engine.persist(bookkept);
+    return ScheduledAgentNotification.fromAiroAlert(persisted);
   }
 
-  Future<void> _ensureInitialized() async {
-    if (_initialized) return;
-    _configureLocalTimeZone();
-    // Must NOT be '@mipmap/ic_launcher' -- the host app's Adaptive Icon
-    // (mipmap-anydpi-v26/ic_launcher.xml) shadows that name on API 26+,
-    // which NotificationManager rejects as "no valid small icon", crashing
-    // the app the moment a scheduled notification fires.
-    const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_notification',
-    );
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
-    const settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-      macOS: iosSettings,
-    );
-    await _notificationsPlugin.initialize(
-      settings: settings,
-      onDidReceiveNotificationResponse: (response) {
-        final payload = response.payload;
-        if (payload == null || payload.trim().isEmpty) {
-          return;
-        }
-        _onNotificationPayload?.call(payload);
-      },
-    );
-    _initialized = true;
+  static String _formatDate(DateTime value) {
+    return '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
   }
 
   @override
-  Future<AgentNotificationPermissionStatus>
-  notificationPermissionStatus() async {
-    if (kIsWeb) return AgentNotificationPermissionStatus.unavailable;
-    try {
-      await _ensureInitialized();
-      switch (defaultTargetPlatform) {
-        case TargetPlatform.android:
-          final android = _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >();
-          final enabled = await android?.areNotificationsEnabled();
-          if (enabled == null) {
-            return AgentNotificationPermissionStatus.unavailable;
-          }
-          return enabled
-              ? AgentNotificationPermissionStatus.enabled
-              : AgentNotificationPermissionStatus.disabled;
-        case TargetPlatform.iOS:
-          final ios = _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                IOSFlutterLocalNotificationsPlugin
-              >();
-          final permissions = await ios?.checkPermissions();
-          if (permissions == null) {
-            return AgentNotificationPermissionStatus.unavailable;
-          }
-          return permissions.isEnabled
-              ? AgentNotificationPermissionStatus.enabled
-              : AgentNotificationPermissionStatus.disabled;
-        case TargetPlatform.macOS:
-          final macos = _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                MacOSFlutterLocalNotificationsPlugin
-              >();
-          final permissions = await macos?.checkPermissions();
-          if (permissions == null) {
-            return AgentNotificationPermissionStatus.unavailable;
-          }
-          return permissions.isEnabled
-              ? AgentNotificationPermissionStatus.enabled
-              : AgentNotificationPermissionStatus.disabled;
-        case TargetPlatform.fuchsia:
-        case TargetPlatform.linux:
-        case TargetPlatform.windows:
-          return AgentNotificationPermissionStatus.unavailable;
-      }
-    } catch (_) {
-      return AgentNotificationPermissionStatus.unavailable;
+  Future<AgentNotificationPermissionStatus> notificationPermissionStatus() async {
+    final status = await _engine.notificationPermissionStatus();
+    switch (status) {
+      case AiroNotificationPermissionStatus.enabled:
+        return AgentNotificationPermissionStatus.enabled;
+      case AiroNotificationPermissionStatus.disabled:
+        return AgentNotificationPermissionStatus.disabled;
+      case AiroNotificationPermissionStatus.unavailable:
+        return AgentNotificationPermissionStatus.unavailable;
     }
   }
 
   @override
   Future<bool> requestNotificationPermission() async {
-    if (kIsWeb) return false;
-    try {
-      await _ensureInitialized();
-      switch (defaultTargetPlatform) {
-        case TargetPlatform.android:
-          final android = _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >();
-          return await android?.requestNotificationsPermission() ?? false;
-        case TargetPlatform.iOS:
-          final ios = _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                IOSFlutterLocalNotificationsPlugin
-              >();
-          return await ios?.requestPermissions(
-                alert: true,
-                badge: true,
-                sound: true,
-              ) ??
-              false;
-        case TargetPlatform.macOS:
-          final macos = _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                MacOSFlutterLocalNotificationsPlugin
-              >();
-          return await macos?.requestPermissions(
-                alert: true,
-                badge: true,
-                sound: true,
-              ) ??
-              false;
-        case TargetPlatform.fuchsia:
-        case TargetPlatform.linux:
-        case TargetPlatform.windows:
-          return false;
-      }
-    } catch (_) {
-      return false;
-    }
+    return _engine.requestNotificationPermission();
   }
 
-  void _configureLocalTimeZone() {
-    if (_timeZoneInitialized) return;
-    tz_data.initializeTimeZones();
-    final now = DateTime.now();
-    final abbreviation = now.timeZoneName.isEmpty ? 'LOCAL' : now.timeZoneName;
-    tz.setLocalLocation(
-      tz.Location('local', [tz.minTime], [0], [
-        tz.TimeZone(
-          now.timeZoneOffset,
-          isDst: abbreviation.toUpperCase().contains('DT'),
-          abbreviation: abbreviation,
-        ),
-      ]),
-    );
-    _timeZoneInitialized = true;
-  }
-
-  tz.TZDateTime _scheduledDateFor(ScheduleAgentNotificationRequest request) {
+  DateTime _scheduledDateFor(ScheduleAgentNotificationRequest request) {
     final date = request.date;
     if (date != null && date.isNotEmpty) {
       final parsed = DateTime.parse(date);
-      return tz.TZDateTime(
-        tz.local,
+      return DateTime(
         parsed.year,
         parsed.month,
         parsed.day,
@@ -554,34 +368,18 @@ class LocalAgentNotificationScheduler
       );
     }
 
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(
-      tz.local,
+    final now = DateTime.now();
+    var scheduled = DateTime(
       now.year,
       now.month,
       now.day,
       request.hour,
       request.minute,
     );
-    if (!scheduled.isAfter(now)) {
+    if (!request.repeatDaily && !scheduled.isAfter(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
     return scheduled;
-  }
-
-  Future<void> _saveScheduledNotifications(
-    List<ScheduledAgentNotification> notifications,
-  ) async {
-    final sorted = [...notifications]
-      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-    await _asyncPreferences.setString(
-      _storageKey,
-      jsonEncode(sorted.map((item) => item.toJson()).toList()),
-    );
-  }
-
-  int _notificationId(DateTime createdAt) {
-    return createdAt.microsecondsSinceEpoch & 0x7fffffff;
   }
 
   void _validate(ScheduleAgentNotificationRequest request) {
@@ -606,63 +404,4 @@ class LocalAgentNotificationScheduler
       );
     }
   }
-
-  bool _matchesRequest(
-    ScheduledAgentNotification notification,
-    ScheduleAgentNotificationRequest request,
-  ) {
-    return notification.title == request.title &&
-        notification.message == request.message &&
-        notification.hour == request.hour &&
-        notification.minute == request.minute &&
-        notification.repeatDaily == request.repeatDaily &&
-        notification.date == request.date &&
-        notification.category == request.category &&
-        notification.scheduleType == request.scheduleType &&
-        notification.requiresCompletion == request.requiresCompletion &&
-        notification.followUpPolicy == request.followUpPolicy &&
-        _canonicalJson(notification.metadata) ==
-            _canonicalJson(request.metadata);
-  }
-
-  String _payloadFor(ScheduledAgentNotification notification) {
-    final payload = <String, Object?>{
-      'version': 1,
-      'notification_id': notification.id,
-      'category': notification.category,
-      'schedule_type': notification.scheduleType,
-      'requires_completion': notification.requiresCompletion,
-      if (notification.groupId != null) 'group_id': notification.groupId,
-      if (notification.date != null) 'date': notification.date,
-      if (notification.metadata case {
-        'deep_link': final String deepLink,
-      } when deepLink.trim().isNotEmpty)
-        'deep_link': deepLink,
-      if (notification.metadata.isNotEmpty) 'metadata': notification.metadata,
-    };
-    return _canonicalJson(payload);
-  }
-}
-
-String _formatDate(DateTime value) {
-  return '${value.year.toString().padLeft(4, '0')}-'
-      '${value.month.toString().padLeft(2, '0')}-'
-      '${value.day.toString().padLeft(2, '0')}';
-}
-
-String _canonicalJson(Object? value) {
-  return jsonEncode(_canonicalizeJson(value));
-}
-
-Object? _canonicalizeJson(Object? value) {
-  if (value is Map) {
-    final keys = value.keys.map((key) => key.toString()).toList()..sort();
-    return <String, Object?>{
-      for (final key in keys) key: _canonicalizeJson(value[key]),
-    };
-  }
-  if (value is List) {
-    return value.map(_canonicalizeJson).toList();
-  }
-  return value;
 }

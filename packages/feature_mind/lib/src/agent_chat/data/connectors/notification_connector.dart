@@ -1,3 +1,5 @@
+import 'package:platform_notifications/platform_notifications.dart';
+
 import '../../domain/models/agent_skill.dart';
 import '../../domain/services/agent_connector.dart';
 import '../services/agent_notification_scheduler.dart';
@@ -184,9 +186,11 @@ class InMemoryNotificationScheduler
     final notification = scheduled[index];
     final today = _formatDate(_now());
     if (notification.completedDates.contains(today)) return notification;
+    final yesterday = _formatDate(_now().subtract(const Duration(days: 1)));
+    final continuesStreak = notification.completedDates.contains(yesterday);
     final updated = notification.copyWith(
       completedDates: [...notification.completedDates, today],
-      streakCount: notification.streakCount + 1,
+      streakCount: continuesStreak ? notification.streakCount + 1 : 1,
       points: notification.points + 10,
     );
     scheduled[index] = updated;
