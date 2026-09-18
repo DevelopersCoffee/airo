@@ -30,12 +30,33 @@ const _tvRailExpandedWidth = AiroSpacing.tvChannelCardW + AiroSpacing.xl;
 /// the awaited leave path and dispose's safety net share a single call.
 final _tvWatchStop = Expando<Future<void>>();
 
+/// Survives [resetTvWatchStop] so an overlapping Watch dispose (compact
+/// Home remounts before Watch unmounts) can join the leave that already
+/// ran instead of starting a second stop().
+final _tvWatchLastStop = Expando<Future<void>>();
+
 Future<void> awaitTvWatchStop(VideoPlayerStreamingService service) {
-  return _tvWatchStop[service] ??= service.stop();
+  return _tvWatchStop[service] ??= () {
+    final stop = service.stop();
+    _tvWatchLastStop[service] = stop;
+    return stop;
+  }();
 }
 
 void resetTvWatchStop(VideoPlayerStreamingService service) {
   _tvWatchStop[service] = null;
+}
+
+void clearTvWatchStopHistory(VideoPlayerStreamingService service) {
+  _tvWatchLastStop[service] = null;
+}
+
+/// Join in-flight or last completed stop. Starts a stop only if this
+/// session never stopped (rail leave with no Back path).
+Future<void> joinTvWatchStop(VideoPlayerStreamingService service) {
+  return _tvWatchStop[service] ??
+      _tvWatchLastStop[service] ??
+      awaitTvWatchStop(service);
 }
 
 bool isTvWatchRoute(String location) {

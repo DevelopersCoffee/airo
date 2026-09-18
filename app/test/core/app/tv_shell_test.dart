@@ -825,6 +825,67 @@ void main() {
     expect(streamingService.stopCount, 1);
   });
 
+  testWidgets('compact Home Settings after Watch Back stops playback again', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final router = TvRouter.createRouter(initialLocation: TvRouteNames.player);
+    final streamingService = _RecordingStreamingService();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => const []),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          tvPlaylistPairingServerFactoryProvider.overrideWithValue(
+            () => _FakePairingServer(never: true),
+          ),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
+              ),
+            ),
+          ),
+          iptvStreamingServiceProvider.overrideWith((ref) {
+            ref.onDispose(streamingService.dispose);
+            return streamingService;
+          }),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(streamingService.stopCount, 1);
+
+    tester.widget<IPTVScreen>(find.byType(IPTVScreen)).onSettings!.call();
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+    expect(
+      streamingService.stopCount,
+      2,
+      reason:
+          'Watch Back must not leave a completed coalescer future that '
+          'makes compact Home skip stop() on the next leave',
+    );
+  });
+
   testWidgets('BACK is left to the player while fullscreen', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);

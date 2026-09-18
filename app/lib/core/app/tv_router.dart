@@ -174,6 +174,12 @@ class _CompactExplorerSession extends StatefulWidget {
 
 class _CompactExplorerSessionState extends State<_CompactExplorerSession> {
   @override
+  void initState() {
+    super.initState();
+    resetTvWatchStop(widget.streamingService);
+  }
+
+  @override
   void dispose() {
     unawaited(awaitTvWatchStop(widget.streamingService));
     super.dispose();
@@ -232,11 +238,12 @@ class _WatchSessionState extends State<_WatchSession> {
   void initState() {
     super.initState();
     resetTvWatchStop(widget.streamingService);
+    clearTvWatchStopHistory(widget.streamingService);
   }
 
   @override
   void dispose() {
-    unawaited(awaitTvWatchStop(widget.streamingService));
+    unawaited(joinTvWatchStop(widget.streamingService));
     super.dispose();
   }
 
