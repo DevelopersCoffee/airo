@@ -8,6 +8,7 @@ final aikaHapticsProvider = Provider<AikaHaptics>((ref) {
   final haptics = EngineAikaHaptics();
   ref.onDispose(() {
     unawaited(haptics.detachCastSession());
+    unawaited(haptics.detachLocalPlayback());
   });
   return haptics;
 });

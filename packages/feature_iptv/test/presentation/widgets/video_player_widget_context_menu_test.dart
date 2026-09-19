@@ -19,6 +19,12 @@ class RecordingAikaHaptics implements AikaHaptics {
 
   @override
   Future<void> detachCastSession() async {}
+
+  @override
+  Future<void> attachLocalPlayback() async {}
+
+  @override
+  Future<void> detachLocalPlayback() async {}
 }
 
 void main() {

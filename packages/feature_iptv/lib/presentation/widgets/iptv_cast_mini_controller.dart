@@ -12,6 +12,13 @@ void _playAikaHaptic(WidgetRef ref, AikaHapticIntent intent) {
   unawaited(ref.read(aikaHapticsProvider).play(intent));
 }
 
+void _playVolumeTickIfChanged(WidgetRef ref, double current, double next) {
+  final clampedCurrent = current.clamp(0.0, 1.0);
+  final clampedNext = next.clamp(0.0, 1.0);
+  if (clampedNext == clampedCurrent) return;
+  _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+}
+
 Future<void> showIptvCastRemoteControlSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -383,7 +390,7 @@ class _CompactCastController extends ConsumerWidget {
                     child: Slider(
                       value: session.volume.clamp(0.0, 1.0).toDouble(),
                       onChanged: (value) {
-                        _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+                        _playVolumeTickIfChanged(ref, session.volume, value);
                         ref.read(iptvCastProvider.notifier).setVolume(value);
                       },
                     ),
@@ -490,7 +497,7 @@ class _CompactCastController extends ConsumerWidget {
                     child: Slider(
                       value: session.volume.clamp(0.0, 1.0).toDouble(),
                       onChanged: (value) {
-                        _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+                        _playVolumeTickIfChanged(ref, session.volume, value);
                         notifier.setVolume(value);
                       },
                     ),
@@ -583,7 +590,7 @@ class _CastRemoteControlSheet extends ConsumerWidget {
               child: Slider(
                 value: session.volume.clamp(0.0, 1.0).toDouble(),
                 onChanged: (value) {
-                  _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
+                  _playVolumeTickIfChanged(ref, session.volume, value);
                   notifier.setVolume(value);
                 },
               ),
@@ -618,15 +625,18 @@ class _CastRemoteControlSheet extends ConsumerWidget {
         _playAikaHaptic(ref, AikaHapticIntent.playPause);
       },
       onVolumeUp: () {
-        _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
-        notifier.setVolume((session.volume + 0.1).clamp(0.0, 1.0).toDouble());
+        final next = (session.volume + 0.1).clamp(0.0, 1.0).toDouble();
+        _playVolumeTickIfChanged(ref, session.volume, next);
+        notifier.setVolume(next);
       },
       onVolumeDown: () {
-        _playAikaHaptic(ref, AikaHapticIntent.volumeTick);
-        notifier.setVolume((session.volume - 0.1).clamp(0.0, 1.0).toDouble());
+        final next = (session.volume - 0.1).clamp(0.0, 1.0).toDouble();
+        _playVolumeTickIfChanged(ref, session.volume, next);
+        notifier.setVolume(next);
       },
       onMute: () {
-        _playAikaHaptic(ref, AikaHapticIntent.mute);
+        if (session.volume <= 0) return;
+        _playAikaHaptic(ref, AikaHapticIntent.muteOn);
         notifier.setVolume(0);
       },
       onStop: () {
