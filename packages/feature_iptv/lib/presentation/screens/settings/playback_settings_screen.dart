@@ -1,6 +1,7 @@
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_haptics/platform_haptics.dart';
 
 /// Playback Settings Screen (CV-031): aspect ratio preference for video
 /// playback. Picture-in-Picture is airo-pro scope and lives in its own
@@ -13,6 +14,7 @@ class PlaybackSettingsScreen extends ConsumerWidget {
     final aspectRatio = ref.watch(videoAspectRatioProvider);
     final notifier = ref.read(videoAspectRatioProvider.notifier);
     final pipEnabled = ref.watch(pictureInPicturePreferenceProvider);
+    final hapticStrength = ref.watch(aikaHapticStrengthProvider);
     final extraSections = ref.watch(playbackSettingsExtraSectionsProvider);
 
     return Scaffold(
@@ -58,6 +60,22 @@ class PlaybackSettingsScreen extends ConsumerWidget {
             onChanged: (enabled) => ref
                 .read(pictureInPicturePreferenceProvider.notifier)
                 .setEnabled(enabled),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 8),
+            child: Text(
+              'Haptic Feedback',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          AiroHapticStrengthPicker(
+            value: hapticStrength,
+            onChanged: (strength) => ref
+                .read(aikaHapticStrengthProvider.notifier)
+                .setStrength(strength),
           ),
           ...extraSections,
         ],

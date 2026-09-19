@@ -1,3 +1,4 @@
+import 'package:platform_haptics/platform_haptics.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RecordingAikaHaptics implements AikaHaptics {
+  @override
+  Future<void> setStrength(AiroHapticStrength strength) async {}
+
   final plays = <AikaHapticIntent>[];
   var localAttached = 0;
   var localDetached = 0;

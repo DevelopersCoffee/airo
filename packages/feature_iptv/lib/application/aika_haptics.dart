@@ -16,6 +16,8 @@ enum AikaHapticIntent {
 }
 
 abstract class AikaHaptics {
+  /// Applies the user's strength choice (or off) to the haptics engine.
+  Future<void> setStrength(AiroHapticStrength strength);
   Future<void> play(AikaHapticIntent intent);
   Future<void> attachCastSession({required String id});
   Future<void> detachCastSession();
@@ -38,6 +40,11 @@ class EngineAikaHaptics implements AikaHaptics {
 
   String? get castSessionId => _castSessionId;
   bool get localPlaybackAttached => _localPlaybackAttached;
+
+  @override
+  Future<void> setStrength(AiroHapticStrength strength) async {
+    AiroHaptics.strength = strength;
+  }
 
   @override
   Future<void> play(AikaHapticIntent intent) async {

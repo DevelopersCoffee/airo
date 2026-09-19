@@ -175,6 +175,40 @@ void main() {
       expect(AiroHaptics.profile, AiroHapticProfile.media);
     },
   );
+
+  group('haptic strength', () {
+    tearDown(() => AiroHaptics.strength = AiroHapticStrength.medium);
+
+    test('off suppresses all feedback', () async {
+      await haptics.setStrength(AiroHapticStrength.off);
+      await haptics.play(AikaHapticIntent.playPause);
+      await haptics.play(AikaHapticIntent.error);
+      fake.expectNoHapticPlayed();
+    });
+
+    test('strong sends higher intensity than soft', () async {
+      Future<double?> played(AiroHapticStrength strength) async {
+        fake.clearInvocations();
+        await haptics.setStrength(strength);
+        await haptics.play(AikaHapticIntent.channelStep);
+        return fake.invocations
+            .lastWhere((i) => i.method == 'performFeedback')
+            .options
+            ?.intensity;
+      }
+
+      final soft = await played(AiroHapticStrength.soft);
+      final strong = await played(AiroHapticStrength.strong);
+      expect(soft, isNotNull);
+      expect(strong, greaterThan(soft!));
+    });
+
+    test('strength survives playback profile changes', () async {
+      await haptics.setStrength(AiroHapticStrength.strong);
+      await haptics.attachLocalPlayback();
+      expect(AiroHaptics.strength, AiroHapticStrength.strong);
+    });
+  });
 }
 
 class _ThrowingHapticPlatform extends FakeAiroHapticPlatform {

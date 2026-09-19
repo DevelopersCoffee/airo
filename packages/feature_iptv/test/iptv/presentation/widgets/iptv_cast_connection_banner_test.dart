@@ -6,6 +6,9 @@ import "package:platform_haptics/platform_haptics.dart";
 import "package:platform_haptics/testing.dart";
 
 class RecordingAikaHaptics implements AikaHaptics {
+  @override
+  Future<void> setStrength(AiroHapticStrength strength) async {}
+
   final plays = <AikaHapticIntent>[];
   final attached = <String>[];
   var detached = 0;

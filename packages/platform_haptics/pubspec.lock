@@ -4,17 +4,11 @@ packages:
   airo_haptics:
     dependency: "direct main"
     description:
-      path: "../airo_haptics"
-      relative: true
-    source: path
-    version: "1.0.0"
-  airo_haptics_platform_interface:
-    dependency: transitive
-    description:
-      path: "../airo_haptics_platform_interface"
-      relative: true
-    source: path
-    version: "1.0.0"
+      name: airo_haptics
+      sha256: "752024b439ee6713029dec3faff8a2e971482e485ad19793c85b3ff733c5e3a2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.0"
   async:
     dependency: transitive
     description:
@@ -86,6 +80,11 @@ packages:
     version: "6.0.0"
   flutter_test:
     dependency: "direct dev"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
+  flutter_web_plugins:
+    dependency: transitive
     description: flutter
     source: sdk
     version: "0.0.0"
