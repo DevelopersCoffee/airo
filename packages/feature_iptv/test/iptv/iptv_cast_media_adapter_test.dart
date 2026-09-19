@@ -106,11 +106,46 @@ void main() {
     expect(result.request!.imageUrl, isNull);
   });
 
-  test('rejects Google DAI stream-request URLs with a clear error', () {
+  test('casts a stitched Google DAI HLS master as live HLS', () {
     final result = adapter.toCastRequest(
       channel(
         streamUrl:
             'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+      ),
+    );
+
+    expect(result.isCastable, true);
+    expect(
+      result.request!.url,
+      Uri.parse(
+        'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+      ),
+    );
+    expect(result.request!.contentType, 'application/vnd.apple.mpegurl');
+  });
+
+  test('rewrites a live DAI stream-request API before casting', () {
+    final result = adapter.toCastRequest(
+      channel(
+        streamUrl:
+            'https://dai.google.com/linear/v1/hls/event/c-rArva4ShKVIAkNfy6HUQ/stream',
+      ),
+    );
+
+    expect(result.isCastable, true);
+    expect(
+      result.request!.url,
+      Uri.parse(
+        'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+      ),
+    );
+  });
+
+  test('rejects IMA-only Google DAI APIs with a clear error', () {
+    final result = adapter.toCastRequest(
+      channel(
+        streamUrl:
+            'https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream',
       ),
     );
 

@@ -15,9 +15,15 @@ class IptvCastMediaAdapter {
       );
     }
 
-    final uri = AiroPlaylistUrlPolicy.normalizeStreamUrl(
-      channel.getStreamUrl(selectedQuality),
-    );
+    final rawUrl = channel.getStreamUrl(selectedQuality);
+    final playableUrl = AiroPlaylistUrlPolicy.playableStreamUrl(rawUrl);
+    if (playableUrl == null) {
+      return IptvCastMediaResult.unsupported(
+        AiroPlaylistUrlPolicy.adInsertionUnsupportedUserMessage,
+      );
+    }
+
+    final uri = AiroPlaylistUrlPolicy.normalizeStreamUrl(playableUrl);
     if (uri == null) {
       return IptvCastMediaResult.unsupported(
         'This channel does not have a valid network stream URL.',

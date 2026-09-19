@@ -55,7 +55,7 @@ void main() {
     test('maps an embedded dai.google.com URL to ad-insertion unsupported', () {
       final diagnostic = mapStreamingErrorToDiagnostic(
         Exception(
-          'Failed to load https://dai.google.com/linear/v1/hls/event/x/stream',
+          'Failed to load https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream',
         ),
       );
 

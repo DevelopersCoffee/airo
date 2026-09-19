@@ -20,10 +20,11 @@ Supported V1 media:
 
 Unsupported V1 media:
 
-- Google DAI (`dai.google.com`) and other ad-insertion stream-request APIs.
-  These are not playable manifests. Aika Stream does not run IMA/DAI stitching;
-  Cast and local playback show a clear unsupported-source error instead of
-  sending the API URL to the player or receiver.
+- IMA-only Google DAI stream-request APIs that are not playable HLS/DASH
+  manifests (for example on-demand DASH `/stream` endpoints). Stitched live
+  HLS (`master.m3u8`) and live linear `/stream` URLs rewritten to that master
+  play as ordinary HLS on device and Cast. Aika Stream does not run IMA
+  stitching; remaining DAI APIs show a clear unsupported-source error.
 - In-app AdMob Native cards. Those stay on the phone/tablet UI and are never
   sent to a Cast receiver. See [AIKA_STREAM_ADS.md](./AIKA_STREAM_ADS.md).
 

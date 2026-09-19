@@ -342,14 +342,13 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       ..sort(compareChannelStreamSources);
     for (var index = 0; index < rankedSources.length; index++) {
       final stream = rankedSources[index];
-      if (AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(stream.url)) {
-        continue;
-      }
-      if (!seenUrls.add(stream.url)) continue;
+      final url = AiroPlaylistUrlPolicy.playableStreamUrl(stream.url);
+      if (url == null) continue;
+      if (!seenUrls.add(url)) continue;
       sources.add(
         AiroFailoverSource(
           sourceId: stream.feedId ?? 'stream-$index',
-          sourceHandle: AiroPlaybackSourceHandle.direct(stream.url),
+          sourceHandle: AiroPlaybackSourceHandle.direct(url),
           canonicalChannelId: channel.id,
           rank: index,
           health: switch (stream.health) {
@@ -370,12 +369,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         ),
       );
     }
-    if (!AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(channel.streamUrl) &&
-        seenUrls.add(channel.streamUrl)) {
+    final defaultUrl = AiroPlaylistUrlPolicy.playableStreamUrl(
+      channel.streamUrl,
+    );
+    if (defaultUrl != null && seenUrls.add(defaultUrl)) {
       sources.add(
         AiroFailoverSource(
           sourceId: 'default',
-          sourceHandle: AiroPlaybackSourceHandle.direct(channel.streamUrl),
+          sourceHandle: AiroPlaybackSourceHandle.direct(defaultUrl),
           canonicalChannelId: channel.id,
           rank: sources.length,
           lastWorkedHere:
@@ -389,14 +390,13 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       var rank = 1;
       for (final entry in qualityUrls.entries) {
         if (entry.value == channel.streamUrl) continue;
-        if (AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(entry.value)) {
-          continue;
-        }
-        if (!seenUrls.add(entry.value)) continue;
+        final url = AiroPlaylistUrlPolicy.playableStreamUrl(entry.value);
+        if (url == null) continue;
+        if (!seenUrls.add(url)) continue;
         sources.add(
           AiroFailoverSource(
             sourceId: entry.key,
-            sourceHandle: AiroPlaybackSourceHandle.direct(entry.value),
+            sourceHandle: AiroPlaybackSourceHandle.direct(url),
             canonicalChannelId: channel.id,
             rank: rank++,
             resolutionHeight: VideoQuality.values

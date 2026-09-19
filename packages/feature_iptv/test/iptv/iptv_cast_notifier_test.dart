@@ -52,7 +52,7 @@ void main() {
     );
   });
 
-  test('rejects a DAI channel without connecting to Cast', () async {
+  test('rejects an IMA-only DAI channel without connecting to Cast', () async {
     final fake = FakeAiroCastController(devices: const [tv]);
     final container = containerWith(fake);
 
@@ -61,7 +61,7 @@ void main() {
         .castChannelToDevice(
           channel: channel().copyWith(
             streamUrl:
-                'https://dai.google.com/linear/v1/hls/event/c-rArva4ShKVIAkNfy6HUQ/stream',
+                'https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream',
           ),
           device: tv,
         );
