@@ -75,10 +75,11 @@ packages:
   airo_haptics:
     dependency: transitive
     description:
-      path: "../packages/airo_haptics"
-      relative: true
-    source: path
-    version: "1.1.0"
+      name: airo_haptics
+      sha256: "752024b439ee6713029dec3faff8a2e971482e485ad19793c85b3ff733c5e3a2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.0"
   airo_job_scheduler:
     dependency: transitive
     description:

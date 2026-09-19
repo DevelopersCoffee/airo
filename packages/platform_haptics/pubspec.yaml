@@ -11,8 +11,7 @@ environment:
   flutter: ">=3.0.0"
 
 dependencies:
-  airo_haptics:
-    path: ../airo_haptics
+  airo_haptics: ^1.2.0
   flutter:
     sdk: flutter
 

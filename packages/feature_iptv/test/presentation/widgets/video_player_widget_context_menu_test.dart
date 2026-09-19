@@ -1,3 +1,4 @@
+import 'package:platform_haptics/platform_haptics.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 // reachable through Fire TV's long-press Select convention and the transport
 // bar's Info button.
 class RecordingAikaHaptics implements AikaHaptics {
+  @override
+  Future<void> setStrength(AiroHapticStrength strength) async {}
+
   final plays = <AikaHapticIntent>[];
 
   @override
