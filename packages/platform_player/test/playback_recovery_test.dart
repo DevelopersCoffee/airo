@@ -120,7 +120,7 @@ void main() {
         AiroPlaybackFailureEvent(
           httpStatusCode: 404,
           sourceUri: Uri.parse(
-            'https://dai.google.com/linear/v1/hls/event/test/stream',
+            'https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream',
           ),
         ),
       );

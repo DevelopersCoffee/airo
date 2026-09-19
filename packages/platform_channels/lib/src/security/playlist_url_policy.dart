@@ -120,35 +120,74 @@ class AiroPlaylistUrlPolicy {
     );
   }
 
-  /// Google DAI and similar hosts are stream-request APIs, not manifests.
+  /// Google DAI stream-request APIs that cannot be played as HLS/DASH.
   ///
-  /// Aika Stream is bring-your-own-playlist and does not run IMA/DAI
-  /// stitching. Callers should skip these URLs or surface
-  /// [adInsertionUnsupportedUserMessage] instead of handing them to a player
-  /// or Cast receiver.
+  /// Stitched live HLS (`master.m3u8`) is playable without IMA. Live linear
+  /// `/stream` request URLs rewrite to that master via [playableStreamUrl].
+  /// Remaining IMA-only APIs should surface
+  /// [adInsertionUnsupportedUserMessage] instead of going to a player.
   static bool isAdInsertionApiUrl(Uri uri) {
-    final host = uri.host.trim().toLowerCase();
-    return host == 'dai.google.com' || host.endsWith('.dai.google.com');
+    if (!_isDaiHost(uri)) return false;
+    return resolveDaiManifestUri(uri) == null;
   }
 
   /// [isAdInsertionApiUrl] for a raw playlist string, including exception
-  /// text that embeds the URL.
+  /// text that embeds an unplayable DAI API URL.
   static bool isAdInsertionApiUrlString(String? value) {
     final raw = value?.trim();
     if (raw == null || raw.isEmpty) return false;
 
     final parsed = Uri.tryParse(raw);
-    if (parsed != null &&
-        parsed.host.isNotEmpty &&
-        isAdInsertionApiUrl(parsed)) {
-      return true;
+    if (parsed != null && parsed.host.isNotEmpty) {
+      return isAdInsertionApiUrl(parsed);
     }
 
-    return _adInsertionHostInText.hasMatch(raw.toLowerCase());
+    return _unplayableDaiApiInText.hasMatch(raw.toLowerCase());
   }
 
-  static final RegExp _adInsertionHostInText = RegExp(
-    r'(?:^|[^a-z0-9.-])(?:[a-z0-9-]+\.)*dai\.google\.com(?:[^a-z0-9.-]|$)',
+  /// Returns a player-ready URL, rewriting live DAI stream-request APIs to
+  /// their stitched HLS master. Returns null for IMA-only DAI endpoints.
+  static String? playableStreamUrl(String? value) {
+    final raw = value?.trim();
+    if (raw == null || raw.isEmpty) return null;
+
+    final uri = Uri.tryParse(raw);
+    if (uri == null || uri.host.isEmpty) return raw;
+    if (!_isDaiHost(uri)) return raw;
+    return resolveDaiManifestUri(uri)?.toString();
+  }
+
+  /// Stitched DAI HLS/DASH manifests, or a live linear HLS rewrite.
+  static Uri? resolveDaiManifestUri(Uri uri) {
+    if (!_isDaiHost(uri)) return null;
+
+    final path = uri.path;
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.m3u8') || lower.endsWith('.mpd')) {
+      return uri;
+    }
+
+    final liveHls = _liveLinearDaiStreamApi.firstMatch(path);
+    if (liveHls != null) {
+      return uri.replace(
+        path: '/linear/hls/event/${liveHls.group(1)}/master.m3u8',
+      );
+    }
+    return null;
+  }
+
+  static bool _isDaiHost(Uri uri) {
+    final host = uri.host.trim().toLowerCase();
+    return host == 'dai.google.com' || host.endsWith('.dai.google.com');
+  }
+
+  static final RegExp _liveLinearDaiStreamApi = RegExp(
+    r'^/linear/v1/hls/event/([^/]+)/stream/?$',
+    caseSensitive: false,
+  );
+
+  static final RegExp _unplayableDaiApiInText = RegExp(
+    r'dai\.google\.com/\S+/stream(?:[^a-z0-9]|$)',
   );
 
   /// Returns true for localhost, link-local, RFC1918, and other non-public

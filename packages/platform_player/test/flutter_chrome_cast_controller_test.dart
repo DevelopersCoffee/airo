@@ -26,16 +26,27 @@ void main() {
     });
   });
 
-  test('rejects Google DAI URLs before the receiver is probed', () {
+  test('rejects IMA-only Google DAI APIs before the receiver is probed', () {
     final error = FlutterChromeCastController.adInsertionUnsupportedError(
       Uri.parse(
-        'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+        'https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream',
       ),
     );
 
     expect(error, isNotNull);
     expect(error!.code, AiroCastErrorCode.unsupportedStream);
     expect(error.message, contains('ad-insertion'));
+  });
+
+  test('allows stitched DAI HLS masters through the DAI guard', () {
+    expect(
+      FlutterChromeCastController.adInsertionUnsupportedError(
+        Uri.parse(
+          'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+        ),
+      ),
+      isNull,
+    );
   });
 
   test('allows ordinary HLS hosts through the DAI guard', () {

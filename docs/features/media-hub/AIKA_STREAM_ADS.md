@@ -1,7 +1,9 @@
 # Aika Stream ads
 
 Aika Stream is a BYOC live IPTV player. Users paste playlists. We do not own
-the HLS, do not rewrite manifests, and do not run IMA/DAI stitching.
+the HLS, do not rewrite provider manifests, and do not run IMA/DAI stitching.
+Live linear Google DAI `/stream` request URLs are rewritten to the already
+stitched `master.m3u8` so the player can open them as ordinary HLS.
 
 ## What we ship
 
@@ -13,6 +15,8 @@ In-app **AdMob Native Advanced** cards only, consumed from
 - one dismissible card on the **fullscreen** player pause overlay
 - 5-minute session warmup, then a 30-minute impression cooldown
 - fail silent (`SizedBox.shrink`) on no fill
+- no browse slot until the SDK is ready and warmup has elapsed, so the
+  fifth tile is not a blank hole on Pixel phones running Aika Stream
 
 Production IDs:
 
@@ -27,7 +31,8 @@ Layouts use Flutter `NativeTemplateStyle` (`TemplateType.small` browse,
 
 ## What we reject
 
-- SSAI / IMA DAI / `dai.google.com` stream-request APIs
+- IMA DAI stream-request APIs that are not stitched HLS/DASH manifests
+  (for example on-demand DASH `/stream` endpoints)
 - playlist or `#EXT-X-DISCONTINUITY` rewriting
 - Magnite, FreeWheel, or other enterprise OTT SSPs
 - Flutter-to-Rust ad proxies
@@ -37,8 +42,10 @@ Layouts use Flutter `NativeTemplateStyle` (`TemplateType.small` browse,
 - ads on leanback / ten-foot Android TV
 - ads on the empty-library onboarding view
 
-`dai.google.com` stays an unsupported source. See
-[CAST_RECEIVER_COMPATIBILITY.md](./CAST_RECEIVER_COMPATIBILITY.md).
+Stitched `dai.google.com` live HLS (`master.m3u8`, including a live linear
+`/stream` rewrite) plays as ordinary HLS. IMA-only APIs still show
+[CAST_RECEIVER_COMPATIBILITY.md](./CAST_RECEIVER_COMPATIBILITY.md)'s
+unsupported-source copy.
 
 ## Runtime gates
 
@@ -54,7 +61,9 @@ Layouts use Flutter `NativeTemplateStyle` (`TemplateType.small` browse,
 `google_mobile_ads` lives in `app/pubspec_tv.yaml`. The phone pubspec uses
 `packages/stubs/google_mobile_ads_stub` so `main_tv.dart` still analyzes.
 `feature_iptv` never depends on AdMob; it only exposes
-`iptvAdPlacementsProvider`.
+`iptvAdPlacementsProvider`. `AikaAdsGate` detects phone vs leanback at
+runtime: Pixel 9 running Aika Stream gets native cards after warmup;
+Android TV never mounts a browse slot.
 
 ## Play Console
 

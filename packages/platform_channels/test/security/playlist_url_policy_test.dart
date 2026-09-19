@@ -3,12 +3,10 @@ import 'package:platform_channels/platform_channels.dart';
 
 void main() {
   group('isAdInsertionApiUrl', () {
-    test('detects Google DAI stream-request and master hosts', () {
+    test('detects IMA-only Google DAI stream-request APIs', () {
       const samples = [
-        'https://dai.google.com/linear/v1/hls/event/c-rArva4ShKVIAkNfy6HUQ/stream',
-        'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
         'https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream',
-        'http://preview.dai.google.com/linear/hls/event/test/master.m3u8',
+        'https://dai.google.com/linear/v1/dash/event/abc/stream',
       ];
 
       for (final sample in samples) {
@@ -23,6 +21,51 @@ void main() {
           reason: sample,
         );
       }
+    });
+
+    test('does not flag stitched DAI HLS manifests as unplayable APIs', () {
+      const samples = [
+        'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+        'http://preview.dai.google.com/linear/hls/event/test/master.m3u8',
+        'https://dai.google.com/linear/hls/event/test/playlist.m3u8',
+      ];
+
+      for (final sample in samples) {
+        expect(
+          AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(sample),
+          isFalse,
+          reason: sample,
+        );
+        expect(
+          AiroPlaylistUrlPolicy.playableStreamUrl(sample),
+          sample,
+          reason: sample,
+        );
+      }
+    });
+
+    test('rewrites live linear DAI stream-request URLs to HLS masters', () {
+      expect(
+        AiroPlaylistUrlPolicy.playableStreamUrl(
+          'https://dai.google.com/linear/v1/hls/event/c-rArva4ShKVIAkNfy6HUQ/stream',
+        ),
+        'https://dai.google.com/linear/hls/event/c-rArva4ShKVIAkNfy6HUQ/master.m3u8',
+      );
+      expect(
+        AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(
+          'https://dai.google.com/linear/v1/hls/event/c-rArva4ShKVIAkNfy6HUQ/stream',
+        ),
+        isFalse,
+      );
+    });
+
+    test('returns null for IMA-only DAI APIs', () {
+      expect(
+        AiroPlaylistUrlPolicy.playableStreamUrl(
+          'https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream',
+        ),
+        isNull,
+      );
     });
 
     test('does not flag ordinary HLS or lookalike hosts', () {
@@ -44,13 +87,23 @@ void main() {
       }
     });
 
-    test('detects a DAI host embedded in an engine exception string', () {
+    test('detects an unplayable DAI API embedded in an engine exception', () {
       expect(
         AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(
           'PlatformException(VideoError, Failed to load '
-          'https://dai.google.com/linear/v1/hls/event/x/stream, null)',
+          'https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream, null)',
         ),
         isTrue,
+      );
+    });
+
+    test('does not treat a failed DAI HLS manifest as an unplayable API', () {
+      expect(
+        AiroPlaylistUrlPolicy.isAdInsertionApiUrlString(
+          'PlatformException(VideoError, Failed to load '
+          'https://dai.google.com/linear/hls/event/x/master.m3u8, null)',
+        ),
+        isFalse,
       );
     });
   });

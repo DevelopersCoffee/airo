@@ -44,6 +44,8 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'aika_ads/aika_ads.dart';
+import 'aika_ads/aika_ads_gate.dart';
+import 'aika_ads/aika_ads_runtime.dart';
 import 'core/app/airo_tv_app.dart';
 import 'core/audio/tv_audio_service.dart';
 import 'core/config/firebase_status.dart';
@@ -171,7 +173,7 @@ void main() {
           moduleRegistry: moduleRegistry,
           streamingTelemetryService: streamingTelemetryService,
         ),
-        child: const AiroTvApp(),
+        child: const AikaAdsGate(child: AiroTvApp()),
       );
     },
     afterRunApp: () {
@@ -243,17 +245,8 @@ List<Override> buildTvProviderOverrides({
     realIptvCastControllerOverride(),
     realCastMultiviewSenderOverride(),
     realCastMultiviewReceiverOverride(),
-    iptvAdPlacementsProvider.overrideWithValue(
-      const IptvAdPlacements(
-        browseCard: AikaNativeAdCard(
-          placement: AikaAdPlacement.browse,
-          isLeanback: true,
-        ),
-        pauseCard: AikaNativeAdCard(
-          placement: AikaAdPlacement.pause,
-          isLeanback: true,
-        ),
-      ),
+    iptvAdPlacementsProvider.overrideWith(
+      (ref) => ref.watch(aikaIptvAdPlacementsStateProvider),
     ),
     if (debugPlaylistUrl.isNotEmpty)
       iptvChannelsProvider.overrideWith((ref) {
@@ -377,11 +370,14 @@ Future<void> configureTvSystemChrome({
 void scheduleAikaAdsInitialization({
   void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
   void Function(String message)? log,
+  AiroDeviceFormFactor? formFactor,
+  Future<AiroDeviceFormFactor> Function()? detectFormFactor,
 }) {
-  // Pin TV before any NativeAdCard mounts. airo_ads defaults initialize()
-  // to mobile, which would load the GMA SDK on leanback.
+  // Detect phone vs leanback. Pinning TV here skipped GMA on Pixel 9 and
+  // left a blank fifth library tile because NativeAdCard never loaded.
   final initialization = AikaAdManager.instance.initialize(
-    formFactor: AiroDeviceFormFactor.tv,
+    formFactor: formFactor,
+    detectFormFactor: detectFormFactor ?? detectAikaAdFormFactor,
   );
   scheduleDeferredStartupTask(
     debugName: 'aika_admob_native',
