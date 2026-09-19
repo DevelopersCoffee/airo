@@ -3,9 +3,10 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import 'aika_ads.dart';
+import 'aika_browse_native_ad_card.dart';
 
-/// Starts empty so the browse grid has no blank fifth tile while ads warm up
-/// or while the host is leanback.
+/// Starts empty so leanback never reserves a fifth tile. Phone browse ads
+/// are armed as soon as the SDK is ready.
 final aikaIptvAdPlacementsStateProvider = StateProvider<IptvAdPlacements>(
   (ref) => const IptvAdPlacements(),
 );
@@ -30,7 +31,7 @@ IptvAdPlacements aikaIptvAdPlacements({
     case AiroDeviceFormFactor.mobile:
     case AiroDeviceFormFactor.tablet:
       return const IptvAdPlacements(
-        browseCard: AikaNativeAdCard(placement: AikaAdPlacement.browse),
+        browseCard: AikaBrowseNativeAdCard(),
         pauseCard: AikaNativeAdCard(placement: AikaAdPlacement.pause),
       );
     case AiroDeviceFormFactor.tv:
@@ -50,6 +51,18 @@ bool shouldArmAikaPhoneAds(
     return false;
   }
   return manager.isSdkReady;
+}
+
+/// The hosted [AikaAdPolicy] still starts with a 5-minute warmup, which
+/// would leave the fifth library tile empty. Backdate the session so the
+/// browse Native card can load immediately after SDK init.
+void allowImmediateAikaPhoneAds(
+  AikaAdManager manager, {
+  DateTime Function()? now,
+}) {
+  if (!manager.isSdkReady) return;
+  final clock = now ?? DateTime.now;
+  manager.policy.startSession(clock().subtract(manager.policy.sessionWarmup));
 }
 
 Duration delayUntilAikaAdsAllowed(

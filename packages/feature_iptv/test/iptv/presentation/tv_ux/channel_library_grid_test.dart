@@ -705,6 +705,56 @@ void main() {
   );
 
   testWidgets(
+    'phone list rows show favorite, live/audio, and quality besides name',
+    (tester) async {
+      const richChannels = [
+        IPTVChannel(
+          id: 'news-hd',
+          name: 'City News HD',
+          streamUrl: 'https://news',
+          group: 'News',
+          qualityUrls: {'1080p': 'https://news-1080'},
+        ),
+        IPTVChannel(
+          id: 'radio-1',
+          name: 'Night Radio',
+          streamUrl: 'https://radio',
+          group: 'Music',
+          isAudioOnly: true,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: richChannels,
+                metadataByChannelId: {},
+                favoriteChannelIds: {'news-hd'},
+                viewMode: ChannelViewMode.list,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('City News HD'), findsOneWidget);
+      expect(find.text('Night Radio'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('channel-favorite-news-hd')),
+        findsOneWidget,
+      );
+      expect(find.text('LIVE'), findsOneWidget);
+      expect(find.text('Audio'), findsOneWidget);
+      expect(find.text('1080p'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'phone width toggle switches between the single-column list and the '
     'dynamic tile grid',
     (tester) async {
@@ -745,6 +795,46 @@ void main() {
               as SliverGridDelegateWithFixedCrossAxisCount;
       expect(delegate.crossAxisCount, greaterThan(1));
       expect(find.byIcon(Icons.view_list), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'phone grid is a compact 3-column tile layout at typical handset widths',
+    (tester) async {
+      Future<void> pumpAt(double width) {
+        return tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: width,
+                height: 800,
+                child: const ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: {},
+                  viewMode: ChannelViewMode.grid,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await pumpAt(360);
+      var delegate =
+          gridSliver(tester).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 3);
+      expect(delegate.mainAxisExtent, lessThan(169));
+      expect(tester.takeException(), isNull);
+
+      // Pixel 9 logical width (~411). Same compact 3-up, no overflow.
+      await pumpAt(411);
+      delegate =
+          gridSliver(tester).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 3);
+      expect(delegate.mainAxisExtent, lessThan(169));
+      expect(tester.takeException(), isNull);
     },
   );
 

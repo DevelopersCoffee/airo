@@ -1,5 +1,6 @@
 import 'package:airo_app/aika_ads/aika_ads.dart';
 import 'package:airo_app/aika_ads/aika_ads_runtime.dart';
+import 'package:airo_app/aika_ads/aika_browse_native_ad_card.dart';
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,9 +20,12 @@ void main() {
         formFactor: AiroDeviceFormFactor.mobile,
       );
 
-      expect(placements.browseCard, isA<AikaNativeAdCard>());
+      expect(placements.browseCard, isA<AikaBrowseNativeAdCard>());
       expect(placements.pauseCard, isA<AikaNativeAdCard>());
-      expect((placements.browseCard! as AikaNativeAdCard).isLeanback, isFalse);
+      expect(
+        (placements.browseCard! as AikaBrowseNativeAdCard).isLeanback,
+        isFalse,
+      );
       expect((placements.pauseCard! as AikaNativeAdCard).isLeanback, isFalse);
     });
   });
@@ -43,30 +47,27 @@ void main() {
     });
   });
 
-  group('delayUntilAikaAdsAllowed', () {
-    test(
-      'waits out the remaining session warmup on a ready phone SDK',
-      () async {
-        final now = DateTime.utc(2026, 9, 13, 12);
-        final policy = AikaAdPolicy(clock: () => now);
-        final manager = AikaAdManager.test(
-          policy: policy,
-          sdk: AikaAdSdk(initializeFn: () async => true),
-        );
-        await manager.initialize(formFactor: AiroDeviceFormFactor.mobile);
+  group('allowImmediateAikaPhoneAds', () {
+    test('allows the fifth browse tile as soon as the SDK is ready', () async {
+      final now = DateTime.utc(2026, 9, 13, 12);
+      final policy = AikaAdPolicy(clock: () => now);
+      final manager = AikaAdManager.test(
+        policy: policy,
+        sdk: AikaAdSdk(initializeFn: () async => true),
+      );
+      await manager.initialize(formFactor: AiroDeviceFormFactor.mobile);
 
-        expect(
-          delayUntilAikaAdsAllowed(manager, now: () => now),
-          AikaAdPolicy.defaultSessionWarmup,
-        );
+      expect(
+        manager.shouldShowAd(isLeanback: false, isCasting: false),
+        isFalse,
+        reason: 'hosted policy still starts in warmup',
+      );
 
-        final afterWarmup = now.add(const Duration(minutes: 5));
-        expect(
-          delayUntilAikaAdsAllowed(manager, now: () => afterWarmup),
-          Duration.zero,
-        );
-      },
-    );
+      allowImmediateAikaPhoneAds(manager, now: () => now);
+
+      expect(delayUntilAikaAdsAllowed(manager, now: () => now), Duration.zero);
+      expect(manager.shouldShowAd(isLeanback: false, isCasting: false), isTrue);
+    });
 
     test('does not arm ads when the SDK stayed skipped on TV', () async {
       final manager = AikaAdManager.test(

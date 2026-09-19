@@ -11,12 +11,12 @@ In-app **AdMob Native Advanced** cards only, consumed from
 [`airo_ads`](https://pub.dev/packages/airo_ads) via the
 `packages/platform_ads` shim:
 
-- one dismissible tile in the phone/tablet browse grid (index 4)
+- one dismissible tile in the phone/tablet browse grid (index 4), shown
+  as soon as the Mobile Ads SDK is ready (no session warmup)
 - one dismissible card on the **fullscreen** player pause overlay
-- 5-minute session warmup, then a 30-minute impression cooldown
+- 30-minute impression cooldown after a fill or dismiss
 - fail silent (`SizedBox.shrink`) on no fill
-- no browse slot until the SDK is ready and warmup has elapsed, so the
-  fifth tile is not a blank hole on Pixel phones running Aika Stream
+- no browse slot on leanback, so Android TV never gets a blank fifth tile
 
 Production IDs:
 
@@ -27,7 +27,9 @@ Use Google sample units only with `--dart-define=AIKA_ADS_USE_TEST_UNITS=true`
 on local debug builds. Never put sample IDs in a Play AAB.
 
 Layouts use Flutter `NativeTemplateStyle` (`TemplateType.small` browse,
-`medium` pause). Do not add Android XML factories.
+`medium` pause). Browse fills the library cell (84px list row or 169px
+grid poster) instead of a fixed 120px banner. Do not add Android XML
+factories.
 
 ## What we reject
 
@@ -62,8 +64,8 @@ unsupported-source copy.
 `packages/stubs/google_mobile_ads_stub` so `main_tv.dart` still analyzes.
 `feature_iptv` never depends on AdMob; it only exposes
 `iptvAdPlacementsProvider`. `AikaAdsGate` detects phone vs leanback at
-runtime: Pixel 9 running Aika Stream gets native cards after warmup;
-Android TV never mounts a browse slot.
+runtime: Pixel 9 running Aika Stream mounts the fifth-tile native card
+as soon as the SDK is ready; Android TV never mounts a browse slot.
 
 ## Play Console
 

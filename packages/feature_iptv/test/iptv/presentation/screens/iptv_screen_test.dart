@@ -223,9 +223,7 @@ void main() {
     },
   );
 
-  testWidgets('Home resets active filters to their default state', (
-    tester,
-  ) async {
+  testWidgets('Home keeps active browse filters', (tester) async {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
 
@@ -238,7 +236,44 @@ void main() {
 
     await tapBottomNavDestination(tester, 'Home');
 
-    expect(container.read(channelFiltersProvider).isActive, isFalse);
+    expect(container.read(channelFiltersProvider).category, 'News');
+    expect(container.read(channelFiltersProvider).isActive, isTrue);
+  });
+
+  testWidgets('Browse and Fav sections are reachable from the bottom nav', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
+
+    await tapBottomNavDestination(tester, 'Browse');
+    expect(find.byType(BrowseScreen), findsOneWidget);
+
+    await tapBottomNavDestination(tester, 'Fav');
+    expect(find.byType(MobileFavoritesScreen), findsOneWidget);
+    expect(find.text('No favorite channels yet'), findsOneWidget);
+
+    await tapBottomNavDestination(tester, 'Home');
+    expect(find.byType(BrowseScreen), findsNothing);
+    expect(find.byType(MobileFavoritesScreen), findsNothing);
+    expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+  });
+
+  testWidgets('Home from Browse keeps active filters', (tester) async {
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(IPTVScreen)),
+    );
+    container.read(channelFiltersProvider.notifier).setCategory('News');
+    await tester.pump();
+
+    await tapBottomNavDestination(tester, 'Browse');
+    await tapBottomNavDestination(tester, 'Home');
+
+    expect(container.read(channelFiltersProvider).category, 'News');
+    expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
   });
 
   testWidgets('hides Cast action on macOS', (tester) async {
@@ -643,11 +678,12 @@ void main() {
     expect(find.text('Settings'), findsNothing);
   });
 
-  testWidgets('opens search sheet from the bottom nav', (tester) async {
+  testWidgets('opens search sheet from the browse search chip', (tester) async {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
 
-    await tapBottomNavDestination(tester, 'Search');
+    await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+    await tester.pumpAndSettle();
 
     expect(find.text('Search channels'), findsOneWidget);
     expect(
@@ -1152,7 +1188,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tapBottomNavDestination(tester, 'Search');
+      await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField).last, 'City News');
       await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -1191,7 +1228,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tapBottomNavDestination(tester, 'Search');
+    await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+    await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).last, 'City News');
     await tester.pumpAndSettle();
@@ -1228,7 +1266,8 @@ void main() {
       castNotifier.setCasting(true, device: tv);
       await tester.pump();
 
-      await tapBottomNavDestination(tester, 'Search');
+      await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'City News');
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(ListTile, 'City News Live'));
@@ -1264,7 +1303,8 @@ void main() {
         castNotifier.setCasting(true, device: tv);
         await tester.pump();
 
-        await tapBottomNavDestination(tester, 'Search');
+        await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+        await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField).last, 'City News');
         await tester.pumpAndSettle();
         await tester.tap(find.widgetWithText(ListTile, 'City News Live'));
