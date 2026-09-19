@@ -1,4 +1,5 @@
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_haptics/platform_haptics.dart';
@@ -78,6 +79,8 @@ class PlaybackSettingsScreen extends ConsumerWidget {
                 .setStrength(strength),
           ),
           ...extraSections,
+          const SizedBox(height: 24),
+          const ChannelGridDensitySection(),
         ],
       ),
     );

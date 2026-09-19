@@ -164,35 +164,28 @@ void main() {
     );
   });
 
-  testWidgets(
-    'compact chrome keeps sort, search, filters, and list/grid on one row',
-    (tester) async {
-      await pumpAt(tester, 390);
-      await tester.pumpAndSettle();
+  testWidgets('compact chrome keeps sort, filters, and list/grid on one row', (
+    tester,
+  ) async {
+    await pumpAt(tester, 390);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Sort: Name'), findsOneWidget);
-      expect(find.byKey(const ValueKey('filter-chip-search')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('filter-chip-category')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('channel-view-mode-toggle')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const ValueKey('filter-chip-country')), findsNothing);
+    expect(find.text('Sort: Name'), findsOneWidget);
+    expect(find.byKey(const ValueKey('filter-chip-search')), findsNothing);
+    expect(find.byKey(const ValueKey('filter-chip-favorites')), findsOneWidget);
+    expect(find.byKey(const ValueKey('filter-chip-category')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('channel-view-mode-toggle')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('filter-chip-country')), findsNothing);
 
-      final sortY = tester.getCenter(find.text('Sort: Name')).dy;
-      final searchY = tester
-          .getCenter(find.byKey(const ValueKey('filter-chip-search')))
-          .dy;
-      final toggleY = tester
-          .getCenter(find.byKey(const ValueKey('channel-view-mode-toggle')))
-          .dy;
-      expect(searchY, closeTo(sortY, 16));
-      expect(toggleY, closeTo(sortY, 16));
-    },
-  );
+    final sortY = tester.getCenter(find.text('Sort: Name')).dy;
+    final toggleY = tester
+        .getCenter(find.byKey(const ValueKey('channel-view-mode-toggle')))
+        .dy;
+    expect(toggleY, closeTo(sortY, 16));
+  });
 
   testWidgets('screenshot captures the video scope without shell chrome', (
     tester,

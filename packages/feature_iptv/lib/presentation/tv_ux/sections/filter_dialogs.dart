@@ -396,11 +396,26 @@ class _TvLongListPickerState extends State<TvLongListPicker> {
                   semanticLabel: _allLabelFor(widget.title),
                   onSelect: widget.onClear,
                   child: ListTile(
-                    dense: true,
-                    leading: widget.selectedValue == null
-                        ? const Icon(Icons.check)
-                        : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    tileColor: widget.selectedValue == null
+                        ? null
+                        : Theme.of(context).colorScheme.secondaryContainer,
+                    leading: Icon(
+                      widget.selectedValue == null
+                          ? Icons.check
+                          : Icons.apps_outlined,
+                    ),
                     title: Text(_allLabelFor(widget.title)),
+                    subtitle: widget.selectedValue == null
+                        ? null
+                        : Text(
+                            'Remove ${optionLabel(widget.selectedValue!)} filter',
+                          ),
+                    trailing: widget.selectedValue == null
+                        ? null
+                        : const Icon(Icons.close),
                     onTap: widget.onClear,
                   ),
                 ),
@@ -474,19 +489,28 @@ class _TvLongListPickerState extends State<TvLongListPicker> {
                             );
                           }
                           row as _PickerOptionRow;
+                          final selected = row.value == widget.selectedValue;
+                          void choose() {
+                            if (selected) {
+                              widget.onClear();
+                            } else {
+                              widget.onSelected(row.value);
+                            }
+                          }
+
                           return TvFocusable(
                             key: ValueKey('picker-option-${row.value}'),
                             focusNode: _optionFocusNodes[row.value],
                             autofocus: row.value == initialFocusValue,
                             semanticLabel: optionLabel(row.value),
-                            onSelect: () => widget.onSelected(row.value),
+                            onSelect: choose,
                             child: ListTile(
                               dense: true,
-                              leading: row.value == widget.selectedValue
+                              leading: selected
                                   ? const Icon(Icons.check)
                                   : null,
                               title: Text(optionLabel(row.value)),
-                              onTap: () => widget.onSelected(row.value),
+                              onTap: choose,
                             ),
                           );
                         },

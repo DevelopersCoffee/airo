@@ -367,6 +367,40 @@ void main() {
     },
   );
 
+  test('favoritesOnly keeps only favorited channels', () {
+    final cache = ChannelBrowserSnapshotCache();
+    const partitionChannels = [
+      IPTVChannel(
+        id: 'a',
+        name: 'A Channel',
+        streamUrl: 'https://example.test/a',
+        group: 'News',
+      ),
+      IPTVChannel(
+        id: 'b',
+        name: 'B Channel',
+        streamUrl: 'https://example.test/b',
+        group: 'News',
+      ),
+      IPTVChannel(
+        id: 'c',
+        name: 'C Channel',
+        streamUrl: 'https://example.test/c',
+        group: 'News',
+      ),
+    ];
+    final snapshot = cache.resolve(
+      channels: partitionChannels,
+      metadataByChannelId: const {},
+      filters: const ChannelFilters(),
+      sort: const ChannelSort(),
+      favoriteIds: const ['c'],
+      notForMeIds: const {},
+      favoritesOnly: true,
+    );
+    expect(snapshot.visibleChannels.map((channel) => channel.id), ['c']);
+  });
+
   test('resolve returns a fresh snapshot when favoriteIds changes, even if '
       'filters/sort are unchanged', () {
     final cache = ChannelBrowserSnapshotCache();

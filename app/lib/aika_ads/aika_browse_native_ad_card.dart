@@ -141,7 +141,7 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
           SizedBox(
             height: AikaBrowseNativeAdCard.templateHeight,
             width: double.infinity,
-            child: AdWidget(ad: _nativeAd!),
+            child: RepaintBoundary(child: AdWidget(ad: _nativeAd!)),
           ),
         ],
       ),

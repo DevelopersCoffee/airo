@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/control_row_visibility_provider.dart';
 import '../../widgets/backup_restore_section.dart';
+import 'channel_library_grid.dart';
 
 Future<void> showAiroTvShellSettingsDialog(
   BuildContext context, {
@@ -89,6 +90,8 @@ class AiroTvShellSettingsDialog extends ConsumerWidget {
                     onTap: onGuideSourceTap,
                   ),
                 ),
+              const Divider(height: 32),
+              const ChannelGridDensitySection(),
               const Divider(height: 32),
               const BackupRestoreSection(),
             ],

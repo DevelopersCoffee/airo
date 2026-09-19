@@ -106,6 +106,47 @@ void main() {
     expect(cleared, isTrue);
   });
 
+  testWidgets('a selected filter keeps All visible with a clear affordance', (
+    tester,
+  ) async {
+    await pumpPicker(
+      tester,
+      options: const ['Music', 'News'],
+      selectedValue: 'Music',
+    );
+
+    expect(find.byKey(const ValueKey('picker-option-all')), findsOneWidget);
+    expect(find.text('All Countries'), findsOneWidget);
+    expect(find.text('Remove Music filter'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('picker-option-all')),
+        matching: find.byIcon(Icons.close),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('tapping the already-selected option clears the filter', (
+    tester,
+  ) async {
+    var cleared = false;
+    String? selected;
+    await pumpPicker(
+      tester,
+      options: const ['Music', 'News'],
+      selectedValue: 'Music',
+      onClear: () => cleared = true,
+      onSelected: (value) => selected = value,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('picker-option-Music')));
+    await tester.pump();
+
+    expect(cleared, isTrue);
+    expect(selected, isNull);
+  });
+
   testWidgets(
     'a 500-item list never builds every focusable tile up front (lazy '
     'ListView.builder, not an eager ListView)',

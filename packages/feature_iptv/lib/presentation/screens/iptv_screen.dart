@@ -13,7 +13,6 @@ import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/multiview_provider.dart'
     show multiviewDecoderBudgetProvider, multiviewProvider, MultiviewState;
 import '../../application/wakelock_playback_coordinator.dart';
-import '../tv_ux/sections/bottom_nav_bar.dart';
 import '../tv_ux/sections/multiview_layout_picker.dart';
 import '../tv_ux/sections/multiview_stage.dart';
 import '../tv_ux/sections/shell_help_dialog.dart';
@@ -33,11 +32,11 @@ import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
+import '../tv_ux/sections/bottom_nav_bar.dart';
 import '../tv_ux/sections/ways_to_watch_dialog.dart';
 import 'cast_multiview_screen.dart';
 import '../tv_ux/tv_loading_screen.dart';
 import '../tv_ux/tv_local_media_browser.dart';
-import 'browse_screen.dart';
 import 'mobile_favorites_screen.dart';
 import 'shared_channel_import_screen.dart';
 
@@ -144,7 +143,6 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   /// presentation state in sync with the native callback so the PiP window
   /// contains only the active video rather than the app bar and browse UI.
   bool _isPictureInPicture = false;
-  IptvPhoneNavDestination _phoneNav = IptvPhoneNavDestination.home;
 
   @override
   void initState() {
@@ -792,54 +790,28 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     await showPlaylistSourceSheet(context, ref, initialUrl: url);
   }
 
-  /// The bottom nav's Home destination: returns to the live library without
-  /// wiping the user's active browse filters.
-  void _goHome() {
-    setState(() => _phoneNav = IptvPhoneNavDestination.home);
-  }
-
-  void _goBrowse() {
-    setState(() => _phoneNav = IptvPhoneNavDestination.browse);
-  }
-
-  void _goFavoritesTab() {
-    setState(() => _phoneNav = IptvPhoneNavDestination.favorites);
-  }
-
   Widget _phoneExplorerBody() {
-    switch (_phoneNav) {
-      case IptvPhoneNavDestination.home:
-        return _StreamTabContent(
-          key: const ValueKey('iptv-browse-grid'),
-          onChannelTap: _playChannel,
-          onFullscreenToggle: _toggleFullscreen,
-          onPlaylistSourceTap: _showPlaylistSheet,
-          onGuideSourceTap: _showGuideSourceSheet,
-          onScanWithPhoneTap: _showQrPlaylist,
-          onWaysToWatchTap: _showWaysToWatch,
-          onShareVideoFrame: widget.onShareVideoFrame,
-          onSearch: _showSearchSheet,
-        );
-      case IptvPhoneNavDestination.browse:
-        return BrowseScreen(
-          onChannelSelected: (channel) {
-            _playChannel(channel);
-            _goHome();
-          },
-        );
-      case IptvPhoneNavDestination.favorites:
-        return MobileFavoritesScreen(
-          showAppBar: false,
-          onChannelSelected: _goHome,
-        );
-    }
+    return _StreamTabContent(
+      key: const ValueKey('iptv-browse-grid'),
+      onChannelTap: _playChannel,
+      onFullscreenToggle: _toggleFullscreen,
+      onPlaylistSourceTap: _showPlaylistSheet,
+      onGuideSourceTap: _showGuideSourceSheet,
+      onScanWithPhoneTap: _showQrPlaylist,
+      onWaysToWatchTap: _showWaysToWatch,
+      onShareVideoFrame: widget.onShareVideoFrame,
+      onSearch: _showSearchSheet,
+    );
   }
 
-  /// The bottom nav's "My Aika" destination: an overflow sheet for the
-  /// destinations that used to live in the (now-deleted) hamburger drawer —
-  /// Home is gone from the set (it is now its own bottom-nav destination),
-  /// but Guide, Settings, Movies & Shows, Favorites, and Play local file on
-  /// TV keep the same conditional-null-hides-item visibility the drawer had.
+  void _goPhoneHome() {
+    ref.read(phoneLibraryFavoritesOnlyProvider.notifier).state = false;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  /// My Aika sheet: Guide, Settings, Movies & Shows, Favorites, and Play
+  /// local file on TV. Conditional-null-hides-item visibility matches the
+  /// old hamburger drawer.
   Future<void> _showMyAikaSheet() {
     return showAdaptiveIptvSheet<void>(
       context: context,
@@ -954,8 +926,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       _syncLocalPlaybackWithCast,
     );
     final isFullscreen = ref.watch(isFullscreenModeProvider);
-    final isPlaying =
-        ref.watch(streamingStateProvider).value?.isPlaying == true;
+    final isPlaying = ref.watch(
+      streamingStateProvider.select((async) => async.value?.isPlaying == true),
+    );
     Widget guardRouteBack(Widget child) {
       final lastFullscreenBackAt = _lastFullscreenBackAt;
       final suppressDuplicateBack =
@@ -1187,17 +1160,20 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       AiroResponsiveScaffold(
         padding: EdgeInsets.zero,
         appBar: AppBar(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
+          title: const Row(
             children: [
-              Image.asset(
-                'assets/aika_stream_mark.png',
-                package: 'feature_iptv',
+              Image(
+                image: AssetImage(
+                  'assets/aika_stream_mark.png',
+                  package: 'feature_iptv',
+                ),
                 width: 28,
                 height: 28,
               ),
-              const SizedBox(width: 8),
-              const Text('Aika Stream'),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Aika Stream', overflow: TextOverflow.ellipsis),
+              ),
             ],
           ),
           actions: [
@@ -1209,19 +1185,25 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               ),
           ],
         ),
-        bottomNavigationBar: IptvBottomNavBar(
-          selected: _phoneNav,
-          onHome: _goHome,
-          onBrowse: _goBrowse,
-          onFavorites: _goFavoritesTab,
-          onMyAika: _showMyAikaSheet,
-        ),
         body: IptvResumeGate(
           enabled: widget.effectiveDeepLinkChannelId == null,
-          child: Column(
+          child: Stack(
             children: [
-              Expanded(child: _phoneExplorerBody()),
-              const IptvCastMiniController(),
+              _phoneExplorerBody(),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const IptvCastMiniController(),
+                    IptvBottomNavBar(
+                      onHome: _goPhoneHome,
+                      onSearch: () => unawaited(_showSearchSheet()),
+                      onMyAika: () => unawaited(_showMyAikaSheet()),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1686,7 +1668,12 @@ class _StreamTabContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
-    final streamingState = ref.watch(streamingStateProvider);
+    // Identity only — position/buffer ticks must not rebuild the library.
+    final activeChannel = ref.watch(
+      streamingStateProvider.select(
+        (async) => async.asData?.value.currentChannel,
+      ),
+    );
 
     return channelsAsync.when(
       // iptvChannelsProvider re-runs whenever any of its watched
@@ -1701,7 +1688,7 @@ class _StreamTabContent extends ConsumerWidget {
       // _toggleMultiview) even though cached channel data was already on
       // screen. See AsyncValue.when's skipLoadingOnReload/isReloading docs.
       skipLoadingOnReload: true,
-      data: (channels) => _buildContent(context, ref, channels, streamingState),
+      data: (channels) => _buildContent(context, ref, channels, activeChannel),
       loading: () =>
           const TvLoadingScreen(message: 'Loading channels...', channel: null),
       error: (error, stack) => _buildError(context, ref, error.toString()),
@@ -1712,10 +1699,8 @@ class _StreamTabContent extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<IPTVChannel> channels,
-    AsyncValue<StreamingState> streamingState,
+    IPTVChannel? activeChannel,
   ) {
-    final activeChannel = streamingState.asData?.value.currentChannel;
-
     if (channels.isEmpty) {
       return _BringYourOwnPlaylistView(
         onPlaylistSourceTap: onPlaylistSourceTap,

@@ -2,6 +2,7 @@ import 'package:feature_iptv/application/providers/channel_filters_provider.dart
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -755,6 +756,44 @@ void main() {
   );
 
   testWidgets(
+    'phone list logos decode at tile size and keep extra rows in cache',
+    (tester) async {
+      const channelsWithArt = [
+        IPTVChannel(
+          id: 'one',
+          name: 'One',
+          streamUrl: 'https://one',
+          logoUrl: 'https://example.com/logo.png',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channelsWithArt,
+                metadataByChannelId: {},
+                showSortRow: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(AiroNetworkImage), findsOneWidget);
+      expect(
+        tester
+            .widget<CustomScrollView>(find.byType(CustomScrollView))
+            .scrollCacheExtent,
+        const ScrollCacheExtent.pixels(640),
+      );
+    },
+  );
+
+  testWidgets(
     'phone width toggle switches between the single-column list and the '
     'dynamic tile grid',
     (tester) async {
@@ -837,6 +876,45 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('phone grid honors a 2-column and 4-column density', (
+    tester,
+  ) async {
+    Future<void> pumpAt({required double width, required int columns}) {
+      return tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: width,
+              height: 800,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                viewMode: ChannelViewMode.grid,
+                phoneGridColumns: columns,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    await pumpAt(width: 411, columns: 2);
+    var delegate =
+        gridSliver(tester).gridDelegate
+            as SliverGridDelegateWithFixedCrossAxisCount;
+    expect(delegate.crossAxisCount, 2);
+    expect(delegate.mainAxisExtent, 168);
+    expect(tester.takeException(), isNull);
+
+    await pumpAt(width: 411, columns: 4);
+    delegate =
+        gridSliver(tester).gridDelegate
+            as SliverGridDelegateWithFixedCrossAxisCount;
+    expect(delegate.crossAxisCount, 4);
+    expect(delegate.mainAxisExtent, 108);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'tablet/TV width always uses the dynamic grid regardless of viewMode, '

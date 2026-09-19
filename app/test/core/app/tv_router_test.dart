@@ -258,7 +258,8 @@ void main() {
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Live TV'), findsNothing);
     expect(find.byType(IptvBottomNavBar), findsOneWidget);
-    await tester.tap(find.text('My Aika'));
+    expect(find.byTooltip('My Aika'), findsOneWidget);
+    await tester.tap(find.byTooltip('My Aika'));
     await tester.pumpAndSettle();
     expect(find.text('Play local file on TV'), findsOneWidget);
     await tester.tap(find.text('Settings'));
@@ -281,7 +282,8 @@ void main() {
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Live TV'), findsNothing);
     expect(find.byType(IptvBottomNavBar), findsOneWidget);
-    await tester.tap(find.text('My Aika'));
+    expect(find.byTooltip('My Aika'), findsOneWidget);
+    await tester.tap(find.byTooltip('My Aika'));
     await tester.pumpAndSettle();
     expect(find.text('Settings'), findsOneWidget);
   });
@@ -322,6 +324,7 @@ void main() {
       );
 
       expect(find.byType(IptvBottomNavBar), findsOneWidget);
+      expect(find.byTooltip('My Aika'), findsOneWidget);
     },
   );
 
@@ -362,7 +365,8 @@ void main() {
       await pumpTvRouter(tester, initialLocation: TvRouteNames.live);
 
       expect(find.byType(IptvBottomNavBar), findsOneWidget);
-      await tester.tap(find.text('My Aika'));
+      expect(find.byTooltip('My Aika'), findsOneWidget);
+      await tester.tap(find.byTooltip('My Aika'));
       await tester.pumpAndSettle();
       expect(find.text('Play local file on TV'), findsOneWidget);
       debugDefaultTargetPlatformOverride = null;
@@ -597,6 +601,7 @@ void main() {
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Add playlist URL'), findsOneWidget);
     expect(find.byType(IptvBottomNavBar), findsOneWidget);
+    expect(find.byTooltip('My Aika'), findsOneWidget);
     expect(find.text('Your media. Your player.'), findsNothing);
   });
 

@@ -348,6 +348,31 @@ enum ChannelViewMode { list, grid }
 
 const channelViewModeStorageKey = 'iptv_channel_view_mode';
 
+/// Phone-width tile grid density. List mode ignores this; tablet/TV keep
+/// their width-derived column count.
+enum ChannelGridDensity {
+  comfortable(2),
+  standard(3),
+  compact(4),
+  dense(5);
+
+  const ChannelGridDensity(this.columns);
+  final int columns;
+
+  String get settingsLabel => switch (this) {
+    ChannelGridDensity.comfortable => '2 columns · larger',
+    ChannelGridDensity.standard => '3 columns · standard',
+    ChannelGridDensity.compact => '4 columns · compact',
+    ChannelGridDensity.dense => '5 columns · dense',
+  };
+}
+
+const channelGridDensityStorageKey = 'iptv_channel_grid_density';
+
+/// Homepage Fav chip. Session-only so a cold start always shows the full
+/// library rather than an empty favorites list.
+final phoneLibraryFavoritesOnlyProvider = StateProvider<bool>((ref) => false);
+
 class ChannelViewModeNotifier extends StateNotifier<ChannelViewMode> {
   ChannelViewModeNotifier(this._ref) : super(ChannelViewMode.list) {
     _load();
@@ -393,6 +418,51 @@ final channelViewModeProvider =
       (ref) => ChannelViewModeNotifier(ref),
     );
 
+class ChannelGridDensityNotifier extends StateNotifier<ChannelGridDensity> {
+  ChannelGridDensityNotifier(this._ref) : super(ChannelGridDensity.standard) {
+    _load();
+  }
+
+  final Ref _ref;
+
+  void setDensity(ChannelGridDensity density) {
+    if (density == state) return;
+    state = density;
+    unawaited(_save(density));
+  }
+
+  Future<void> _save(ChannelGridDensity density) async {
+    try {
+      await _ref
+          .read(sharedPreferencesProvider)
+          .setString(channelGridDensityStorageKey, density.name);
+    } catch (_) {
+      // Keep the in-memory choice when local persistence is unavailable.
+    }
+  }
+
+  void _load() {
+    try {
+      final stored = _ref
+          .read(sharedPreferencesProvider)
+          .getString(channelGridDensityStorageKey);
+      for (final density in ChannelGridDensity.values) {
+        if (density.name == stored) {
+          state = density;
+          break;
+        }
+      }
+    } catch (_) {
+      // Defaults keep the browser usable when preferences are unavailable.
+    }
+  }
+}
+
+final channelGridDensityProvider =
+    StateNotifierProvider<ChannelGridDensityNotifier, ChannelGridDensity>(
+      (ref) => ChannelGridDensityNotifier(ref),
+    );
+
 class ChannelFilterDimensions {
   const ChannelFilterDimensions({
     required this.categories,
@@ -428,6 +498,7 @@ class ChannelBrowserSnapshotCache {
   ChannelSort? _sort;
   List<String>? _favoriteIds;
   Set<String>? _notForMeIds;
+  bool _favoritesOnly = false;
   ChannelBrowserSnapshot? _snapshot;
 
   ChannelBrowserSnapshot resolve({
@@ -437,6 +508,7 @@ class ChannelBrowserSnapshotCache {
     required ChannelSort sort,
     required List<String> favoriteIds,
     required Set<String> notForMeIds,
+    bool favoritesOnly = false,
   }) {
     final previous = _snapshot;
     if (previous != null &&
@@ -445,7 +517,8 @@ class ChannelBrowserSnapshotCache {
         _filters == filters &&
         _sort == sort &&
         identical(_favoriteIds, favoriteIds) &&
-        identical(_notForMeIds, notForMeIds)) {
+        identical(_notForMeIds, notForMeIds) &&
+        _favoritesOnly == favoritesOnly) {
       return previous;
     }
 
@@ -463,12 +536,18 @@ class ChannelBrowserSnapshotCache {
       metadataByChannelId: metadataByChannelId,
       sort: sort,
     );
-    final visibleChannels = _partitionByPreference(
+    final favoriteIdSet = favoriteIds.toSet();
+    var visibleChannels = _partitionByPreference(
       sorted,
-      favoriteIds: favoriteIds
-          .toSet(), // O(1) membership for the partition below
+      favoriteIds: favoriteIdSet, // O(1) membership for the partition below
       notForMeIds: notForMeIds,
     );
+    if (favoritesOnly) {
+      visibleChannels = [
+        for (final channel in visibleChannels)
+          if (favoriteIdSet.contains(channel.id)) channel,
+      ];
+    }
     final next = ChannelBrowserSnapshot(
       dimensions: dimensions,
       visibleChannels: visibleChannels,
@@ -480,6 +559,7 @@ class ChannelBrowserSnapshotCache {
     _sort = sort;
     _favoriteIds = favoriteIds;
     _notForMeIds = notForMeIds;
+    _favoritesOnly = favoritesOnly;
     _snapshot = next;
     return next;
   }
@@ -491,6 +571,7 @@ class ChannelBrowserSnapshotCache {
     _sort = null;
     _favoriteIds = null;
     _notForMeIds = null;
+    _favoritesOnly = false;
     _snapshot = null;
   }
 }
