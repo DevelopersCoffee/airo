@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_iptv_org_api/platform_iptv_org_api.dart';
 
 void main() {
-  testWidgets('search is first and country uses human-readable labels', (
+  testWidgets('search is first and country stays off the browse chip row', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -38,56 +38,47 @@ void main() {
       ),
     );
 
-    expect(find.text('🇮🇳 India'), findsOneWidget);
+    expect(find.text('🇮🇳 India'), findsNothing);
+    expect(find.byKey(const ValueKey('filter-chip-country')), findsNothing);
     expect(find.text('Language'), findsNothing);
     expect(find.byKey(const ValueKey('filter-chip-search')), findsOneWidget);
-    expect(find.byKey(const ValueKey('filter-chip-country')), findsOneWidget);
-
-    expect(
-      tester.getTopLeft(find.byKey(const ValueKey('filter-chip-search'))).dx,
-      lessThan(
-        tester.getTopLeft(find.byKey(const ValueKey('filter-chip-country'))).dx,
-      ),
-    );
+    expect(find.byKey(const ValueKey('filter-chip-category')), findsOneWidget);
   });
 
-  testWidgets(
-    'compact defaults to false, keeping the original higher-contrast '
-    'inactive-chip background for the ten-foot D-pad layout',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      );
-      addTearDown(container.dispose);
+  testWidgets('compact defaults to false, keeping the original higher-contrast '
+      'inactive-chip background for the ten-foot D-pad layout', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: FilterRow(
-                dimensions: ChannelFilterDimensions(
-                  categories: {'News'},
-                  countries: {},
-                  languages: {},
-                ),
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: FilterRow(
+              dimensions: ChannelFilterDimensions(
+                categories: {'News'},
+                countries: {},
+                languages: {},
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      final material = tester.widget<Material>(
-        find.descendant(
-          of: find.byKey(const ValueKey('filter-chip-category')),
-          matching: find.byType(Material),
-        ),
-      );
-      expect(material.color!.a, closeTo(0.72, 0.001));
-    },
-  );
+    final material = tester.widget<Material>(
+      find.descendant(
+        of: find.byKey(const ValueKey('filter-chip-category')),
+        matching: find.byType(Material),
+      ),
+    );
+    expect(material.color!.a, closeTo(0.72, 0.001));
+  });
 
   testWidgets(
     'compact: true lightens the inactive-chip background for the phone '
@@ -160,7 +151,8 @@ void main() {
 
     expect(find.byType(SingleChildScrollView), findsNothing);
     expect(find.text('Category'), findsOneWidget);
-    expect(find.text('Country'), findsOneWidget);
+    expect(find.text('Country'), findsNothing);
+    expect(find.byKey(const ValueKey('filter-chip-country')), findsNothing);
     expect(find.text('Language'), findsOneWidget);
   });
 
@@ -207,7 +199,8 @@ void main() {
       ),
     );
 
-    expect(find.text('🇮🇳 Bharat'), findsOneWidget);
+    expect(find.text('🇮🇳 Bharat'), findsNothing);
+    expect(find.byKey(const ValueKey('filter-chip-country')), findsNothing);
     expect(find.text('Hindi'), findsOneWidget);
   });
 
@@ -461,47 +454,76 @@ void main() {
     );
   });
 
-  testWidgets('all country preserves category and clears dependent language', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-    );
-    addTearDown(container.dispose);
-    final notifier = container.read(channelFiltersProvider.notifier);
-    notifier.setCategory('News');
-    notifier.setCountry('IN');
-    notifier.setLanguage('en');
+  testWidgets(
+    'compact toolbar keeps sort, search, filters, and list/grid on one row',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(393, 852);
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
 
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const MaterialApp(
-          home: Scaffold(
-            body: FilterRow(
-              dimensions: ChannelFilterDimensions(
-                categories: {'News'},
-                countries: {'IN', 'US'},
-                languages: {'en'},
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: FilterRow(
+                compact: true,
+                sort: const ChannelSort(),
+                onSort: (_) {},
+                viewMode: ChannelViewMode.list,
+                onViewModeChanged: (_) {},
+                dimensions: ChannelFilterDimensions(
+                  categories: {'News'},
+                  countries: {'IN'},
+                  languages: {'en'},
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.byKey(const ValueKey('filter-chip-country')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('All Countries'));
-    await tester.pumpAndSettle();
+      expect(find.text('Sort: Name'), findsOneWidget);
+      expect(find.byKey(const ValueKey('filter-chip-search')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('filter-chip-category')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('filter-chip-language')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('channel-view-mode-toggle')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('filter-chip-country')), findsNothing);
 
-    expect(
-      container.read(channelFiltersProvider),
-      const ChannelFilters(category: 'News'),
-    );
-  });
+      final sortY = tester.getCenter(find.text('Sort: Name')).dy;
+      final searchY = tester
+          .getCenter(find.byKey(const ValueKey('filter-chip-search')))
+          .dy;
+      final categoryY = tester
+          .getCenter(find.byKey(const ValueKey('filter-chip-category')))
+          .dy;
+      final languageY = tester
+          .getCenter(find.byKey(const ValueKey('filter-chip-language')))
+          .dy;
+      final toggleY = tester
+          .getCenter(find.byKey(const ValueKey('channel-view-mode-toggle')))
+          .dy;
+      expect(searchY, closeTo(sortY, 12));
+      expect(categoryY, closeTo(sortY, 12));
+      expect(languageY, closeTo(sortY, 12));
+      expect(toggleY, closeTo(sortY, 12));
+    },
+  );
 
   testWidgets(
     'selecting a language records it as Recent for the next picker open',

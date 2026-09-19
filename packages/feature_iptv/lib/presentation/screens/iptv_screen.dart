@@ -37,6 +37,7 @@ import '../tv_ux/sections/ways_to_watch_dialog.dart';
 import 'cast_multiview_screen.dart';
 import '../tv_ux/tv_loading_screen.dart';
 import '../tv_ux/tv_local_media_browser.dart';
+import 'browse_screen.dart';
 import 'mobile_favorites_screen.dart';
 import 'shared_channel_import_screen.dart';
 
@@ -143,6 +144,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   /// presentation state in sync with the native callback so the PiP window
   /// contains only the active video rather than the app bar and browse UI.
   bool _isPictureInPicture = false;
+  IptvPhoneNavDestination _phoneNav = IptvPhoneNavDestination.home;
 
   @override
   void initState() {
@@ -790,13 +792,47 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     await showPlaylistSourceSheet(context, ref, initialUrl: url);
   }
 
-  /// The bottom nav's Home destination: returns the browse grid to its
-  /// unfiltered state, mirroring the same "clear filters" affordance
-  /// `_NoMatchesView` already exposes when a filter empties the results
-  /// (see `airo_tv_shell.dart`'s identical `channelFiltersProvider.notifier
-  /// .clear()` call).
-  void _resetToTop() {
-    ref.read(channelFiltersProvider.notifier).clear();
+  /// The bottom nav's Home destination: returns to the live library without
+  /// wiping the user's active browse filters.
+  void _goHome() {
+    setState(() => _phoneNav = IptvPhoneNavDestination.home);
+  }
+
+  void _goBrowse() {
+    setState(() => _phoneNav = IptvPhoneNavDestination.browse);
+  }
+
+  void _goFavoritesTab() {
+    setState(() => _phoneNav = IptvPhoneNavDestination.favorites);
+  }
+
+  Widget _phoneExplorerBody() {
+    switch (_phoneNav) {
+      case IptvPhoneNavDestination.home:
+        return _StreamTabContent(
+          key: const ValueKey('iptv-browse-grid'),
+          onChannelTap: _playChannel,
+          onFullscreenToggle: _toggleFullscreen,
+          onPlaylistSourceTap: _showPlaylistSheet,
+          onGuideSourceTap: _showGuideSourceSheet,
+          onScanWithPhoneTap: _showQrPlaylist,
+          onWaysToWatchTap: _showWaysToWatch,
+          onShareVideoFrame: widget.onShareVideoFrame,
+          onSearch: _showSearchSheet,
+        );
+      case IptvPhoneNavDestination.browse:
+        return BrowseScreen(
+          onChannelSelected: (channel) {
+            _playChannel(channel);
+            _goHome();
+          },
+        );
+      case IptvPhoneNavDestination.favorites:
+        return MobileFavoritesScreen(
+          showAppBar: false,
+          onChannelSelected: _goHome,
+        );
+    }
   }
 
   /// The bottom nav's "My Aika" destination: an overflow sheet for the
@@ -1174,26 +1210,17 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           ],
         ),
         bottomNavigationBar: IptvBottomNavBar(
-          onHome: _resetToTop,
-          onSearch: _showSearchSheet,
+          selected: _phoneNav,
+          onHome: _goHome,
+          onBrowse: _goBrowse,
+          onFavorites: _goFavoritesTab,
           onMyAika: _showMyAikaSheet,
         ),
         body: IptvResumeGate(
           enabled: widget.effectiveDeepLinkChannelId == null,
           child: Column(
             children: [
-              Expanded(
-                child: _StreamTabContent(
-                  key: const ValueKey('iptv-browse-grid'),
-                  onChannelTap: _playChannel,
-                  onFullscreenToggle: _toggleFullscreen,
-                  onPlaylistSourceTap: _showPlaylistSheet,
-                  onGuideSourceTap: _showGuideSourceSheet,
-                  onScanWithPhoneTap: _showQrPlaylist,
-                  onWaysToWatchTap: _showWaysToWatch,
-                  onShareVideoFrame: widget.onShareVideoFrame,
-                ),
-              ),
+              Expanded(child: _phoneExplorerBody()),
               const IptvCastMiniController(),
             ],
           ),
@@ -1634,6 +1661,7 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onWaysToWatchTap,
     this.onShareVideoFrame,
     this.playlistSourceInInfoBar = false,
+    this.onSearch,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
@@ -1651,6 +1679,9 @@ class _StreamTabContent extends ConsumerWidget {
   /// True on TV (no app bar): surfaces the playlist-source entry in the
   /// shell's LIVE bar instead. Phones keep it in the app bar only.
   final bool playlistSourceInInfoBar;
+
+  /// Opens the in-player search sheet from the compact filter Search chip.
+  final VoidCallback? onSearch;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1707,6 +1738,7 @@ class _StreamTabContent extends ConsumerWidget {
       onWaysToWatchTap: onWaysToWatchTap,
       onShareVideoFrame: onShareVideoFrame,
       onFullscreenToggle: onFullscreenToggle,
+      onSearch: onSearch,
       // Only true once there's an actual channel playing: that's the only
       // state where `videoStage` below is a real `VideoPlayerWidget` with
       // Help/Settings wired into its own sheet. The "select a channel"

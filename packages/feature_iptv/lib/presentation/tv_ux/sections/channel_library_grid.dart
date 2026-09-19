@@ -21,6 +21,12 @@ const _cardWidth = 155.0;
 // the tile needs to shrink vertically too.
 const _cardHeight = 169.0; // MediaCard.railHeightFor(MediaCardVariant.standard)
 const _gridSpacing = 14.0;
+// Phone-width *grid* (not the editorial list): 3 columns so a ~360–411px
+// handset shows more channels and less empty cell around the 172px rail card.
+const _phoneGridColumns = 3;
+const _phoneGridSpacing = 8.0;
+const _phoneGridPadding = 8.0;
+const _phoneGridCardHeight = 128.0;
 const _preloadRowsBeforeViewport = 2;
 const _preloadRowsAfterViewport = 6;
 
@@ -29,8 +35,61 @@ const _preloadRowsAfterViewport = 6;
 /// editorial layout touch users expect from an OTT app, and the same
 /// breakpoint [AiroTvShell] already uses to switch into phone chrome.
 const _phoneBreakpoint = 600.0;
-const _horizontalCardHeight = 84.0;
+const _horizontalCardHeight = 88.0;
 const _horizontalRowSpacing = 10.0;
+
+/// Best-effort quality badge for browse rows: playlist `qualityUrls` first,
+/// then tokens in the channel name (HD / 1080p / 4K / SD).
+String? channelBrowseQualityLabel(IPTVChannel channel) {
+  final urls = channel.qualityUrls;
+  if (urls != null && urls.isNotEmpty) {
+    const rank = [
+      '4K',
+      '2160P',
+      '2160',
+      '1080P',
+      '1080',
+      '720P',
+      '720',
+      'HD',
+      '480P',
+      '360P',
+      'SD',
+    ];
+    var bestIndex = rank.length;
+    String? best;
+    for (final key in urls.keys) {
+      final upper = key.toUpperCase();
+      for (var i = 0; i < rank.length; i++) {
+        if (!upper.contains(rank[i]) || i >= bestIndex) continue;
+        bestIndex = i;
+        best = switch (rank[i]) {
+          '2160P' || '2160' => '4K',
+          '1080' => '1080p',
+          '720' => '720p',
+          '1080P' => '1080p',
+          '720P' => '720p',
+          _ =>
+            rank[i] == 'HD'
+                ? 'HD'
+                : rank[i] == '4K'
+                ? '4K'
+                : rank[i] == 'SD'
+                ? 'SD'
+                : key,
+        };
+      }
+    }
+    return best ?? urls.keys.first;
+  }
+  final upper = channel.name.toUpperCase();
+  if (upper.contains('4K') || upper.contains('UHD')) return '4K';
+  if (upper.contains('1080') || upper.contains('FHD')) return '1080p';
+  if (RegExp(r'(^|[\s\-])HD([\s\-]|$)').hasMatch(upper)) return 'HD';
+  if (upper.contains('720')) return '720p';
+  if (RegExp(r'(^|[\s\-])SD([\s\-]|$)').hasMatch(upper)) return 'SD';
+  return null;
+}
 
 /// Card-grid channel browser — replaces the spreadsheet-style
 /// [ChannelTable]. Matches the "LIBRARY" screen of the AiroTV D-pad design
@@ -59,6 +118,7 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.viewMode = ChannelViewMode.list,
     this.onViewModeChanged,
     this.browseAdCard,
+    this.showSortRow = true,
   });
 
   final List<IPTVChannel> channels;
@@ -90,6 +150,10 @@ class ChannelLibraryGrid extends StatefulWidget {
   /// when the library is shorter). Null keeps the grid channel-only.
   final Widget? browseAdCard;
 
+  /// Phone compact chrome moves sort + list/grid onto [FilterRow]. False
+  /// hides this grid's own sort row so those controls are not duplicated.
+  final bool showSortRow;
+
   @override
   State<ChannelLibraryGrid> createState() => _ChannelLibraryGridState();
 }
@@ -99,6 +163,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
   String _lastVisibleSignature = '';
   int _lastColumnCount = 1;
   double _lastRowExtent = _cardHeight;
+  double _lastRowSpacing = _gridSpacing;
 
   @override
   void initState() {
@@ -166,7 +231,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
     final columns = _lastColumnCount;
     final viewportHeight = _scrollController.position.viewportDimension;
     final offset = _scrollController.offset;
-    final rowExtent = _lastRowExtent + _gridSpacing;
+    final rowExtent = _lastRowExtent + _lastRowSpacing;
     final firstRow = (offset / rowExtent).floor().clamp(0, 1 << 30);
     final visibleRows = (viewportHeight / rowExtent).ceil() + 1;
     final firstIndex = ((firstRow - _preloadRowsBeforeViewport) * columns)
@@ -195,14 +260,29 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
         // alternative to, so the toggle (and this widget's viewMode) has no
         // effect there.
         final usePhoneList = isPhone && widget.viewMode == ChannelViewMode.list;
+        final usePhoneGrid = isPhone && !usePhoneList;
         final columns = usePhoneList
             ? 1
+            : usePhoneGrid
+            ? _phoneGridColumns
             : _columnCountFor(constraints.maxWidth);
-        final rowExtent = usePhoneList ? _horizontalCardHeight : _cardHeight;
-        final rowSpacing = usePhoneList ? _horizontalRowSpacing : _gridSpacing;
-        if (columns != _lastColumnCount || rowExtent != _lastRowExtent) {
+        final rowExtent = usePhoneList
+            ? _horizontalCardHeight
+            : usePhoneGrid
+            ? _phoneGridCardHeight
+            : _cardHeight;
+        final rowSpacing = usePhoneList
+            ? _horizontalRowSpacing
+            : usePhoneGrid
+            ? _phoneGridSpacing
+            : _gridSpacing;
+        final gridHPad = usePhoneGrid ? _phoneGridPadding : 12.0;
+        if (columns != _lastColumnCount ||
+            rowExtent != _lastRowExtent ||
+            rowSpacing != _lastRowSpacing) {
           _lastColumnCount = columns;
           _lastRowExtent = rowExtent;
+          _lastRowSpacing = rowSpacing;
           WidgetsBinding.instance.addPostFrameCallback(
             (_) => _reportVisibleChannels(force: true),
           );
@@ -212,14 +292,15 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
           key: const PageStorageKey<String>('airo-tv-channel-library-scroll'),
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverToBoxAdapter(
-              child: _LibrarySortRow(
-                sort: widget.sort,
-                onSort: widget.onSort,
-                viewMode: widget.viewMode,
-                onViewModeChanged: isPhone ? widget.onViewModeChanged : null,
+            if (widget.showSortRow)
+              SliverToBoxAdapter(
+                child: _LibrarySortRow(
+                  sort: widget.sort,
+                  onSort: widget.onSort,
+                  viewMode: widget.viewMode,
+                  onViewModeChanged: isPhone ? widget.onViewModeChanged : null,
+                ),
               ),
-            ),
             // The shell only builds this grid once the unfiltered library is
             // non-empty (an empty library gets the onboarding view instead),
             // so zero channels here always means the filters excluded them
@@ -233,12 +314,12 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
               )
             else
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(12, 4, 12, rowSpacing),
+                padding: EdgeInsets.fromLTRB(gridHPad, 4, gridHPad, rowSpacing),
                 sliver: SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: columns,
                     mainAxisExtent: rowExtent,
-                    crossAxisSpacing: _gridSpacing,
+                    crossAxisSpacing: rowSpacing,
                     mainAxisSpacing: rowSpacing,
                   ),
                   delegate: SliverChildBuilderDelegate(
@@ -247,7 +328,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                       if (adIndex >= 0 && index == adIndex) {
                         return KeyedSubtree(
                           key: ChannelLibraryGrid.browseAdSlotKey,
-                          child: widget.browseAdCard!,
+                          child: SizedBox.expand(child: widget.browseAdCard!),
                         );
                       }
                       final channel =
@@ -274,6 +355,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                           ),
                           onNotForMeToggle: widget.onNotForMeToggle,
                           horizontal: usePhoneList,
+                          compactGrid: usePhoneGrid,
                         ),
                       );
                     },
@@ -400,7 +482,6 @@ class _LibrarySortRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = _sortColumnLabels[sort.column] ?? 'Name';
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
       child: Row(
@@ -408,56 +489,83 @@ class _LibrarySortRow extends StatelessWidget {
           Expanded(
             child: Align(
               alignment: Alignment.centerLeft,
-              child: TvFocusable(
-                key: const ValueKey('channel-sort-trigger'),
-                semanticLabel:
-                    'Sort by $label, ${sort.ascending ? 'ascending' : 'descending'}',
-                onSelect: onSort == null ? null : () => _showSortSheet(context),
-                borderRadius: 8,
-                child: Material(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
-                  borderRadius: BorderRadius.circular(8),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: onSort == null
-                        ? null
-                        : () => _showSortSheet(context),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            sort.ascending
-                                ? Icons.arrow_upward
-                                : Icons.arrow_downward,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Text('Sort: $label'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              child: ChannelLibrarySortChip(sort: sort, onSort: onSort),
             ),
           ),
           if (onViewModeChanged != null) ...[
             const SizedBox(width: 8),
-            _ViewModeToggle(mode: viewMode, onChanged: onViewModeChanged!),
+            ChannelViewModeToggle(
+              mode: viewMode,
+              onChanged: onViewModeChanged!,
+            ),
           ],
         ],
       ),
     );
   }
+}
 
-  void _showSortSheet(BuildContext context) {
+/// Sort chip shared by the library grid and the compact [FilterRow].
+class ChannelLibrarySortChip extends StatelessWidget {
+  const ChannelLibrarySortChip({
+    super.key,
+    required this.sort,
+    this.onSort,
+    this.height,
+  });
+
+  final ChannelSort sort;
+  final ValueChanged<ChannelSortColumn>? onSort;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _sortColumnLabels[sort.column] ?? 'Name';
+    return TvFocusable(
+      key: const ValueKey('channel-sort-trigger'),
+      semanticLabel:
+          'Sort by $label, ${sort.ascending ? 'ascending' : 'descending'}',
+      onSelect: onSort == null ? null : () => _showChannelSortSheet(context),
+      borderRadius: 8,
+      child: Material(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onSort == null ? null : () => _showChannelSortSheet(context),
+          child: SizedBox(
+            height: height,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: height == null ? 8 : 0,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      sort.ascending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text('Sort: $label'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showChannelSortSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -489,9 +597,13 @@ class _LibrarySortRow extends StatelessWidget {
   }
 }
 
-/// Phone-only list/grid switch, styled to match [_LibrarySortRow]'s chip.
-class _ViewModeToggle extends StatelessWidget {
-  const _ViewModeToggle({required this.mode, required this.onChanged});
+/// Phone-only list/grid switch, styled to match [ChannelLibrarySortChip].
+class ChannelViewModeToggle extends StatelessWidget {
+  const ChannelViewModeToggle({
+    super.key,
+    required this.mode,
+    required this.onChanged,
+  });
 
   final ChannelViewMode mode;
   final ValueChanged<ChannelViewMode> onChanged;
@@ -538,6 +650,7 @@ class _ChannelTile extends StatefulWidget {
     required this.isNotForMe,
     this.onNotForMeToggle,
     this.horizontal = false,
+    this.compactGrid = false,
   });
 
   final IPTVChannel channel;
@@ -556,6 +669,10 @@ class _ChannelTile extends StatefulWidget {
   /// right, LIVE trailing) used below the phone breakpoint, instead of the
   /// vertical poster tile the D-pad/TV grid uses.
   final bool horizontal;
+
+  /// Phone-width tile grid: fill the cell so 3-up does not leave empty
+  /// gutters around a fixed 172px rail card.
+  final bool compactGrid;
 
   @override
   State<_ChannelTile> createState() => _ChannelTileState();
@@ -647,6 +764,24 @@ class _ChannelTileState extends State<_ChannelTile> {
             logoUrl: widget.channel.effectiveLogoUrl,
             initials: _initialsFor(widget.channel.name),
             isLive: !widget.channel.isAudioOnly,
+            isAudio: widget.channel.isAudioOnly,
+            isFavorite: widget.isFavorite,
+            qualityLabel: channelBrowseQualityLabel(widget.channel),
+            onFavoriteToggle: widget.onFavoriteToggle == null
+                ? null
+                : () => widget.onFavoriteToggle!(widget.channel),
+            favoriteKey: ValueKey('channel-favorite-${widget.channel.id}'),
+            onTap: widget.onSelected == null ? null : _selectNow,
+            onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
+            onFocus: _scheduleFocusPlay,
+            onUnfocus: _cancelFocusPlay,
+          )
+        : widget.compactGrid
+        ? _CompactGridMediaCard(
+            name: widget.channel.name,
+            subtitle: subtitle,
+            logoUrl: widget.channel.effectiveLogoUrl,
+            initials: _initialsFor(widget.channel.name),
             onTap: widget.onSelected == null ? null : _selectNow,
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
             onFocus: _scheduleFocusPlay,
@@ -707,6 +842,120 @@ class _ChannelTileState extends State<_ChannelTile> {
   }
 }
 
+/// Fills the grid cell (no fixed 172px rail width) so a 3-column phone
+/// layout does not leave empty gutters around a small logo.
+class _CompactGridMediaCard extends StatelessWidget {
+  const _CompactGridMediaCard({
+    required this.name,
+    required this.initials,
+    this.subtitle,
+    this.logoUrl,
+    this.onTap,
+    this.onLongPress,
+    this.onFocus,
+    this.onUnfocus,
+  });
+
+  final String name;
+  final String initials;
+  final String? subtitle;
+  final String? logoUrl;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onFocus;
+  final VoidCallback? onUnfocus;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return TvFocusable(
+      onSelect: onTap,
+      onSecondaryAction: onLongPress,
+      onFocus: onFocus,
+      onUnfocus: onUnfocus,
+      borderRadius: 10,
+      semanticLabel: name,
+      semanticHint: 'Press OK to play channel',
+      semanticButton: true,
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: ColoredBox(
+                  color: colorScheme.surfaceContainerHighest,
+                  child: logoUrl != null && logoUrl!.isNotEmpty
+                      ? Image.network(
+                          logoUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _initialsFill(colorScheme),
+                        )
+                      : _initialsFill(colorScheme),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 5, 6, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _initialsFill(ColorScheme colorScheme) {
+    return Center(
+      child: Text(
+        initials,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
 /// Full-width editorial card for the phone channel list: a square logo,
 /// name + metadata, and a trailing LIVE badge — replacing the vertical
 /// poster tile below the phone breakpoint (design feedback: the grid tile
@@ -718,6 +967,11 @@ class _HorizontalMediaCard extends StatelessWidget {
     this.subtitle,
     this.logoUrl,
     this.isLive = false,
+    this.isAudio = false,
+    this.isFavorite = false,
+    this.qualityLabel,
+    this.onFavoriteToggle,
+    this.favoriteKey,
     this.onTap,
     this.onLongPress,
     this.onFocus,
@@ -729,6 +983,11 @@ class _HorizontalMediaCard extends StatelessWidget {
   final String? subtitle;
   final String? logoUrl;
   final bool isLive;
+  final bool isAudio;
+  final bool isFavorite;
+  final String? qualityLabel;
+  final VoidCallback? onFavoriteToggle;
+  final Key? favoriteKey;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onFocus;
@@ -809,11 +1068,53 @@ class _HorizontalMediaCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (isLive) ...[
+              if (isFavorite ||
+                  onFavoriteToggle != null ||
+                  qualityLabel != null ||
+                  isLive ||
+                  isAudio) ...[
                 const SizedBox(width: 8),
-                const AiroBadge.live(
-                  pulse: false,
-                  borderRadius: AiroSpacing.radiusSm,
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: onFavoriteToggle,
+                          child: Icon(
+                            key: favoriteKey,
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            size: 18,
+                            color: isFavorite
+                                ? colorScheme.error
+                                : colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (qualityLabel != null) ...[
+                          const SizedBox(width: 6),
+                          AiroBadge(
+                            label: qualityLabel!,
+                            variant: AiroBadgeVariant.neutral,
+                            size: AiroBadgeSize.sm,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (isAudio)
+                      AiroBadge(
+                        label: 'Audio',
+                        variant: AiroBadgeVariant.warning,
+                        size: AiroBadgeSize.sm,
+                      )
+                    else if (isLive)
+                      const AiroBadge.live(
+                        pulse: false,
+                        borderRadius: AiroSpacing.radiusSm,
+                      ),
+                  ],
                 ),
               ],
             ],

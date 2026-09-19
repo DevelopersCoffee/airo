@@ -56,6 +56,7 @@ class AiroTvShell extends ConsumerStatefulWidget {
     this.videoFrameEncoder,
     this.onFullscreenToggle,
     this.videoStageHasOwnActions = false,
+    this.onSearch,
   });
 
   final List<IPTVChannel> channels;
@@ -115,6 +116,9 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// matter what [videoStage] renders. MultiView always keeps this shell's
   /// row regardless, since [MultiviewStage] has no sheet of its own.
   final bool videoStageHasOwnActions;
+
+  /// Compact phone Search chip opens this instead of [SearchOverlay].
+  final VoidCallback? onSearch;
 
   @override
   ConsumerState<AiroTvShell> createState() => _AiroTvShellState();
@@ -228,7 +232,9 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       dimensions: snapshot.dimensions,
       countryPrompt: countryPrompt,
     );
-    final table = ChannelLibraryGrid(
+    ChannelLibraryGrid libraryGrid({
+      required bool compact,
+    }) => ChannelLibraryGrid(
       key: const ValueKey('airo-tv-channel-library'),
       channels: snapshot.visibleChannels,
       metadataByChannelId: metadata,
@@ -239,6 +245,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       viewMode: viewMode,
       onViewModeChanged: (mode) =>
           ref.read(channelViewModeProvider.notifier).setMode(mode),
+      showSortRow: !compact,
       onChannelSelected: (channel) => _selectChannel(
         context,
         channel,
@@ -295,6 +302,16 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       dimensions: snapshot.dimensions,
       autofocus: filterRowAutofocus,
       compact: compact,
+      sort: compact ? sort : null,
+      onSort: compact
+          ? (column) => ref.read(channelSortProvider.notifier).state = sort
+                .toggle(column)
+          : null,
+      viewMode: viewMode,
+      onViewModeChanged: compact
+          ? (mode) => ref.read(channelViewModeProvider.notifier).setMode(mode)
+          : null,
+      onSearch: widget.onSearch,
     );
     // A real `VideoPlayerWidget` videoStage owns its own touch-reveal chrome
     // and player-actions sheet -- wrapping it in a second, always-visible
@@ -429,7 +446,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                 if (widget.showVideoStage)
                   Flexible(flex: 3, child: _HeroVideoFrame(child: videoStage)),
                 ...compactChrome,
-                if (showPlaylist) Expanded(flex: 4, child: table),
+                if (showPlaylist)
+                  Expanded(flex: 4, child: libraryGrid(compact: true)),
               ],
             ),
           );
@@ -493,7 +511,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                         child: Column(
                           children: [
                             ...chrome,
-                            if (showPlaylist) Expanded(child: table),
+                            if (showPlaylist)
+                              Expanded(child: libraryGrid(compact: false)),
                           ],
                         ),
                       ),

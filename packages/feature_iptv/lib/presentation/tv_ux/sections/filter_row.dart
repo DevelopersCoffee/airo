@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/channel_filters_provider.dart';
 import '../../../application/providers/iptv_org_api_providers.dart';
+import 'channel_library_grid.dart';
 import 'filter_dialogs.dart';
 import 'search_overlay.dart';
 
@@ -13,6 +14,11 @@ class FilterRow extends ConsumerWidget {
     required this.dimensions,
     this.autofocus = false,
     this.compact = false,
+    this.sort,
+    this.onSort,
+    this.viewMode = ChannelViewMode.list,
+    this.onViewModeChanged,
+    this.onSearch,
   });
 
   final ChannelFilterDimensions dimensions;
@@ -29,38 +35,44 @@ class FilterRow extends ConsumerWidget {
   /// this flag was added for.
   final bool compact;
 
+  /// Compact phone chrome: sort lives on this row with search/filters.
+  final ChannelSort? sort;
+  final ValueChanged<ChannelSortColumn>? onSort;
+  final ChannelViewMode viewMode;
+  final ValueChanged<ChannelViewMode>? onViewModeChanged;
+
+  /// When set, the Search chip opens this instead of [SearchOverlay]
+  /// (phone hosts keep the existing in-player search sheet).
+  final VoidCallback? onSearch;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(channelFiltersProvider);
     final notifier = ref.read(channelFiltersProvider.notifier);
     final recent = ref.watch(recentFilterValuesProvider);
     final recentNotifier = ref.read(recentFilterValuesProvider.notifier);
-    final countries = ref.watch(iptvOrgCountryByCodeProvider);
     final languages = ref.watch(iptvOrgLanguageByCodeProvider);
-    final countryNames = {
-      for (final entry in countries.entries) entry.key: entry.value.name,
-    };
-    final countryFlags = {
-      for (final entry in countries.entries) entry.key: entry.value.flag,
-    };
     final languageNames = {
       for (final entry in languages.entries) entry.key: entry.value.name,
     };
-    String countryLabel(String? value) => countryDisplayLabel(
-      value,
-      taxonomyNames: countryNames,
-      taxonomyFlags: countryFlags,
-    );
     String languageLabel(String? value) =>
         languageDisplayLabel(value, taxonomyNames: languageNames);
     final chips = <Widget>[
+      if (sort != null)
+        ChannelLibrarySortChip(sort: sort!, onSort: onSort, height: 48),
       _FilterChip(
         key: const ValueKey('filter-chip-search'),
         label: filters.search.isEmpty ? 'Search' : filters.search,
         active: filters.search.isNotEmpty,
         icon: Icons.search,
-        onSelected: () =>
-            _showSearchOverlay(context, dimensions, notifier, filters.search),
+        onSelected: () {
+          final search = onSearch;
+          if (search != null) {
+            search();
+            return;
+          }
+          _showSearchOverlay(context, dimensions, notifier, filters.search);
+        },
         onClear: filters.search.isEmpty ? null : () => notifier.setSearch(''),
         autofocus: autofocus,
         compact: compact,
@@ -85,27 +97,6 @@ class FilterRow extends ConsumerWidget {
             onClear: () => notifier.setCategory(null),
           ),
         ),
-      if (dimensions.countries.isNotEmpty)
-        _FilterChip(
-          key: const ValueKey('filter-chip-country'),
-          label: countryLabel(filters.country),
-          active: filters.country != null,
-          icon: Icons.flag,
-          compact: compact,
-          onSelected: () => showTvLongListPicker(
-            context: context,
-            title: 'Country',
-            options: dimensions.countries.toList(growable: false),
-            selectedValue: filters.country,
-            recentValues: recent.countries,
-            onSelected: (value) {
-              notifier.setCountry(value);
-              recentNotifier.record(ChannelFilterDimension.country, value);
-            },
-            onClear: () => notifier.setCountry(null),
-            optionLabel: countryLabel,
-          ),
-        ),
       if (dimensions.languages.isNotEmpty)
         _FilterChip(
           key: const ValueKey('filter-chip-language'),
@@ -127,22 +118,24 @@ class FilterRow extends ConsumerWidget {
             optionLabel: languageLabel,
           ),
         ),
+      if (onViewModeChanged != null)
+        ChannelViewModeToggle(mode: viewMode, onChanged: onViewModeChanged!),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= 760 && chips.length >= 4) {
+        if (constraints.maxWidth >= 760 &&
+            sort == null &&
+            onViewModeChanged == null &&
+            chips.length >= 3) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                Expanded(flex: 12, child: _expandChip(chips[0])),
-                const SizedBox(width: 8),
-                Expanded(flex: 13, child: _expandChip(chips[1])),
-                const SizedBox(width: 8),
-                Expanded(flex: 14, child: _expandChip(chips[2])),
-                const SizedBox(width: 8),
-                Expanded(flex: 13, child: _expandChip(chips[3])),
+                for (var i = 0; i < chips.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  Expanded(child: _expandChip(chips[i])),
+                ],
               ],
             ),
           );
@@ -223,7 +216,9 @@ class _FilterChip extends StatelessWidget {
     final scheme = theme.colorScheme;
     final background = active
         ? scheme.primaryContainer
-        : scheme.surfaceContainerHighest.withValues(alpha: compact ? 0.46 : 0.72);
+        : scheme.surfaceContainerHighest.withValues(
+            alpha: compact ? 0.46 : 0.72,
+          );
     final foreground = active
         ? scheme.onPrimaryContainer
         : scheme.onSurfaceVariant;

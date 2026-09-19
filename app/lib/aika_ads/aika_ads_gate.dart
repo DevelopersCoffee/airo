@@ -6,11 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'aika_ads.dart';
 import 'aika_ads_runtime.dart';
 
-/// Arms in-app native ads on phone/tablet after SDK init and session warmup.
-///
-/// Leanback never gets a browse tile, so the library cannot sit on a blank
-/// fifth slot. Phone (including Aika Stream on Pixel) receives cards only
-/// once [AikaAdManager] will actually load them.
+/// Arms in-app native ads on phone/tablet as soon as the Mobile Ads SDK is
+/// ready. Leanback never gets a browse tile.
 class AikaAdsGate extends ConsumerStatefulWidget {
   const AikaAdsGate({required this.child, super.key});
 
@@ -34,10 +31,7 @@ class _AikaAdsGateState extends ConsumerState<AikaAdsGate> {
     if (!shouldArmAikaPhoneAds(formFactor, AikaAdManager.instance)) {
       return;
     }
-    final delay = delayUntilAikaAdsAllowed(AikaAdManager.instance);
-    if (delay > Duration.zero) {
-      await Future<void>.delayed(delay);
-    }
+    allowImmediateAikaPhoneAds(AikaAdManager.instance);
     if (!mounted) return;
     if (!AikaAdManager.instance.shouldShowAd(
       isLeanback: false,
