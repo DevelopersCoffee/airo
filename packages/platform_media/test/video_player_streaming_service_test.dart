@@ -71,6 +71,50 @@ void main() {
       expect(service.currentState.currentChannel?.id, 'chan-1');
     });
 
+    test('plays a stitched Google DAI HLS master as a normal stream', () async {
+      await service.playChannel(
+        channel(
+          streamUrl: 'https://dai.google.com/linear/hls/event/test/master.m3u8',
+        ),
+      );
+
+      expect(service.currentState.playbackState, PlaybackState.playing);
+      expect(
+        fakePlatform.lastDataSource?.uri,
+        'https://dai.google.com/linear/hls/event/test/master.m3u8',
+      );
+    });
+
+    test('rewrites a live DAI stream-request API to the HLS master', () async {
+      await service.playChannel(
+        channel(
+          streamUrl: 'https://dai.google.com/linear/v1/hls/event/test/stream',
+        ),
+      );
+
+      expect(service.currentState.playbackState, PlaybackState.playing);
+      expect(
+        fakePlatform.lastDataSource?.uri,
+        'https://dai.google.com/linear/hls/event/test/master.m3u8',
+      );
+    });
+
+    test('keeps IMA-only DAI APIs on the ad-insertion diagnostic', () async {
+      await service.playChannel(
+        channel(
+          streamUrl:
+              'https://dai.google.com/ondemand/v1/dash/content/123/vid/abc/stream',
+        ),
+      );
+
+      expect(service.currentState.playbackState, PlaybackState.error);
+      expect(
+        service.currentState.diagnostic?.code,
+        AiroPlaybackDiagnosticCode.adInsertionUnsupported,
+      );
+      expect(fakePlatform.lastDataSource, isNull);
+    });
+
     test(
       'decoder failure surfaces as a typed error and retry count increments',
       () async {
