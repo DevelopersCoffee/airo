@@ -9,6 +9,7 @@ void main() {
 
   late FakeAiroHapticPlatform fake;
   late EngineAikaHaptics haptics;
+  var now = DateTime.utc(2026, 9, 19);
 
   setUp(() async {
     fake = FakeAiroHapticPlatform();
@@ -18,16 +19,33 @@ void main() {
       const AiroHapticSettings(minThrottleDuration: Duration.zero),
     );
     fake.clearInvocations();
-    haptics = EngineAikaHaptics();
+    now = DateTime.utc(2026, 9, 19);
+    haptics = EngineAikaHaptics(clock: () => now);
   });
 
   tearDown(() async {
     await haptics.detachCastSession();
+    await haptics.detachLocalPlayback();
   });
 
-  test('playPause maps to selection', () async {
+  test('constructing the mapper does not set the media profile', () {
+    expect(AiroHaptics.profile, AiroHapticProfile.defaultProfile);
+    expect(haptics.localPlaybackAttached, isFalse);
+  });
+
+  test('playPause maps to confirm', () async {
     await haptics.play(AikaHapticIntent.playPause);
-    expectHapticPlayed(fake, AiroHapticFeedbackType.selection);
+    expectHapticPlayed(fake, AiroHapticFeedbackType.confirm);
+  });
+
+  test('goLive maps to confirm', () async {
+    await haptics.play(AikaHapticIntent.goLive);
+    expectHapticPlayed(fake, AiroHapticFeedbackType.confirm);
+  });
+
+  test('fullscreen maps to confirm', () async {
+    await haptics.play(AikaHapticIntent.fullscreen);
+    expectHapticPlayed(fake, AiroHapticFeedbackType.confirm);
   });
 
   test('channelStep maps to navigation', () async {
@@ -42,19 +60,41 @@ void main() {
     expectHapticPlayed(fake, AiroHapticFeedbackType.toggleOff);
   });
 
+  test('muteOn and muteOff map to toggles', () async {
+    await haptics.play(AikaHapticIntent.muteOn);
+    await haptics.play(AikaHapticIntent.muteOff);
+    expectHapticPlayed(fake, AiroHapticFeedbackType.toggleOn);
+    expectHapticPlayed(fake, AiroHapticFeedbackType.toggleOff);
+  });
+
   test('error maps to error', () async {
     await haptics.play(AikaHapticIntent.error);
     expectHapticPlayed(fake, AiroHapticFeedbackType.error);
   });
 
+  test('error cooldown is 2s wall-clock, not per signature', () async {
+    await haptics.play(AikaHapticIntent.error);
+    await haptics.play(AikaHapticIntent.error);
+    expect(
+      fake.invocations
+          .where((i) => i.feedbackType == AiroHapticFeedbackType.error)
+          .length,
+      1,
+    );
+
+    now = now.add(const Duration(seconds: 2));
+    await haptics.play(AikaHapticIntent.error);
+    expect(
+      fake.invocations
+          .where((i) => i.feedbackType == AiroHapticFeedbackType.error)
+          .length,
+      2,
+    );
+  });
+
   test('castConnected maps to success', () async {
     await haptics.play(AikaHapticIntent.castConnected);
     expectHapticPlayed(fake, AiroHapticFeedbackType.success);
-  });
-
-  test('mute maps to selection', () async {
-    await haptics.play(AikaHapticIntent.mute);
-    expectHapticPlayed(fake, AiroHapticFeedbackType.selection);
   });
 
   test('stop maps to medium impact', () async {
@@ -84,6 +124,19 @@ void main() {
     await expectLater(haptics.play(AikaHapticIntent.playPause), completes);
   });
 
+  test('attachLocalPlayback sets media and detach restores default', () async {
+    await haptics.attachLocalPlayback();
+    expect(haptics.localPlaybackAttached, isTrue);
+    expect(AiroHaptics.profile, AiroHapticProfile.media);
+
+    await haptics.play(AikaHapticIntent.playPause);
+    expect(AiroHaptics.profile, AiroHapticProfile.media);
+
+    await haptics.detachLocalPlayback();
+    expect(haptics.localPlaybackAttached, isFalse);
+    expect(AiroHaptics.profile, AiroHapticProfile.defaultProfile);
+  });
+
   test('attachCastSession is idempotent for the same id', () async {
     await haptics.attachCastSession(id: 'tv-1');
     await haptics.attachCastSession(id: 'tv-1');
@@ -91,13 +144,37 @@ void main() {
     expect(AiroHaptics.profile, AiroHapticProfile.media);
   });
 
-  test('detachCastSession stops playback and is safe twice', () async {
+  test(
+    'detachCastSession restores default when local is not attached',
+    () async {
+      await haptics.attachCastSession(id: 'tv-1');
+      await haptics.detachCastSession();
+      await haptics.detachCastSession();
+      expect(haptics.castSessionId, isNull);
+      expect(fake.isStopped, isTrue);
+      expect(AiroHaptics.profile, AiroHapticProfile.defaultProfile);
+    },
+  );
+
+  test('Cast owns profile while a session id is set', () async {
+    await haptics.attachLocalPlayback();
     await haptics.attachCastSession(id: 'tv-1');
+    await haptics.detachLocalPlayback();
+    expect(AiroHaptics.profile, AiroHapticProfile.media);
+
     await haptics.detachCastSession();
-    await haptics.detachCastSession();
-    expect(haptics.castSessionId, isNull);
-    expect(fake.isStopped, isTrue);
+    expect(AiroHaptics.profile, AiroHapticProfile.defaultProfile);
   });
+
+  test(
+    'detach Cast keeps media while local playback is still attached',
+    () async {
+      await haptics.attachLocalPlayback();
+      await haptics.attachCastSession(id: 'tv-1');
+      await haptics.detachCastSession();
+      expect(AiroHaptics.profile, AiroHapticProfile.media);
+    },
+  );
 }
 
 class _ThrowingHapticPlatform extends FakeAiroHapticPlatform {

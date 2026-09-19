@@ -257,6 +257,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   double _brightness = 0.5;
   late final PlayerBrightnessController _brightnessController;
   late final Future<void> Function(bool enabled) _setAudioOnlyMode;
+  late final AikaHaptics _haptics;
 
   // VOD seek bar drag state — null when the user isn't actively dragging,
   // so the slider tracks live playback position between drags.
@@ -275,8 +276,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         widget.brightnessController ?? SystemPlayerBrightnessController();
     _setAudioOnlyMode =
         widget.setAudioOnlyMode ?? AiroBackgroundAudioMode.setEnabled;
+    _haptics = ref.read(aikaHapticsProvider);
     _loadInitialBrightness();
     _startHideControlsTimer();
+    unawaited(_haptics.attachLocalPlayback());
     // Wakelock is managed by WakelockPlaybackCoordinator at screen scope,
     // not by this widget's lifetime. PiP state comes from
     // pictureInPictureActiveProvider (owned at session scope by
@@ -316,6 +319,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _diagnosticSkipFocusNode.dispose();
     _diagnosticReportFocusNode.dispose();
     _genericRetryFocusNode.dispose();
+    unawaited(_haptics.detachLocalPlayback());
     unawaited(_resetBrightnessSafely());
     super.dispose();
   }
@@ -430,6 +434,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
     }
     widget.onFullscreenToggle?.call();
+    unawaited(ref.read(aikaHapticsProvider).play(AikaHapticIntent.fullscreen));
   }
 
   // Manual audio-only toggle (Task 5, spec Goal 5): lets the user opt into
@@ -612,10 +617,37 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     double step,
   ) {
     final next = (state.volume + step).clamp(0.0, 1.0);
-    if (state.isMuted && next > 0) {
+    final volumeChanged = next != state.volume;
+    final unmute = state.isMuted && next > 0;
+    if (!volumeChanged && !unmute) return;
+
+    if (unmute) {
       service.toggleMute();
     }
-    service.setVolume(next);
+    if (volumeChanged) {
+      service.setVolume(next);
+      unawaited(
+        ref.read(aikaHapticsProvider).play(AikaHapticIntent.volumeTick),
+      );
+    } else {
+      unawaited(ref.read(aikaHapticsProvider).play(AikaHapticIntent.muteOff));
+    }
+  }
+
+  void _toggleMute(VideoPlayerStreamingService service, StreamingState state) {
+    final nextMuted = !state.isMuted;
+    service.toggleMute();
+    unawaited(
+      ref
+          .read(aikaHapticsProvider)
+          .play(nextMuted ? AikaHapticIntent.muteOn : AikaHapticIntent.muteOff),
+    );
+  }
+
+  void _goLive(VideoPlayerStreamingService service, StreamingState state) {
+    if (!state.isLiveStream || !state.isBehindLive) return;
+    unawaited(service.goLive());
+    unawaited(ref.read(aikaHapticsProvider).play(AikaHapticIntent.goLive));
   }
 
   // CV-008 UC-002: D-pad surf mode. Up/Down changes channel while playback
@@ -1239,8 +1271,21 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                             onTap: _showControls,
                             onBrightnessChanged: _onBrightnessGestureChanged,
                             onVolumeChanged: (value) {
-                              if (state.isMuted) service.toggleMute();
-                              service.setVolume(value);
+                              final next = value.clamp(0.0, 1.0);
+                              final audible = state.isMuted
+                                  ? 0.0
+                                  : state.volume;
+                              if (state.isMuted && next > 0) {
+                                service.toggleMute();
+                              }
+                              service.setVolume(next);
+                              if (next != audible) {
+                                unawaited(
+                                  ref
+                                      .read(aikaHapticsProvider)
+                                      .play(AikaHapticIntent.volumeTick),
+                                );
+                              }
                             },
                             child: playerSurface,
                           )
@@ -2033,7 +2078,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         ? Icons.volume_down
                         : Icons.volume_up,
                     tooltip: state.isMuted ? 'Unmute' : 'Mute',
-                    onPressed: () => service.toggleMute(),
+                    onPressed: () => _toggleMute(service, state),
                     diameter: 64,
                     iconSize: 28,
                     backgroundColor: state.isMuted || state.volume == 0
@@ -2355,7 +2400,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       ? Icons.volume_down
                       : Icons.volume_up,
                   tooltip: state.isMuted ? 'Unmute' : 'Mute',
-                  onPressed: () => service.toggleMute(),
+                  onPressed: () => _toggleMute(service, state),
                 ),
                 _PlayerFloatingControlButton(
                   key: const ValueKey('iptv-player-volume-down-button'),
@@ -3034,11 +3079,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       // "Go Live" button - red themed to indicate user is behind
       return TvFocusable(
         focusNode: _centerControlFocusNode,
-        onSelect: () => service.goLive(),
+        onSelect: () => _goLive(service, state),
         semanticLabel: 'Go live',
         borderRadius: 40,
         child: GestureDetector(
-          onTap: () => service.goLive(),
+          onTap: () => _goLive(service, state),
           child: Container(
             width: 80,
             height: 80,
