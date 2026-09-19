@@ -28,6 +28,8 @@ hooks:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # Routing & Navigation
   go_router: 17.1.0

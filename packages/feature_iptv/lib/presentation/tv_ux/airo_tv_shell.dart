@@ -22,6 +22,7 @@ import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/multiview_provider.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import '../../application/channel_warmup_policy.dart';
+import 'sections/bottom_nav_bar.dart';
 import 'sections/channel_info_bar.dart';
 import 'sections/channel_library_grid.dart';
 import 'sections/channel_name_overlay.dart';
@@ -160,6 +161,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         : widget.metadataByChannelId;
     final sort = ref.watch(channelSortProvider);
     final viewMode = ref.watch(channelViewModeProvider);
+    final gridDensity = ref.watch(channelGridDensityProvider);
+    final favoritesOnly = ref.watch(phoneLibraryFavoritesOnlyProvider);
     final countryPrompt = ref.watch(channelCountryPromptProvider);
     final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
     final rowVisibility = ref.watch(controlRowVisibilityProvider);
@@ -177,11 +180,16 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final notForMeIds =
         ref.watch(notForMeChannelIdsProvider).value ?? const <String>{};
     final notForMeToggler = ref.read(channelNotForMeTogglerProvider);
-    final playbackStats = ref
-        .watch(streamingStateProvider)
-        .asData
-        ?.value
-        .playbackStats;
+    // Stats is off by default. Watching the full streaming tick here used to
+    // rebuild the library on every live-position update and hitch phone
+    // flings. Only subscribe when the diagnostic row is actually showing.
+    final playbackStats = rowVisibility.isVisible(AiroTvControlRow.stats)
+        ? ref.watch(
+            streamingStateProvider.select(
+              (async) => async.asData?.value.playbackStats,
+            ),
+          )
+        : null;
     final autoScanState = ref.watch(channelAutoScanProvider);
     final availabilityByChannelId = {
       ...widget.availabilityByChannelId,
@@ -226,6 +234,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       sort: sort,
       favoriteIds: favoriteIds,
       notForMeIds: notForMeIds,
+      favoritesOnly: favoritesOnly,
     );
     _maybeAskForCountry(
       filters: filters,
@@ -246,6 +255,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       onViewModeChanged: (mode) =>
           ref.read(channelViewModeProvider.notifier).setMode(mode),
       showSortRow: !compact,
+      phoneGridColumns: gridDensity.columns,
       onChannelSelected: (channel) => _selectChannel(
         context,
         channel,
@@ -270,13 +280,20 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       onFavoriteToggle: (channel) => favoriteToggler(channel.id),
       notForMeChannelIds: notForMeIds,
       onNotForMeToggle: (channel) => notForMeToggler(channel.id),
-      onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
+      onClearFilters: () {
+        ref.read(channelFiltersProvider.notifier).clear();
+        ref.read(phoneLibraryFavoritesOnlyProvider.notifier).state = false;
+      },
       // Ten-foot is grid-first (`showVideoStage: false`). Native mobile
       // layouts break on leanback, and Cast must never carry an ad tile.
       browseAdCard:
-          widget.showVideoStage && !ref.watch(iptvCastProvider).isCasting
+          widget.showVideoStage &&
+              !ref.watch(iptvCastProvider.select((state) => state.isCasting))
           ? ref.watch(iptvAdPlacementsProvider).browseCard
           : null,
+      floatingNavScrollClearance: widget.onSearch == null
+          ? 0
+          : kIptvPhoneFloatingNavExtent,
     );
     // Only ever built for the `!showVideoStage` (grid-first ten-foot) case --
     // see `showInfoBar` above. `share_plus` is stubbed on that layout, so
@@ -310,6 +327,12 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       viewMode: viewMode,
       onViewModeChanged: compact
           ? (mode) => ref.read(channelViewModeProvider.notifier).setMode(mode)
+          : null,
+      favoritesOnly: favoritesOnly,
+      onFavoritesOnlyChanged: compact
+          ? (value) =>
+                ref.read(phoneLibraryFavoritesOnlyProvider.notifier).state =
+                    value
           : null,
       onSearch: widget.onSearch,
     );

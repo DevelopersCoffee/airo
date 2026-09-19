@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
@@ -21,12 +23,18 @@ const _cardWidth = 155.0;
 // the tile needs to shrink vertically too.
 const _cardHeight = 169.0; // MediaCard.railHeightFor(MediaCardVariant.standard)
 const _gridSpacing = 14.0;
-// Phone-width *grid* (not the editorial list): 3 columns so a ~360–411px
-// handset shows more channels and less empty cell around the 172px rail card.
-const _phoneGridColumns = 3;
 const _phoneGridSpacing = 8.0;
 const _phoneGridPadding = 8.0;
-const _phoneGridCardHeight = 128.0;
+
+double _phoneGridRowExtent(int columns) {
+  return switch (columns.clamp(2, 5)) {
+    2 => 168.0,
+    3 => 128.0,
+    4 => 108.0,
+    _ => 92.0,
+  };
+}
+
 const _preloadRowsBeforeViewport = 2;
 const _preloadRowsAfterViewport = 6;
 
@@ -91,6 +99,22 @@ String? channelBrowseQualityLabel(IPTVChannel channel) {
   return null;
 }
 
+Widget _channelArtwork({
+  required String? logoUrl,
+  required Widget fallback,
+  double? width,
+  double? height,
+}) {
+  if (logoUrl == null || logoUrl.isEmpty) return fallback;
+  return AiroNetworkImage(
+    url: logoUrl,
+    width: width,
+    height: height,
+    fit: BoxFit.cover,
+    errorBuilder: (_, _, _) => fallback,
+  );
+}
+
 /// Card-grid channel browser — replaces the spreadsheet-style
 /// [ChannelTable]. Matches the "LIBRARY" screen of the AiroTV D-pad design
 /// (Claude Design project 02b0b312): tiles instead of rows, sort collapsed
@@ -119,6 +143,8 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.onViewModeChanged,
     this.browseAdCard,
     this.showSortRow = true,
+    this.phoneGridColumns = 3,
+    this.floatingNavScrollClearance = 0,
   });
 
   final List<IPTVChannel> channels;
@@ -154,6 +180,14 @@ class ChannelLibraryGrid extends StatefulWidget {
   /// hides this grid's own sort row so those controls are not duplicated.
   final bool showSortRow;
 
+  /// Phone-width tile grid column count (2–5). Ignored in list mode and
+  /// above [_phoneBreakpoint].
+  final int phoneGridColumns;
+
+  /// Extra trailing scroll space so the last row can sit above an overlay
+  /// nav. Zero when the host has no floating bar.
+  final double floatingNavScrollClearance;
+
   @override
   State<ChannelLibraryGrid> createState() => _ChannelLibraryGridState();
 }
@@ -164,6 +198,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
   int _lastColumnCount = 1;
   double _lastRowExtent = _cardHeight;
   double _lastRowSpacing = _gridSpacing;
+  bool _visibleReportQueued = false;
 
   @override
   void initState() {
@@ -238,6 +273,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
               onNotForMeToggle: widget.onNotForMeToggle,
               horizontal: usePhoneList,
               compactGrid: usePhoneGrid,
+              compactGridShowSubtitle: columns < 5,
             ),
           );
         },
@@ -263,6 +299,21 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
   }
 
   void _reportVisibleChannels({bool force = false}) {
+    if (force) {
+      _visibleReportQueued = false;
+      _flushVisibleChannels(force: true);
+      return;
+    }
+    if (_visibleReportQueued) return;
+    _visibleReportQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _visibleReportQueued = false;
+      if (!mounted) return;
+      _flushVisibleChannels();
+    });
+  }
+
+  void _flushVisibleChannels({bool force = false}) {
     final callback = widget.onVisibleChannelsChanged;
     if (callback == null || !mounted || widget.channels.isEmpty) return;
     if (!_scrollController.hasClients) return;
@@ -302,12 +353,12 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
         final columns = usePhoneList
             ? 1
             : usePhoneGrid
-            ? _phoneGridColumns
+            ? widget.phoneGridColumns.clamp(2, 5)
             : _columnCountFor(constraints.maxWidth);
         final rowExtent = usePhoneList
             ? _horizontalCardHeight
             : usePhoneGrid
-            ? _phoneGridCardHeight
+            ? _phoneGridRowExtent(columns)
             : _cardHeight;
         final rowSpacing = usePhoneList
             ? _horizontalRowSpacing
@@ -329,6 +380,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
           controller: _scrollController,
           key: const PageStorageKey<String>('airo-tv-channel-library-scroll'),
           physics: const AlwaysScrollableScrollPhysics(),
+          scrollCacheExtent: const ScrollCacheExtent.pixels(640),
           slivers: [
             if (widget.showSortRow)
               SliverToBoxAdapter(
@@ -373,9 +425,11 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                     rowSpacing,
                   ),
                   sliver: SliverToBoxAdapter(
-                    child: KeyedSubtree(
-                      key: ChannelLibraryGrid.browseAdSlotKey,
-                      child: widget.browseAdCard!,
+                    child: RepaintBoundary(
+                      child: KeyedSubtree(
+                        key: ChannelLibraryGrid.browseAdSlotKey,
+                        child: widget.browseAdCard!,
+                      ),
                     ),
                   ),
                 ),
@@ -394,6 +448,14 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                     rowSpacing: rowSpacing,
                     usePhoneList: usePhoneList,
                     usePhoneGrid: usePhoneGrid,
+                  ),
+                ),
+              if (widget.floatingNavScrollClearance > 0)
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height:
+                        widget.floatingNavScrollClearance +
+                        MediaQuery.paddingOf(context).bottom,
                   ),
                 ),
             ],
@@ -650,6 +712,99 @@ class ChannelViewModeToggle extends StatelessWidget {
   }
 }
 
+class ChannelGridDensityButton extends StatelessWidget {
+  const ChannelGridDensityButton({
+    super.key,
+    required this.density,
+    required this.onChanged,
+  });
+
+  final ChannelGridDensity density;
+  final ValueChanged<ChannelGridDensity> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<ChannelGridDensity>(
+      key: const ValueKey('channel-grid-density'),
+      tooltip: 'Grid size',
+      initialValue: density,
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        for (final option in ChannelGridDensity.values)
+          PopupMenuItem(value: option, child: Text(option.settingsLabel)),
+      ],
+      child: Material(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.grid_on, size: 18),
+              const SizedBox(width: 6),
+              Text('${density.columns}×'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Settings radios for [channelGridDensityProvider]. Phone grid only.
+class ChannelGridDensitySection extends ConsumerWidget {
+  const ChannelGridDensitySection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final density = ref.watch(channelGridDensityProvider);
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Channel grid',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Text(
+          'How many channel tiles fit on one row in grid view.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 8),
+        RadioGroup<ChannelGridDensity>(
+          groupValue: density,
+          onChanged: (value) {
+            if (value != null) {
+              ref.read(channelGridDensityProvider.notifier).setDensity(value);
+            }
+          },
+          child: Column(
+            children: [
+              for (final option in ChannelGridDensity.values)
+                RadioListTile<ChannelGridDensity>(
+                  key: ValueKey('channel-grid-density-${option.name}'),
+                  value: option,
+                  title: Text(option.settingsLabel),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ChannelTile extends StatefulWidget {
   const _ChannelTile({
     required this.channel,
@@ -665,6 +820,7 @@ class _ChannelTile extends StatefulWidget {
     this.onNotForMeToggle,
     this.horizontal = false,
     this.compactGrid = false,
+    this.compactGridShowSubtitle = true,
   });
 
   final IPTVChannel channel;
@@ -687,6 +843,9 @@ class _ChannelTile extends StatefulWidget {
   /// Phone-width tile grid: fill the cell so 3-up does not leave empty
   /// gutters around a fixed 172px rail card.
   final bool compactGrid;
+
+  /// Dense 5-up tiles drop the subtitle so the name still fits.
+  final bool compactGridShowSubtitle;
 
   @override
   State<_ChannelTile> createState() => _ChannelTileState();
@@ -793,7 +952,7 @@ class _ChannelTileState extends State<_ChannelTile> {
         : widget.compactGrid
         ? _CompactGridMediaCard(
             name: widget.channel.name,
-            subtitle: subtitle,
+            subtitle: widget.compactGridShowSubtitle ? subtitle : null,
             logoUrl: widget.channel.effectiveLogoUrl,
             initials: _initialsFor(widget.channel.name),
             onTap: widget.onSelected == null ? null : _selectNow,
@@ -907,13 +1066,10 @@ class _CompactGridMediaCard extends StatelessWidget {
               Expanded(
                 child: ColoredBox(
                   color: colorScheme.surfaceContainerHighest,
-                  child: logoUrl != null && logoUrl!.isNotEmpty
-                      ? Image.network(
-                          logoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _initialsFill(colorScheme),
-                        )
-                      : _initialsFill(colorScheme),
+                  child: _channelArtwork(
+                    logoUrl: logoUrl,
+                    fallback: _initialsFill(colorScheme),
+                  ),
                 ),
               ),
               Padding(
@@ -1039,14 +1195,12 @@ class _HorizontalMediaCard extends StatelessWidget {
                   height: 56,
                   child: Container(
                     color: colorScheme.surfaceContainerHighest,
-                    child: logoUrl != null && logoUrl!.isNotEmpty
-                        ? Image.network(
-                            logoUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) =>
-                                _initialsBox(colorScheme),
-                          )
-                        : _initialsBox(colorScheme),
+                    child: _channelArtwork(
+                      logoUrl: logoUrl,
+                      width: 56,
+                      height: 56,
+                      fallback: _initialsBox(colorScheme),
+                    ),
                   ),
                 ),
               ),

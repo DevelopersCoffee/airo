@@ -82,14 +82,12 @@ void main() {
     return router;
   }
 
-  // Guide is no longer reachable from a hamburger drawer (deleted along with
-  // the drawer's AppBar menu icon in the bottom-nav revamp): it now lives as
-  // a row in the "My Aika" bottom-nav overflow sheet
-  // (IptvBottomNavBar -> IPTVScreen._showMyAikaSheet -> IPTVScreen._openGuide),
-  // pushed with a plain Navigator.push on the IPTV screen's own Navigator.
-  // The GoRouter location therefore stays at '/iptv' throughout.
+  // Guide lives in the My Aika app-bar overflow sheet
+  // (IPTVScreen._showMyAikaSheet -> IPTVScreen._openGuide), pushed with a
+  // plain Navigator.push on the IPTV screen's own Navigator. The GoRouter
+  // location therefore stays at '/iptv' throughout.
   Future<void> openGuideFromMyAikaSheet(WidgetTester tester) async {
-    await tester.tap(find.text('My Aika'));
+    await tester.tap(find.byTooltip('My Aika'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Guide'));
     await tester.pumpAndSettle();

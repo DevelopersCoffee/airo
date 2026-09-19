@@ -153,21 +153,10 @@ void main() {
     );
   }
 
-  Future<void> tapBottomNavDestination(
-    WidgetTester tester,
-    String label,
-  ) async {
-    await tester.tap(
-      find.descendant(
-        of: find.byType(IptvBottomNavBar),
-        matching: find.text(label),
-      ),
-    );
+  Future<void> openMyAikaSheet(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('My Aika'));
     await tester.pumpAndSettle();
   }
-
-  Future<void> openMyAikaSheet(WidgetTester tester) =>
-      tapBottomNavDestination(tester, 'My Aika');
 
   Future<void> selectMyAikaTile(
     WidgetTester tester,
@@ -191,6 +180,14 @@ void main() {
       expect(find.byTooltip('Movies & Shows'), findsNothing);
       expect(find.byType(Drawer), findsNothing);
       expect(find.byType(IptvBottomNavBar), findsOneWidget);
+      expect(find.byKey(const ValueKey('iptv-phone-nav-home')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('iptv-phone-nav-search')),
+        findsOneWidget,
+      );
+      expect(find.text('Browse'), findsNothing);
+      expect(find.text('Fav'), findsNothing);
+      expect(find.byTooltip('My Aika'), findsOneWidget);
       expect(find.byTooltip('Cast'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('filter-chip-category')),
@@ -231,35 +228,47 @@ void main() {
       tester.element(find.byType(IPTVScreen)),
     );
     container.read(channelFiltersProvider.notifier).setCategory('News');
+    container.read(phoneLibraryFavoritesOnlyProvider.notifier).state = true;
     await tester.pump();
     expect(container.read(channelFiltersProvider).isActive, isTrue);
+    expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
 
-    await tapBottomNavDestination(tester, 'Home');
+    await tester.tap(find.byKey(const ValueKey('iptv-phone-nav-home')));
+    await tester.pumpAndSettle();
 
     expect(container.read(channelFiltersProvider).category, 'News');
     expect(container.read(channelFiltersProvider).isActive, isTrue);
+    expect(container.read(phoneLibraryFavoritesOnlyProvider), isFalse);
   });
 
-  testWidgets('Browse and Fav sections are reachable from the bottom nav', (
+  testWidgets('Fav chip filters the homepage library to favorites', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
 
-    await tapBottomNavDestination(tester, 'Browse');
-    expect(find.byType(BrowseScreen), findsOneWidget);
-
-    await tapBottomNavDestination(tester, 'Fav');
-    expect(find.byType(MobileFavoritesScreen), findsOneWidget);
-    expect(find.text('No favorite channels yet'), findsOneWidget);
-
-    await tapBottomNavDestination(tester, 'Home');
+    expect(find.byKey(const ValueKey('filter-chip-favorites')), findsOneWidget);
     expect(find.byType(BrowseScreen), findsNothing);
     expect(find.byType(MobileFavoritesScreen), findsNothing);
     expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('filter-chip-favorites')),
+    );
+    await tester.tap(find.byKey(const ValueKey('filter-chip-favorites')));
+    await tester.pump();
+
+    expect(find.text('No channels match your filters'), findsOneWidget);
+    expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
   });
 
-  testWidgets('Home from Browse keeps active filters', (tester) async {
+  testWidgets('Fav chip keeps other browse filters', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
 
@@ -269,8 +278,16 @@ void main() {
     container.read(channelFiltersProvider.notifier).setCategory('News');
     await tester.pump();
 
-    await tapBottomNavDestination(tester, 'Browse');
-    await tapBottomNavDestination(tester, 'Home');
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('filter-chip-favorites')),
+    );
+    await tester.tap(find.byKey(const ValueKey('filter-chip-favorites')));
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('filter-chip-favorites')),
+    );
+    await tester.tap(find.byKey(const ValueKey('filter-chip-favorites')));
+    await tester.pump();
 
     expect(container.read(channelFiltersProvider).category, 'News');
     expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
@@ -678,11 +695,13 @@ void main() {
     expect(find.text('Settings'), findsNothing);
   });
 
-  testWidgets('opens search sheet from the browse search chip', (tester) async {
+  testWidgets('opens search sheet from the floating Search tab', (
+    tester,
+  ) async {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+    await tester.tap(find.byKey(const ValueKey('iptv-phone-nav-search')));
     await tester.pumpAndSettle();
 
     expect(find.text('Search channels'), findsOneWidget);
@@ -1188,7 +1207,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+      await tester.tap(find.byKey(const ValueKey('iptv-phone-nav-search')));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField).last, 'City News');
@@ -1228,7 +1247,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+    await tester.tap(find.byKey(const ValueKey('iptv-phone-nav-search')));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).last, 'City News');
@@ -1266,7 +1285,7 @@ void main() {
       castNotifier.setCasting(true, device: tv);
       await tester.pump();
 
-      await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+      await tester.tap(find.byKey(const ValueKey('iptv-phone-nav-search')));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'City News');
       await tester.pumpAndSettle();
@@ -1303,7 +1322,7 @@ void main() {
         castNotifier.setCasting(true, device: tv);
         await tester.pump();
 
-        await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
+        await tester.tap(find.byKey(const ValueKey('iptv-phone-nav-search')));
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField).last, 'City News');
         await tester.pumpAndSettle();

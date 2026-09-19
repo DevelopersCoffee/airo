@@ -1,3 +1,4 @@
+import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/control_row_visibility_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/shell_settings_dialog.dart';
@@ -108,4 +109,39 @@ void main() {
       expect(tapped, isTrue);
     },
   );
+
+  testWidgets('channel grid density is selectable from Explorer settings', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: AiroTvShellSettingsDialog()),
+        ),
+      ),
+    );
+
+    expect(find.text('Channel grid'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('channel-grid-density-comfortable')),
+      80,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('channel-grid-density-comfortable')),
+    );
+    await tester.pump();
+
+    expect(
+      container.read(channelGridDensityProvider),
+      ChannelGridDensity.comfortable,
+    );
+  });
 }
