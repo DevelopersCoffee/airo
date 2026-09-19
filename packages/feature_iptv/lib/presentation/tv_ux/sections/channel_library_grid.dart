@@ -204,19 +204,57 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
         : _browseAdIndex;
   }
 
-  int get _childCount {
-    if (_adIndex < 0) {
-      return widget.channels.length;
-    }
-    return widget.channels.length + 1;
-  }
-
-  int _channelIndexForChild(int index) {
-    final adIndex = _adIndex;
-    if (adIndex < 0 || index < adIndex) {
-      return index;
-    }
-    return index - 1;
+  SliverGrid _channelsSliver({
+    required List<IPTVChannel> channels,
+    required int columns,
+    required double rowExtent,
+    required double rowSpacing,
+    required bool usePhoneList,
+    required bool usePhoneGrid,
+  }) {
+    return SliverGrid(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisExtent: rowExtent,
+        crossAxisSpacing: rowSpacing,
+        mainAxisSpacing: rowSpacing,
+      ),
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final channel = channels[index];
+          return RepaintBoundary(
+            key: ValueKey('channel-tile-${channel.id}'),
+            child: _ChannelTile(
+              channel: channel,
+              metadata: widget.metadataByChannelId[channel.id],
+              availability: widget.availabilityByChannelId[channel.id],
+              onSelected: widget.onChannelSelected,
+              focusPlayDelay: widget.focusPlayDelay,
+              inMultiview: widget.multiviewChannelIds.contains(channel.id),
+              onMultiviewToggle: widget.onMultiviewToggle,
+              isFavorite: widget.favoriteChannelIds.contains(channel.id),
+              onFavoriteToggle: widget.onFavoriteToggle,
+              isNotForMe: widget.notForMeChannelIds.contains(channel.id),
+              onNotForMeToggle: widget.onNotForMeToggle,
+              horizontal: usePhoneList,
+              compactGrid: usePhoneGrid,
+            ),
+          );
+        },
+        childCount: channels.length,
+        addAutomaticKeepAlives: false,
+        findChildIndexCallback: (key) {
+          if (key is! ValueKey<String>) return null;
+          final value = key.value;
+          if (!value.startsWith('channel-tile-')) return null;
+          final channelId = value.substring('channel-tile-'.length);
+          final channelIndex = channels.indexWhere(
+            (channel) => channel.id == channelId,
+          );
+          return channelIndex < 0 ? null : channelIndex;
+        },
+      ),
+    );
   }
 
   int _columnCountFor(double width) {
@@ -312,77 +350,53 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                 hasScrollBody: false,
                 child: _NoMatchesView(onClearFilters: widget.onClearFilters),
               )
-            else
+            else ...[
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(gridHPad, 4, gridHPad, rowSpacing),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    mainAxisExtent: rowExtent,
-                    crossAxisSpacing: rowSpacing,
-                    mainAxisSpacing: rowSpacing,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final adIndex = _adIndex;
-                      if (adIndex >= 0 && index == adIndex) {
-                        return KeyedSubtree(
-                          key: ChannelLibraryGrid.browseAdSlotKey,
-                          child: SizedBox.expand(child: widget.browseAdCard!),
-                        );
-                      }
-                      final channel =
-                          widget.channels[_channelIndexForChild(index)];
-                      return RepaintBoundary(
-                        key: ValueKey('channel-tile-${channel.id}'),
-                        child: _ChannelTile(
-                          channel: channel,
-                          metadata: widget.metadataByChannelId[channel.id],
-                          availability:
-                              widget.availabilityByChannelId[channel.id],
-                          onSelected: widget.onChannelSelected,
-                          focusPlayDelay: widget.focusPlayDelay,
-                          inMultiview: widget.multiviewChannelIds.contains(
-                            channel.id,
-                          ),
-                          onMultiviewToggle: widget.onMultiviewToggle,
-                          isFavorite: widget.favoriteChannelIds.contains(
-                            channel.id,
-                          ),
-                          onFavoriteToggle: widget.onFavoriteToggle,
-                          isNotForMe: widget.notForMeChannelIds.contains(
-                            channel.id,
-                          ),
-                          onNotForMeToggle: widget.onNotForMeToggle,
-                          horizontal: usePhoneList,
-                          compactGrid: usePhoneGrid,
-                        ),
-                      );
-                    },
-                    childCount: _childCount,
-                    addAutomaticKeepAlives: false,
-                    findChildIndexCallback: (key) {
-                      if (key is! ValueKey<String>) return null;
-                      final value = key.value;
-                      if (value == ChannelLibraryGrid.browseAdSlotKey.value) {
-                        final adIndex = _adIndex;
-                        return adIndex < 0 ? null : adIndex;
-                      }
-                      if (!value.startsWith('channel-tile-')) return null;
-                      final channelId = value.substring('channel-tile-'.length);
-                      final channelIndex = widget.channels.indexWhere(
-                        (channel) => channel.id == channelId,
-                      );
-                      if (channelIndex < 0) return null;
-                      final adIndex = _adIndex;
-                      if (adIndex >= 0 && channelIndex >= adIndex) {
-                        return channelIndex + 1;
-                      }
-                      return channelIndex;
-                    },
-                  ),
+                sliver: _channelsSliver(
+                  channels: _adIndex < 0
+                      ? widget.channels
+                      : widget.channels.sublist(0, _adIndex),
+                  columns: columns,
+                  rowExtent: rowExtent,
+                  rowSpacing: rowSpacing,
+                  usePhoneList: usePhoneList,
+                  usePhoneGrid: usePhoneGrid,
                 ),
               ),
+              if (_adIndex >= 0)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    gridHPad,
+                    0,
+                    gridHPad,
+                    rowSpacing,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: KeyedSubtree(
+                      key: ChannelLibraryGrid.browseAdSlotKey,
+                      child: widget.browseAdCard!,
+                    ),
+                  ),
+                ),
+              if (_adIndex >= 0 && _adIndex < widget.channels.length)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    gridHPad,
+                    0,
+                    gridHPad,
+                    rowSpacing,
+                  ),
+                  sliver: _channelsSliver(
+                    channels: widget.channels.sublist(_adIndex),
+                    columns: columns,
+                    rowExtent: rowExtent,
+                    rowSpacing: rowSpacing,
+                    usePhoneList: usePhoneList,
+                    usePhoneGrid: usePhoneGrid,
+                  ),
+                ),
+            ],
           ],
         );
       },

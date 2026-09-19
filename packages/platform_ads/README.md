@@ -1,6 +1,6 @@
 # Platform Ads
 
-Monorepo shim that re-exports [`airo_ads`](https://pub.dev/packages/airo_ads).
+Monorepo shim that re-exports [`airo_ads`](https://pub.dev/packages/airo_ads) ^1.1.0.
 Application code should import `package:platform_ads/platform_ads.dart` (or the
 Aika Stream barrel `package:airo_app/aika_ads/aika_ads.dart`) rather than the
 hosted package name.

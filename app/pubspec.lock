@@ -28,10 +28,10 @@ packages:
     dependency: transitive
     description:
       name: airo_ads
-      sha256: "9df3a16fabbcac9ab2b39c2878905a3dcee464afb2943559967bd0d89cb381ef"
+      sha256: "7bd6b1b8b5c87c7d7084c9ab1263dcc969bfeea60641d8ce5467e01480b239b8"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.1.0"
   airo_analytics:
     dependency: transitive
     description:
@@ -72,6 +72,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  airo_haptics:
+    dependency: transitive
+    description:
+      path: "../packages/airo_haptics"
+      relative: true
+    source: path
+    version: "1.1.0"
   airo_job_scheduler:
     dependency: transitive
     description:
@@ -1938,7 +1945,7 @@ packages:
       path: "../packages/platform_ads"
       relative: true
     source: path
-    version: "1.0.0"
+    version: "1.1.0"
   platform_calendar:
     dependency: transitive
     description:
@@ -1988,6 +1995,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  platform_haptics:
+    dependency: transitive
+    description:
+      path: "../packages/platform_haptics"
+      relative: true
+    source: path
+    version: "1.0.0"
   platform_history:
     dependency: "direct main"
     description:
