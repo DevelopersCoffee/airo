@@ -203,9 +203,11 @@ void main() {
         ],
       );
 
+      // Sort is not a leading-edge control in the centered explorer panel
+      // (x≈520); LEFT from it is a no-op. Search and the first channel are
+      // the leftmost D-pad stops the rail bridge must honor.
       final leadingControls = <String, Finder>{
         'Search': find.byKey(const ValueKey('filter-chip-search')),
-        'Sort': find.byKey(const ValueKey('channel-sort-trigger')),
         'first channel': find.byKey(const ValueKey('channel-tile-news')),
       };
 

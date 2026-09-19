@@ -54,4 +54,19 @@ void main() {
       ),
     );
   });
+
+  test('TV manifest stays installable on phone, tablet, and D-pad', () {
+    expect(manifest, contains('android:smallScreens="true"'));
+    expect(manifest, contains('android:normalScreens="true"'));
+    expect(manifest, contains('android:largeScreens="true"'));
+    expect(manifest, contains('android:xlargeScreens="true"'));
+    expect(manifest, contains('android:name="android.hardware.telephony"'));
+    expect(
+      manifest.contains(
+        'android.hardware.telephony"\n        android:required="true"',
+      ),
+      isFalse,
+      reason: 'Telephony required=true hides Wi-Fi tablets from Play.',
+    );
+  });
 }
