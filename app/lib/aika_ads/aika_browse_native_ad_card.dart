@@ -5,18 +5,21 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'aika_ads.dart';
 
-/// Browse-grid Native card that fills the library cell.
+/// Browse Native card sized for AdMob's small template.
 ///
-/// Hosted [AikaNativeAdCard] hardcodes a 120px `TemplateType.small` banner.
-/// Phone list cells are 88px and compact grid posters are 128px, so that
-/// banner either clips or sits in a hole. This card loads against the parent
-/// constraints and reloads when list ↔ grid changes the cell size.
+/// Google's validator flags "Advertiser assets outside native ad view" when
+/// [TemplateType.small] is clipped into an 88px list row or a 128px poster
+/// cell, or when a Flutter close button is stacked on top of [AdWidget].
+/// This card keeps the native view at 120×full-width, unclipped, with
+/// dismiss chrome *above* the [NativeAdView].
 class AikaBrowseNativeAdCard extends StatefulWidget {
   const AikaBrowseNativeAdCard({
     super.key,
     this.isLeanback = false,
     this.isCasting = false,
   });
+
+  static const double templateHeight = 120;
 
   final bool isLeanback;
   final bool isCasting;
@@ -29,55 +32,22 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
   NativeAd? _nativeAd;
   bool _isAdLoaded = false;
   bool _dismissed = false;
-  Size? _loadedFor;
-  Size? _loadQueuedFor;
 
   @override
   void initState() {
     super.initState();
-    unawaited(AikaAdManager.instance.initialize());
+    unawaited(_startLoad());
   }
 
-  Size? _cellSize(BoxConstraints constraints) {
-    final width = constraints.maxWidth;
-    final height = constraints.maxHeight;
-    if (!width.isFinite || !height.isFinite || width <= 0 || height <= 0) {
-      return null;
-    }
-    return Size(width, height);
-  }
-
-  bool _sameCell(Size a, Size b) {
-    return (a.width - b.width).abs() < 8 && (a.height - b.height).abs() < 8;
-  }
-
-  void _queueLoad(Size size) {
-    if (_loadQueuedFor != null && _sameCell(_loadQueuedFor!, size)) {
-      return;
-    }
-    if (_loadedFor != null &&
-        _sameCell(_loadedFor!, size) &&
-        _nativeAd != null) {
-      return;
-    }
-    _loadQueuedFor = size;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final queued = _loadQueuedFor;
-      if (queued == null) return;
-      unawaited(_loadAd(queued));
-    });
-  }
-
-  Future<void> _loadAd(Size size) async {
+  Future<void> _startLoad() async {
     await AikaAdManager.instance.initialize();
-    if (!mounted) return;
-    if (_dismissed) return;
-    if (_loadedFor != null &&
-        _sameCell(_loadedFor!, size) &&
-        _nativeAd != null) {
+    if (!mounted || _dismissed) {
       return;
     }
+    _loadAd();
+  }
+
+  void _loadAd() {
     if (!AikaAdManager.instance.shouldShowAd(
       isLeanback: widget.isLeanback,
       isCasting: widget.isCasting,
@@ -85,13 +55,8 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
       return;
     }
 
-    _nativeAd?.dispose();
-    _nativeAd = null;
-    _isAdLoaded = false;
-    _loadedFor = size;
-
     final colors = Theme.of(context).colorScheme;
-    final ad = NativeAd(
+    _nativeAd = NativeAd(
       adUnitId: aikaNativeAdUnitId,
       request: const AdRequest(),
       nativeTemplateStyle: NativeTemplateStyle(
@@ -116,18 +81,17 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
         ),
       ),
       listener: NativeAdListener(
-        onAdLoaded: (loaded) {
+        onAdLoaded: (ad) {
           if (!mounted || _dismissed) {
-            loaded.dispose();
+            ad.dispose();
             return;
           }
           setState(() {
-            _nativeAd = loaded as NativeAd;
             _isAdLoaded = true;
           });
         },
-        onAdFailedToLoad: (failed, error) {
-          failed.dispose();
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
           debugPrint('Aika native ad failed to load: $error');
           if (mounted) {
             setState(() {
@@ -140,8 +104,7 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
           AikaAdManager.instance.recordAdImpression();
         },
       ),
-    );
-    await ad.load();
+    )..load();
   }
 
   void _dismiss() {
@@ -156,56 +119,32 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_dismissed) {
+    if (_dismissed || !_isAdLoaded || _nativeAd == null) {
       return const SizedBox.shrink();
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = _cellSize(constraints);
-        if (size != null) {
-          _queueLoad(size);
-        }
-
-        final colors = Theme.of(context).colorScheme;
-        if (!_isAdLoaded || _nativeAd == null) {
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
-          );
-        }
-
-        return Semantics(
-          label: 'Advertisement',
-          child: Material(
-            color: colors.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                AdWidget(ad: _nativeAd!),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: IconButton(
-                    tooltip: 'Hide ad',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: _dismiss,
-                    icon: Icon(
-                      Icons.close,
-                      size: 18,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      label: 'Advertisement',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              tooltip: 'Hide ad',
+              visualDensity: VisualDensity.compact,
+              onPressed: _dismiss,
+              icon: Icon(Icons.close, size: 18, color: colors.onSurfaceVariant),
             ),
           ),
-        );
-      },
+          SizedBox(
+            height: AikaBrowseNativeAdCard.templateHeight,
+            width: double.infinity,
+            child: AdWidget(ad: _nativeAd!),
+          ),
+        ],
+      ),
     );
   }
 

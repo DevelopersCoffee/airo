@@ -8,11 +8,12 @@ stitched `master.m3u8` so the player can open them as ordinary HLS.
 ## What we ship
 
 In-app **AdMob Native Advanced** cards only, consumed from
-[`airo_ads`](https://pub.dev/packages/airo_ads) via the
-`packages/platform_ads` shim:
+[`airo_ads`](https://pub.dev/packages/airo_ads) `^1.1.0` via the
+`packages/platform_ads` shim. 1.1.0 also ships banners, interstitials,
+rewarded, and app-open managers — Aika Stream does not use those formats.
 
-- one dismissible tile in the phone/tablet browse grid (index 4), shown
-  as soon as the Mobile Ads SDK is ready (no session warmup)
+- one dismissible **full-width** native banner after the first four library
+  tiles, shown as soon as the Mobile Ads SDK is ready (no session warmup)
 - one dismissible card on the **fullscreen** player pause overlay
 - 30-minute impression cooldown after a fill or dismiss
 - fail silent (`SizedBox.shrink`) on no fill
@@ -27,9 +28,10 @@ Use Google sample units only with `--dart-define=AIKA_ADS_USE_TEST_UNITS=true`
 on local debug builds. Never put sample IDs in a Play AAB.
 
 Layouts use Flutter `NativeTemplateStyle` (`TemplateType.small` browse,
-`medium` pause). Browse fills the library cell (84px list row or 169px
-grid poster) instead of a fixed 120px banner. Do not add Android XML
-factories.
+`medium` pause). Browse is a 120px-tall full-width slot so advertiser
+assets stay inside `NativeAdView` (do not clip the small template into an
+88px list row or a 128px poster cell, and do not overlay a close button on
+the native view). Do not add Android XML factories.
 
 ## What we reject
 

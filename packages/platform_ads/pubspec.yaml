@@ -1,6 +1,6 @@
 name: platform_ads
 description: Google Mobile Ads SDK wrapper, native cards, pause ads, lower-third overlays, and VAST tag parser.
-version: 1.0.0
+version: 1.1.0
 publish_to: none
 homepage: https://developerscoffee.com
 repository: https://github.com/DevelopersCoffee/airo_ads
@@ -11,7 +11,7 @@ environment:
   flutter: ">=3.18.0"
 
 dependencies:
-  airo_ads: ^1.0.0
+  airo_ads: ^1.1.0
   flutter:
     sdk: flutter
 
