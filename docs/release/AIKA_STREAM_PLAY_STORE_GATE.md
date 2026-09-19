@@ -126,8 +126,9 @@ Pixel 9:
 
 | Step | What to confirm |
 | --- | --- |
-| Form factors | Enable **Phone** and **TV** (same listing). Do not leave the app TV-only. |
-| Phone screenshots | Save a phone/tablet screenshot set (compact explorer). TV-only screenshots keep Pixel 9 out of the catalog. |
+| Form factors | Enable **Phone**, **Tablet**, and **TV** (same listing). Do not leave the app TV-only. Wi-Fi tablets need `android.hardware.telephony` `required="false"`. |
+| Phone screenshots | Save a phone screenshot set (compact explorer, 16:9 or 9:16). TV-only screenshots keep Pixel 9 out of the catalog. |
+| Tablet screenshots | Save 7-inch and 10-inch tablet screenshots. Missing tablet graphics keep tablets out of the catalog even when `supports-screens` is open. |
 | TV screenshots | Keep the existing TV set under `docs/store-assets/airo-tv/` (`01`–`04`, skip `05`). Console Save still required. |
 | Testers | Internal/test-track testers include both phone and TV accounts. |
 | Device catalog | Pixel 9 and the Sony Bravia appear as supported. If Pixel 9 is absent, form factors or screenshots are incomplete — do not cut another AAB with `leanback required=true`. |
