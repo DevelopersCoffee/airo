@@ -8,6 +8,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
 import '../../../application/providers/channel_filters_provider.dart';
+import '../../../application/providers/tv_font_mode_provider.dart';
 
 const _cardWidth = 155.0;
 // _ChannelTile builds MediaCard without a `variant`, so it always renders at
@@ -971,9 +972,35 @@ class _ChannelTileState extends State<_ChannelTile> {
             onUnfocus: _cancelFocusPlay,
           );
 
+    Widget scaledCard;
+    try {
+      final scopeExists = ProviderScope.containerOf(context, listen: false) != null;
+      if (scopeExists) {
+        scaledCard = Consumer(
+          builder: (context, ref, child) {
+            final fontMode = ref.watch(tvFontModeProvider);
+            if (fontMode.scale == 1.0) return child!;
+            final mediaQuery = MediaQuery.of(context);
+            final baseScale = mediaQuery.textScaler.scale(1.0);
+            return MediaQuery(
+              data: mediaQuery.copyWith(
+                textScaler: TextScaler.linear(baseScale * fontMode.scale),
+              ),
+              child: child!,
+            );
+          },
+          child: card,
+        );
+      } else {
+        scaledCard = card;
+      }
+    } catch (_) {
+      scaledCard = card;
+    }
+
     return Stack(
       children: [
-        card,
+        scaledCard,
         Positioned(
           top: 7,
           left: 7,
