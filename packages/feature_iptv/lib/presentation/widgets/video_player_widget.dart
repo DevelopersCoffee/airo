@@ -708,10 +708,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           // after the overlay remounts so D-pad reveal can start a walk.
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            if (_centerControlFocusNode.canRequestFocus) {
-              _centerControlFocusNode.requestFocus();
-            }
+            _claimTvTransportFocus();
           });
+          return TvInputResult.handled;
+        }
+        // Chrome is already on screen. The player surface is skipTraversal and
+        // full-screen, so Flutter's geometric D-pad search cannot enter the
+        // transport descendants. Claim Pause so LEFT/RIGHT can start a walk.
+        if (!_tvTransportHasPrimaryFocus()) {
+          _claimTvTransportFocus();
           return TvInputResult.handled;
         }
         return TvInputResult.notHandled;
@@ -1584,9 +1589,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       if (!_showControlsOverlay) {
         setState(() => _showControlsOverlay = true);
       }
-      if (_centerControlFocusNode.canRequestFocus) {
-        _centerControlFocusNode.requestFocus();
-      }
+      _claimTvTransportFocus();
     }
 
     // The channel grid remains mounted behind fullscreen playback. Fire OS
@@ -1604,6 +1607,25 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       const Duration(milliseconds: 250),
       claimTransportFocus,
     );
+  }
+
+  List<FocusNode> _tvTransportFocusNodes() => [
+    _centerControlFocusNode,
+    _restartTransportFocusNode,
+    _audioTransportFocusNode,
+    _subtitleTransportFocusNode,
+    _favoriteTransportFocusNode,
+    _infoFocusNode,
+    _moreActionsFocusNode,
+  ];
+
+  bool _tvTransportHasPrimaryFocus() =>
+      _tvTransportFocusNodes().any((node) => node.hasPrimaryFocus);
+
+  void _claimTvTransportFocus() {
+    if (_centerControlFocusNode.canRequestFocus) {
+      _centerControlFocusNode.requestFocus();
+    }
   }
 
   void _scheduleGenericRecoveryFocus(String message) {
@@ -2192,19 +2214,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     // explicit linear order with Flutter's geometric traversal.
     if (event is! KeyDownEvent) return KeyEventResult.handled;
 
-    final focusNodes = <FocusNode>[
-      _centerControlFocusNode,
-      _restartTransportFocusNode,
-      _audioTransportFocusNode,
-      _subtitleTransportFocusNode,
-      _favoriteTransportFocusNode,
-      _infoFocusNode,
-      _moreActionsFocusNode,
-    ].where((candidate) => candidate.context != null).toList(growable: false);
+    final focusNodes = _tvTransportFocusNodes()
+        .where((candidate) => candidate.context != null)
+        .toList(growable: false);
     final currentIndex = focusNodes.indexWhere(
       (candidate) => candidate.hasFocus,
     );
-    if (currentIndex < 0) return KeyEventResult.handled;
+    if (currentIndex < 0) {
+      // The bar received LEFT/RIGHT without a child holding focus (the
+      // full-screen skipTraversal surface, or the outer Back handler).
+      // Land on Pause so the next D-pad press can walk.
+      _claimTvTransportFocus();
+      return KeyEventResult.handled;
+    }
     final offset = key == TvInputKey.right ? 1 : -1;
     final targetIndex = (currentIndex + offset).clamp(0, focusNodes.length - 1);
     focusNodes[targetIndex].requestFocus();
