@@ -75,7 +75,9 @@ class MultiviewController extends StateNotifier<MultiviewState> {
   final IptvMultiviewSessionFactory _sessionFactory;
   final IPTVStreamingService _primaryService;
   late final AiroMultiviewPool _pool;
-  bool _primaryPausedByMultiview = false;
+  bool _primaryHeldByMultiview = false;
+  IPTVChannel? _primaryChannelHeldForMultiview;
+  double _primaryVolumeHeldForMultiview = 1;
   bool _disposed = false;
 
   /// `StateNotifier.state` is protected — this is the public read a
@@ -92,8 +94,7 @@ class MultiviewController extends StateNotifier<MultiviewState> {
 
     final firstSession = _pool.state.count == 0;
     if (firstSession) {
-      _primaryPausedByMultiview = _primaryService.currentState.isPlaying;
-      if (_primaryPausedByMultiview) await _primaryService.pause();
+      await _holdPrimaryForMultiview();
     }
     final result = await _pool.add(
       id: channel.id,
@@ -101,6 +102,8 @@ class MultiviewController extends StateNotifier<MultiviewState> {
     );
     if (result != AiroMultiviewAddResult.added && firstSession) {
       await _resumePrimary();
+    } else if (result == AiroMultiviewAddResult.added && firstSession) {
+      await _releasePrimaryDecoder();
     }
     return switch (result) {
       AiroMultiviewAddResult.added => MultiviewToggleResult.added,
@@ -119,7 +122,7 @@ class MultiviewController extends StateNotifier<MultiviewState> {
   /// pool slot), then the new channel is opened. If the new stream fails to
   /// open, the freed slot stays empty -- the old session is not reopened.
   ///
-  /// Does not touch `_primaryPausedByMultiview`: `replace()` only ever runs
+  /// Does not touch `_primaryHeldByMultiview`: `replace()` only ever runs
   /// while at least one multiview session is already active (that's how the
   /// capacity-reached dialog gets triggered), so the primary-pause-on-first-
   /// session bookkeeping in [toggle] never applies here.
@@ -180,10 +183,49 @@ class MultiviewController extends StateNotifier<MultiviewState> {
     );
   }
 
+  Future<void> _holdPrimaryForMultiview() async {
+    if (_primaryHeldByMultiview) return;
+    final state = _primaryService.currentState;
+    final hasActivePipeline =
+        state.currentChannel != null ||
+        state.isPlaying ||
+        state.isLoading ||
+        state.isBuffering;
+    if (!hasActivePipeline) return;
+
+    _primaryHeldByMultiview = true;
+    _primaryChannelHeldForMultiview = state.currentChannel;
+    _primaryVolumeHeldForMultiview = state.isMuted ? 0 : state.volume;
+    try {
+      await _primaryService.setVolume(0);
+    } catch (_) {
+      // Mute is best-effort; pause/stop below still take the decoder.
+    }
+    await _primaryService.pause();
+  }
+
+  /// Drop the original Watch ExoPlayer once a tile owns the picture.
+  /// Leaving it paused on Pixel 9 keeps a third decoder (and its audio)
+  /// alive under the split-view tiles.
+  Future<void> _releasePrimaryDecoder() async {
+    if (!_primaryHeldByMultiview) return;
+    await _primaryService.stop();
+  }
+
   Future<void> _resumePrimary() async {
-    if (!_primaryPausedByMultiview) return;
-    _primaryPausedByMultiview = false;
-    await _primaryService.resume();
+    if (!_primaryHeldByMultiview) return;
+    _primaryHeldByMultiview = false;
+    final channel = _primaryChannelHeldForMultiview;
+    final volume = _primaryVolumeHeldForMultiview;
+    _primaryChannelHeldForMultiview = null;
+    if (channel != null) {
+      await _primaryService.playChannel(channel);
+    } else {
+      await _primaryService.resume();
+    }
+    try {
+      await _primaryService.setVolume(volume);
+    } catch (_) {}
   }
 
   @override
