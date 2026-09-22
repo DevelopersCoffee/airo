@@ -143,7 +143,8 @@ img {
   }
 
   .banner-frame {
-    margin: 32px 0;
+    margin: 32px auto;
+    max-width: 720px;
     border-radius: 16px;
     overflow: hidden;
     border: 1px solid var(--border);
@@ -154,8 +155,9 @@ img {
   .split-screen-banner-img {
     width: 100%;
     height: auto;
-    object-fit: cover;
+    object-fit: contain;
     display: block;
+    margin: 0 auto;
   }
 
   .split-screen-highlights {
