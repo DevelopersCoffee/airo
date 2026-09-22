@@ -70,14 +70,13 @@ Paste into Play Console → Internal testing → Release notes. Keep under 500
 characters. Do not claim bundled channels or Aika Stream Pro.
 
 ```text
-Your sources. Your screen.
+0.0.2 (20)
+• Phone, tablet, and Android TV / D-pad from one listing
+• Compact phone browse, overlay chrome, smoother scrolling
+• Faster, smaller Play install (R8 shrinking)
 
-Aika Stream is a remote-first player for authorized M3U and M3U8 sources on
-Android TV. Search loaded channels by name, keep favorites on the device, add
-an XMLTV guide, and play supported streams with a D-pad interface.
-
-This app includes no channels, playlists, subscriptions, or media catalog. You
-add sources you are authorized to use.
+0.0.1 (17)
+Your sources. Your screen. Remote-first player for authorized M3U/M3U8. Search channels, keep favorites on device, add XMLTV. No bundled channels or catalog.
 
 https://developerscoffee.github.io/airo/aika-stream/
 ```

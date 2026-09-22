@@ -124,7 +124,7 @@ class SettingsHubScreen extends ConsumerWidget {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const AudioSettingsScreen(),
+                    builder: (context) => AudioSettingsScreen(shellId: shellId),
                   ),
                 );
               },
