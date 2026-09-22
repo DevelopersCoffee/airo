@@ -1,3 +1,4 @@
+import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/audio/audio_context_provider.dart';
@@ -5,7 +6,12 @@ import '../../../../core/audio/audio_context_settings.dart';
 
 /// Audio Settings Screen for context-aware audio configuration
 class AudioSettingsScreen extends ConsumerWidget {
-  const AudioSettingsScreen({super.key});
+  const AudioSettingsScreen({
+    super.key,
+    this.shellId = ShellId.mobile,
+  });
+
+  final ShellId shellId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,30 +36,32 @@ class AudioSettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
 
-          // Ducking Level Section
-          _buildSectionHeader(context, 'Volume Ducking'),
-          ListTile(
-            title: const Text('Ducking Level'),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Volume when other audio is playing: ${(settings.duckingLevel * 100).toInt()}%',
-                ),
-                Slider(
-                  value: settings.duckingLevel,
-                  min: 0.1,
-                  max: 0.5,
-                  divisions: 8,
-                  label: '${(settings.duckingLevel * 100).toInt()}%',
-                  onChanged: settings.enabled
-                      ? (value) => settingsNotifier.setDuckingLevel(value)
-                      : null,
-                ),
-              ],
+          // Ducking Level Section — hidden on compact TV (ShellId.tv)
+          if (shellId != ShellId.tv) ...[
+            _buildSectionHeader(context, 'Volume Ducking'),
+            ListTile(
+              title: const Text('Ducking Level'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Volume when other audio is playing: ${(settings.duckingLevel * 100).toInt()}%',
+                  ),
+                  Slider(
+                    value: settings.duckingLevel,
+                    min: 0.1,
+                    max: 0.5,
+                    divisions: 8,
+                    label: '${(settings.duckingLevel * 100).toInt()}%',
+                    onChanged: settings.enabled
+                        ? (value) => settingsNotifier.setDuckingLevel(value)
+                        : null,
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Divider(),
+            const Divider(),
+          ],
 
           // Auto Resume Section
           _buildSectionHeader(context, 'Playback Resume'),
