@@ -95,10 +95,155 @@ img {
   contain-intrinsic-size: 1px 400px;
 }
 
-.proof-strip {
-  content-visibility: auto;
-  contain-intrinsic-size: 1px 110px;
-}
+  /* Language Switcher & Poland Promo Styles */
+  .lang-switcher {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px;
+    margin-left: 12px;
+  }
+
+  .lang-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 16px;
+    cursor: pointer;
+    min-height: 32px;
+    transition: all 180ms ease;
+  }
+
+  .lang-btn[aria-pressed="true"] {
+    background: var(--green);
+    color: oklch(0.1 0.01 255);
+  }
+
+  .lang-btn:focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+  }
+
+  html[lang="pl"] [lang="en"]:not(.keep-en) {
+    display: none !important;
+  }
+
+  html:not([lang="pl"]) [lang="pl"]:not(.keep-pl) {
+    display: none !important;
+  }
+
+  /* Split Screen Showcase Banner */
+  .split-screen-banner-section {
+    padding-top: calc(var(--section-space) * 0.7);
+  }
+
+  .banner-frame {
+    margin: 32px 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .split-screen-banner-img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    display: block;
+  }
+
+  .split-screen-highlights {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-top: 28px;
+  }
+
+  .highlight-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 200ms ease;
+  }
+
+  .highlight-card:hover {
+    border-color: var(--green);
+  }
+
+  .highlight-card i {
+    color: var(--green);
+    margin-bottom: 10px;
+    width: 24px;
+    height: 24px;
+  }
+
+  .highlight-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .highlight-card p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .polish-workflow-grid {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    margin-top: 32px;
+  }
+
+  .polish-workflow-grid h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--green);
+  }
+
+  .polish-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .polish-steps li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .polish-steps li strong {
+    color: var(--text);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .trust-disclaimer-pl {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--surface-2);
+    border-left: 3px solid var(--gold);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--muted);
+  }
 
 a {
   color: var(--green);
