@@ -109,11 +109,18 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 | Pixel-line install and smoke | v0.0.1 preview UAT; Play hard release after listing graphics + internal track |
 | First Play AAB filename | Drop `Aika-Stream-0.0.1-14.aab` (rename of CI `Airo-TV-0.0.1-Play-Store.aab`, `versionCode` **14**). Remove any draft that used version 13 first. |
 
-## Play Console dual form-factor (`0.0.1+19`)
+## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`
 
-Play already consumed `versionCode` **18**. The next test OBB is **19**
-(`0.0.1+19` in `app/pubspec_tv.yaml`). Do not bump `versionName` off
-`0.0.1`. Never reuse 18.
+Play already consumed `versionCode` **18**, then **19**. The next Play AAB is
+**20** (`0.0.2+20` in `app/pubspec_tv.yaml`). Never reuse 19. `versionName`
+is `0.0.2` for this drop.
+
+Play Console rec on 19 (the only remaining production action): R8
+optimization, obfuscation, and shrinking all at **26%**. 0.0.2 drops the
+GMS/Firebase/ML Kit/lifecycle blanket `-keep` rules (same class of fix as
+`65b0b2d5` for `androidx.**`) and turns on
+`android.r8.optimizedResourceShrinking`. Edge-to-edge and bitmap recs on 17
+are already cleared on 19.
 
 Pixel 9 missing from the 18 test track is a Console gap, not a missing
 activity. The TV APK already keeps `android.software.leanback` and
@@ -134,8 +141,8 @@ Pixel 9:
 | Device catalog | Pixel 9 and the Sony Bravia appear as supported. If Pixel 9 is absent, form factors or screenshots are incomplete — do not cut another AAB with `leanback required=true`. |
 | Sideload vs Play | Testers must **uninstall sideloads** before installing from Play. Pixel sideload uses the upload key; Play-installed APKs use Play App Signing and will not upgrade in place (see Upgrade path above). |
 
-Cut the 19 OBB via `.github/workflows/aika-stream-release.yml` **after**
-this packet is green. Do not trigger that workflow from the version bump.
+Cut the 0.0.2+20 AAB via `.github/workflows/aika-stream-release.yml` **after**
+this packet is green. Do not reuse versionCode 19.
 
 ## Out of scope this wave
 
