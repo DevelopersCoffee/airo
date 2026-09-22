@@ -1,4 +1,4 @@
-name: Airo TV macOS Release
+name: Aika Stream macOS Release
 
 on:
   workflow_call:
@@ -140,7 +140,7 @@ jobs:
           fi
 
   build-macos:
-    name: Build Airo TV macOS zip and DMG
+    name: Build Aika Stream macOS zip and DMG
     runs-on: macos-latest
     timeout-minutes: 60
     needs: [prepare-release-ref]

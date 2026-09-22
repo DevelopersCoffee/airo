@@ -106,7 +106,7 @@ def write_release(root: Path, *, corrupt: bool = False) -> Path:
                     "buildNumber": "12",
                     "sourceRef": "main",
                     "sourceSha": "deadbeef",
-                    "workflowName": "Airo TV Release",
+                    "workflowName": "Aika Stream Release",
                     "workflowRun": "99",
                     "workflowRunUrl": "https://example.invalid/run/99",
                 },

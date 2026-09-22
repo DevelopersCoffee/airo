@@ -251,7 +251,7 @@ jobs:
           retention-days: 30
 
   build-tv:
-    name: Build Airo TV APK and AAB
+    name: Build Aika Stream APK and AAB
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [prepare-release-branch, release-checks]
@@ -444,7 +444,7 @@ jobs:
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
-              -dname "CN=Airo TV CI Validation,O=DevelopersCoffee,C=US"
+              -dname "CN=Aika Stream CI Validation,O=DevelopersCoffee,C=US"
             {
               echo "storeFile=ci-validation.keystore"
               echo "storePassword=ci-validation-password"
@@ -637,7 +637,7 @@ jobs:
           cat release-artifacts/SHA256SUMS
           cat "release-artifacts/Airo-TV-${BUILD_NAME}-Release-Manifest.json"
           {
-            echo "# Airo TV release artifacts"
+            echo "# Aika Stream release artifacts"
             echo ""
             echo "| Asset | Visibility | Purpose |"
             echo "| --- | --- | --- |"
@@ -659,7 +659,7 @@ jobs:
         with:
           subject-path: release-artifacts/*
 
-      - name: Upload Airo TV release artifacts
+      - name: Upload Aika Stream release artifacts
         uses: actions/upload-artifact@v7
         with:
           name: airo-tv-release-${{ env.RELEASE_VERSION }}
@@ -698,7 +698,7 @@ jobs:
           retention-days: 90
 
   play-upload:
-    name: Upload Airo TV to Play testing track
+    name: Upload Aika Stream to Play testing track
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [prepare-release-branch, build-tv]
@@ -769,7 +769,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   firebase-distribution:
-    name: Upload Airo TV to Firebase App Distribution
+    name: Upload Aika Stream to Firebase App Distribution
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [prepare-release-branch, build-tv]
@@ -841,7 +841,7 @@ jobs:
           apk_name, manifest_path = sys.argv[1:]
           manifest = json.load(open(manifest_path, encoding="utf-8"))
           artifact = next(item for item in manifest["artifacts"] if item["filename"] == apk_name)
-          print(f"Airo TV {artifact['version']} ({artifact['buildNumber']})")
+          print(f"Aika Stream {artifact['version']} ({artifact['buildNumber']})")
           print("")
           print(f"Package: {artifact['packageId']}")
           print(f"Artifact: {artifact['filename']}")
@@ -930,13 +930,13 @@ jobs:
           esac
           notes=$(mktemp)
           cat > "$notes" <<NOTES
-          # Airo TV ${BUILD_NAME}
+          # Aika Stream ${BUILD_NAME}
 
-          Airo TV ${BUILD_NAME} is a product-surface consolidation and playback usability release for the Android TV variant of Airo.
+          Aika Stream ${BUILD_NAME} is a focused player release for media sources you are authorized to use.
 
           ## Highlights
 
-          - Kept Airo TV as the focused IPTV product surface.
+          - Kept Aika Stream as the focused IPTV product surface.
           - Removed obsolete Airo Streaming and Airo IPTV product-target wiring from release configuration.
           - Added TV Explorer-inspired filters, settings, player controls, and bounded channel warmup.
           - Updated public release documentation, store posture, and feature matrix for ${BUILD_NAME}.
@@ -946,7 +946,7 @@ jobs:
           ### IPTV
 
           - Supports user-supplied M3U playlist URLs and XMLTV guide URLs.
-          - Keeps IPTV content responsibility with the user; Airo TV does not bundle channels or playlists.
+          - Keeps IPTV content responsibility with the user; Aika Stream does not bundle channels or playlists.
 
           ### Search
 
@@ -978,12 +978,12 @@ jobs:
 
           - Release artifacts use clean user-facing names.
           - Release assets include SHA256SUMS for download verification.
-          - Release notes follow a stable template for future Airo TV versions.
-          - Player controls use a single Airo TV overlay layer in compact and fullscreen modes.
+          - Release notes follow a stable template for future Aika Stream versions.
+          - Player controls use a single Aika Stream overlay layer in compact and fullscreen modes.
 
           ## Bug Fixes
 
-          - Fixed stale release defaults that pointed at earlier Airo TV releases.
+          - Fixed stale release defaults that pointed at earlier Aika Stream releases.
           - Fixed no-op player controls by wiring supported actions or removing unsupported affordances.
 
           ## Performance
@@ -993,7 +993,7 @@ jobs:
 
           ## Developer Changes
 
-          - Updated the Airo TV release workflow defaults for ${BUILD_NAME}.
+          - Updated the Aika Stream release workflow defaults for ${BUILD_NAME}.
           - Added checksum generation to the release pipeline.
           - Added reusable release documentation for trust and release readiness.
 
@@ -1013,13 +1013,13 @@ jobs:
 
           ## Installation
 
+          ### Play Store
+
+          Install directly from the Google Play Store (`com.developerscoffee.tv.midas`).
+
           ### APK
 
           Download Airo-TV-${BUILD_NAME}.apk from Assets.
-
-          ### Play Store
-
-          Upload Airo-TV-${BUILD_NAME}-Play-Store.aab to Play Console.
 
           ## Legal Notice
 
@@ -1050,7 +1050,7 @@ jobs:
           https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.4...${RELEASE_VERSION}
           NOTES
           gh release create "$RELEASE_VERSION" release-artifacts/* \
-            --title "Airo TV ${BUILD_NAME}" \
+            --title "Aika Stream ${BUILD_NAME}" \
             --target "$RELEASE_BRANCH" \
             --notes-file "$notes" \
             --repo DevelopersCoffee/airo

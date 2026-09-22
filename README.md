@@ -36,7 +36,7 @@ interactions in a real shipping app, not a demo.
 
 | Module | What it does | Status |
 |---|---|---|
-| 📺 **Aika Stream** | Bring-your-own-playlist player for Android TV / Google TV | **Play listing in progress** — see [Aika Stream Play Store gate](docs/release/AIKA_STREAM_PLAY_STORE_GATE.md) |
+| 📺 **Aika Stream** | Bring-your-own-playlist player for Android TV / Google TV | **Available on Google Play** — [Get on Google Play](https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas) |
 | ⭐ **Airo TV Pro** | Import intelligence, resilient playback, guide intelligence | In testing |
 | 🤖 **Airo AI** | On-device AI chat (Gemini Nano), model management, agent skills | In development |
 | 💰 **AiroMoney** | Personal finance tracking and money workflows | In development |
@@ -50,7 +50,8 @@ All modules live in one monorepo with strict package boundaries — see the
 
 ## 📺 Airo TV — Available Now
 
-[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV%20APK-success?style=for-the-badge)](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk)
+[![Get it on Google Play](https://img.shields.io/badge/Google_Play-Aika_Stream-41AB5D?style=for-the-badge&logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas)
+[![Download Airo TV APK](https://img.shields.io/badge/Download-Airo%20TV%20APK-success?style=for-the-badge)](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk)
 [![Live Showcase](https://img.shields.io/badge/▶-Live%20Showcase-blue?style=for-the-badge)](https://developerscoffee.github.io/airo/)
 
 ### See it in action
@@ -80,8 +81,8 @@ private provider data or bundled content.
 [View the product story](https://developerscoffee.github.io/airo/tv/#touch-playlists)
 · [Download the 1080×1920 store PNG](https://developerscoffee.github.io/airo/store-assets/airo-tv/05-mobile-multiple-playlist-sources-1080x1920.png)
 
-Airo TV is the focused Android TV build of Airo's media module. The first
-Google Play listing ships that product as **Aika Stream**
+Airo TV is the focused Android TV build of Airo's media module. The product
+is available on Google Play as **[Aika Stream](https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas)**
 (`com.developerscoffee.tv.midas`). GitHub v0.0.6 APKs remain `io.airo.app.tv`.
 TV-first channel grid, search, and playback for your own M3U/M3U8 playlists.
 
@@ -98,16 +99,15 @@ release carrying every product line.
 
 | Product | Package | Download |
 |---|---|---|
+| 📺 **Aika Stream** (Google Play Store) | `com.developerscoffee.tv.midas` | [Get on Google Play](https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas) |
 | 📺 **Airo TV** (GitHub v0.0.6) | `io.airo.app.tv` | [Airo-TV-0.0.6.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk) · [arm64-v8a](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-arm64-v8a.apk) · [armeabi-v7a](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-armeabi-v7a.apk) · [x86_64](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-x86_64.apk) |
-| 📺 **Aika Stream** (Play Store, first listing) | `com.developerscoffee.tv.midas` | AAB from the TV profile after Pixel qualification — not a rename of the v0.0.6 APK |
 | 🤖 **Airo** (phone / tablet) | `io.airo.app` | [Airo-0.0.6-10-arm64.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-0.0.6-10-arm64.apk) |
 | 🪙 **Airo Coins** | `io.airo.app.coins` | [AiroCoins-0.0.6-10-arm64.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/AiroCoins-0.0.6-10-arm64.apk) |
 | 🖥️ **Airo TV for macOS** | — | [DMG](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-macOS.dmg) · [ZIP](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-macOS.zip) |
 | 📦 All releases | — | [Releases](https://github.com/DevelopersCoffee/airo/releases) |
 
 Not published: iOS/iPadOS (no Apple developer account) and web (CI validation
-only). Play Store AABs are attached to the release for store submission but no
-build is on Google Play yet.
+only). **Aika Stream** is available live on [Google Play](https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas).
 
 Android builds are signed with a stable dogfood keystore. They upgrade cleanly
 over other dogfood-signed Airo builds but **not** over a future production-signed

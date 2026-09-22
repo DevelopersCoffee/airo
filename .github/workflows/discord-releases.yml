@@ -32,8 +32,8 @@ jobs:
           # ── Route by tag prefix ──────────────────────────────
           if [[ "$TAG" == airo-tv-v* ]]; then
             WEBHOOK="$DISCORD_TV_RELEASES_WEBHOOK"
-            BOT_NAME="Airo TV Release Bot"
-            PRODUCT_LABEL="📺 Airo TV"
+            BOT_NAME="Aika Stream Release Bot"
+            PRODUCT_LABEL="📺 Aika Stream"
           else
             WEBHOOK="$DISCORD_RELEASES_WEBHOOK"
             BOT_NAME="Airo Release Bot"
