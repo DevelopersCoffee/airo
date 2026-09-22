@@ -39,24 +39,16 @@
 -dontwarn com.google.protobuf.ProtoPresenceBits
 
 # ============================================
-# Google ML Kit (Gemini Nano)
+# Google ML Kit / Firebase / Play Services
 # ============================================
--keep class com.google.mlkit.** { *; }
+# Play Console scored Aika Stream 19 at 26% R8 optimization, obfuscation, and
+# shrinking. The same class of regression as the old androidx.** keep:
+# Google AARs already ship consumer ProGuard rules, so a blanket -keep of the
+# whole tree blocks shrinking of unused Ads/Cast/Firebase/ML Kit classes for
+# no reason. Keep -dontwarn for optional-dependency noise; do not re-add
+# `-keep class com.google.{mlkit,firebase,android.gms}.** { *; }`.
 -dontwarn com.google.mlkit.**
-
-# Keep GenAI Prompt API
--keep class com.google.mlkit.genai.** { *; }
-
-# ============================================
-# Firebase
-# ============================================
--keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
-
-# ============================================
-# Google Play Services
-# ============================================
--keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
 
 # ============================================
@@ -80,8 +72,8 @@
 # optional-dependency warnings across modules we don't all use.
 -dontwarn androidx.**
 
-# Lifecycle
--keep class androidx.lifecycle.** { *; }
+# LifecycleObserver constructors are reflected; the rest of androidx.lifecycle
+# is covered by each artifact's consumer rules. Do not blanket-keep the package.
 -keepclassmembers class * implements androidx.lifecycle.LifecycleObserver {
     <init>(...);
 }
