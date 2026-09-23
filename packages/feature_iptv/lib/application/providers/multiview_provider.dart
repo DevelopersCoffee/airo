@@ -8,6 +8,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_media/platform_media.dart';
 import 'package:platform_player/platform_player.dart';
 
+import '../multiview_split_ratio.dart';
 import 'iptv_providers.dart';
 
 typedef IptvMultiviewSessionFactory =
@@ -40,12 +41,14 @@ class MultiviewState {
     this.featuredChannelId,
     required this.capacity,
     this.layout,
+    this.splitRatio = MultiviewSplitRatio.fifty,
   });
 
   final List<IptvMultiviewSession> sessions;
   final String? featuredChannelId;
   final int capacity;
   final MultiviewLayoutKind? layout;
+  final MultiviewSplitRatio splitRatio;
 
   bool contains(String channelId) =>
       sessions.any((session) => session.id == channelId);
@@ -161,7 +164,40 @@ class MultiviewController extends StateNotifier<MultiviewState> {
       featuredChannelId: state.featuredChannelId,
       capacity: state.capacity,
       layout: layout,
+      splitRatio: _splitRatioFor(
+        preferred: layout,
+        sessionCount: state.sessions.length,
+        current: state.splitRatio,
+      ),
     );
+  }
+
+  void setSplitRatio(MultiviewSplitRatio ratio) {
+    if (_disposed) return;
+    final kind = resolveMultiviewLayout(
+      preferred: state.layout,
+      sessionCount: state.sessions.length,
+    );
+    if (!kind.isTwoPane) return;
+    state = MultiviewState(
+      sessions: state.sessions,
+      featuredChannelId: state.featuredChannelId,
+      capacity: state.capacity,
+      layout: state.layout,
+      splitRatio: ratio,
+    );
+  }
+
+  MultiviewSplitRatio _splitRatioFor({
+    required MultiviewLayoutKind? preferred,
+    required int sessionCount,
+    required MultiviewSplitRatio current,
+  }) {
+    final kind = resolveMultiviewLayout(
+      preferred: preferred,
+      sessionCount: sessionCount,
+    );
+    return kind.isTwoPane ? current : MultiviewSplitRatio.fifty;
   }
 
   Future<void> close() async {
@@ -180,6 +216,11 @@ class MultiviewController extends StateNotifier<MultiviewState> {
       featuredChannelId: poolState.featuredSessionId,
       capacity: _pool.capacity,
       layout: state.layout,
+      splitRatio: _splitRatioFor(
+        preferred: state.layout,
+        sessionCount: poolState.sessions.length,
+        current: state.splitRatio,
+      ),
     );
   }
 
