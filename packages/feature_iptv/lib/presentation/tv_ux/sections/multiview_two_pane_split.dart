@@ -1,6 +1,7 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/application/multiview_split_ratio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 class MultiviewTwoPaneSplit extends StatefulWidget {
   const MultiviewTwoPaneSplit({
@@ -10,6 +11,7 @@ class MultiviewTwoPaneSplit extends StatefulWidget {
     required this.first,
     required this.second,
     this.onSplitRatioChanged,
+    this.onSplitMixPreview,
   });
 
   final Axis axis;
@@ -17,6 +19,7 @@ class MultiviewTwoPaneSplit extends StatefulWidget {
   final Widget first;
   final Widget second;
   final ValueChanged<MultiviewSplitRatio>? onSplitRatioChanged;
+  final void Function(double fraction, double extent)? onSplitMixPreview;
 
   @override
   State<MultiviewTwoPaneSplit> createState() => _MultiviewTwoPaneSplitState();
@@ -25,6 +28,9 @@ class MultiviewTwoPaneSplit extends StatefulWidget {
 class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   double? _dragFraction;
   double? _layoutExtent;
+  int? _mixPreviewFrameId;
+  double? _pendingMixFraction;
+  double? _pendingMixExtent;
 
   bool get _horizontal => widget.axis == Axis.horizontal;
 
@@ -62,21 +68,51 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
     return _committedFlexes(widget.ratio, extent).$2;
   }
 
+  @override
+  void dispose() {
+    _cancelMixPreview();
+    super.dispose();
+  }
+
+  void _cancelMixPreview() {
+    final frameId = _mixPreviewFrameId;
+    if (frameId == null) return;
+    SchedulerBinding.instance.cancelFrameCallbackWithId(frameId);
+    _mixPreviewFrameId = null;
+  }
+
+  void _scheduleMixPreview(double fraction, double extent) {
+    if (widget.onSplitMixPreview == null) return;
+    _pendingMixFraction = fraction;
+    _pendingMixExtent = extent;
+    if (_mixPreviewFrameId != null) return;
+    _mixPreviewFrameId = SchedulerBinding.instance.scheduleFrameCallback((_) {
+      _mixPreviewFrameId = null;
+      final pendingFraction = _pendingMixFraction;
+      final pendingExtent = _pendingMixExtent;
+      if (pendingFraction == null || pendingExtent == null) return;
+      widget.onSplitMixPreview?.call(pendingFraction, pendingExtent);
+    });
+  }
+
   void _onDragUpdate(DragUpdateDetails details, BoxConstraints constraints) {
     final extent = _horizontal ? constraints.maxWidth : constraints.maxHeight;
     if (extent <= 0) return;
     final delta = _horizontal ? details.delta.dx : details.delta.dy;
     final current = _dragFraction ?? widget.ratio.firstFraction;
+    final next = clampMultiviewSplitFraction(
+      current + delta / extent,
+      extent: extent,
+    );
     setState(() {
       _layoutExtent = extent;
-      _dragFraction = clampMultiviewSplitFraction(
-        current + delta / extent,
-        extent: extent,
-      );
+      _dragFraction = next;
     });
+    _scheduleMixPreview(next, extent);
   }
 
   void _onDragEnd(DragEndDetails _) {
+    _cancelMixPreview();
     final drag = _dragFraction;
     final extent = _layoutExtent;
     if (drag == null || extent == null) return;
@@ -86,6 +122,7 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   }
 
   void _onDragCancel() {
+    _cancelMixPreview();
     if (_dragFraction == null) return;
     setState(() => _dragFraction = null);
   }

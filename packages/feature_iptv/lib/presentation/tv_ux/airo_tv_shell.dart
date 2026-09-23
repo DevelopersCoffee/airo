@@ -393,6 +393,11 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                         onSplitRatioChanged: (ratio) => ref
                             .read(multiviewProvider.notifier)
                             .setSplitRatio(ratio),
+                        onSplitMixPreview: (fraction, extent) => unawaited(
+                          ref
+                              .read(multiviewProvider.notifier)
+                              .previewSplitMix(fraction, extent: extent),
+                        ),
                         onPromote: (channelId) => ref
                             .read(multiviewProvider.notifier)
                             .promote(channelId),

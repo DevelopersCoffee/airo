@@ -235,11 +235,29 @@ void main() {
     expect(sessions.last.selectedQuality, isNull);
   });
 
+  testWidgets('two-pane tile menu has no per-tile volume slider', (
+    tester,
+  ) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('multiview-controls-one')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('multiview-volume-one')), findsNothing);
+  });
+
   testWidgets(
     'tile menu volume slider sets that tile volume independent of the '
     'other tile (manual mix, not the pool single-audible default)',
     (tester) async {
-      final sessions = [session('one'), session('two')];
+      final sessions = [session('one'), session('two'), session('three')];
       addTearDown(() => Future.wait(sessions.map((item) => item.close())));
       await pump(tester, sessions);
 
