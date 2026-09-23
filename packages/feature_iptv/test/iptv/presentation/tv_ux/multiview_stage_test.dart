@@ -437,24 +437,51 @@ void main() {
     expect(panes[1].flex, 1);
   });
 
-  testWidgets('ninetyFive stop paints flex 950/50 on the horizontal split', (
+  testWidgets('five stop paints 80dp floor flex at 360px width', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(
+      tester,
+      sessions,
+      splitRatio: MultiviewSplitRatio.five,
+      width: 360,
+    );
+
+    final expectedFirst = (80 / 360 * 1000).round();
+    final panes = splitExpanded(
+      tester,
+      const ValueKey('multiview-layout-split'),
+    );
+    expect(panes[0].flex, inInclusiveRange(expectedFirst - 1, expectedFirst + 1));
+    expect(panes[1].flex, 1000 - panes[0].flex);
+  });
+
+  testWidgets('ninetyFive stop paints effective max flex at 1600px width', (
     tester,
   ) async {
+    const width = 1600.0;
+    tester.view.physicalSize = const Size(width, 360);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final sessions = [session('one'), session('two')];
     addTearDown(() => Future.wait(sessions.map((item) => item.close())));
     await pump(
       tester,
       sessions,
       splitRatio: MultiviewSplitRatio.ninetyFive,
-      width: 1600,
+      width: width,
     );
 
+    final expectedMin = (effectiveMultiviewSplitMin(width) * 1000).round();
+    final expectedMax = 1000 - expectedMin;
     final panes = splitExpanded(
       tester,
       const ValueKey('multiview-layout-split'),
     );
-    expect(panes[0].flex, 950);
-    expect(panes[1].flex, 50);
+    expect(panes[0].flex, expectedMax);
+    expect(panes[1].flex, expectedMin);
   });
 
   testWidgets('stacked two-pane also shows the handle', (tester) async {
