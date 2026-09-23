@@ -409,6 +409,59 @@ void main() {
     expect(sessions['three']!.volume, closeTo(0, 0.01));
     expect(controller.state.featuredChannelId, 'one');
   });
+
+  test('setLayout to spotlight restores exclusive featured audio', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
+    await Future<void>.delayed(Duration.zero);
+    await controller.promote('two');
+    expect(sessions['one']!.volume, closeTo(1, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+    expect(controller.state.featuredChannelId, 'two');
+
+    controller.setLayout(MultiviewLayoutKind.spotlight);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.state.featuredChannelId, 'two');
+    expect(sessions['two']!.volume, closeTo(1, 0.01));
+    expect(sessions['one']!.volume, closeTo(0, 0.01));
+  });
+
+  test('setLayout back to two-pane applies the fifty mix', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setLayout(MultiviewLayoutKind.spotlight);
+    await Future<void>.delayed(Duration.zero);
+    expect(sessions['one']!.volume, closeTo(1, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+
+    controller.setLayout(MultiviewLayoutKind.splitHorizontal);
+    await Future<void>.delayed(Duration.zero);
+
+    final half = math.sqrt(0.5);
+    expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
+    expect(sessions['one']!.volume, closeTo(half, 0.01));
+    expect(sessions['two']!.volume, closeTo(half, 0.01));
+  });
 }
 
 class _FakeMultiviewSession implements IptvMultiviewSession {
