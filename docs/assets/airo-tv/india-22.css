@@ -1,0 +1,47 @@
+.india-page {
+  background: #070A12;
+  color: #fff;
+}
+.india-page .hero-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 460px) minmax(0, 1fr);
+  gap: 64px;
+  align-items: center;
+  min-height: 78vh;
+}
+.tv-stage {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(80, 110, 220, 0.18), transparent 62%);
+}
+.tv-bezel {
+  background: #101522;
+  border-radius: 28px;
+  padding: 18px 18px 28px;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.45);
+}
+.tv-glass {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+.tv-glass img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tv-stand {
+  width: 28%;
+  height: 18px;
+  margin: 0 auto;
+  background: #171d2b;
+  clip-path: polygon(12% 0, 88% 0, 100% 100%, 0 100%);
+}
+@media (max-width: 860px) {
+  .india-page .hero-grid { grid-template-columns: 1fr; min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .india-page *, .india-page *::before { animation: none !important; transition: none !important; }
+}
