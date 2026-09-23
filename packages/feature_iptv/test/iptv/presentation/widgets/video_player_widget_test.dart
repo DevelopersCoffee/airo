@@ -241,6 +241,179 @@ void main() {
     },
   );
 
+  testWidgets('a later Left stays a channel step after the playback reclaim', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const news = IPTVChannel(
+      id: 'news-1',
+      name: 'City News Live',
+      streamUrl: 'https://example.com/news.m3u8',
+      group: 'News',
+      category: ChannelCategory.news,
+    );
+    const movies = IPTVChannel(
+      id: 'movies-1',
+      name: 'Cinema Prime',
+      streamUrl: 'https://example.com/movies.m3u8',
+      group: 'Uncategorized',
+      category: ChannelCategory.movies,
+    );
+    const sports = IPTVChannel(
+      id: 'sports-1',
+      name: 'Stadium Sports',
+      streamUrl: 'https://example.com/sports.m3u8',
+      group: 'Sports',
+      category: ChannelCategory.sports,
+    );
+
+    final service = VideoPlayerStreamingService(
+      engine: FakeAiroPlaybackEngine(),
+    );
+    addTearDown(service.dispose);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        iptvStreamingServiceProvider.overrideWithValue(service),
+        streamProbeTransportProvider.overrideWithValue(
+          _AlwaysAvailableProbeTransport(),
+        ),
+        iptvChannelsProvider.overrideWith(
+          (ref) async => const [news, movies, sports],
+        ),
+        recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(iptvChannelsProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: VideoPlayerWidget(
+              useTvTransportBar: true,
+              enableTouchGestures: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await service.playChannel(sports);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(service.currentState.currentChannel?.id, 'news-1');
+      expect(find.text('City News Live'), findsOneWidget);
+      expect(find.text('News'), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        isNot('player center control'),
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+        findsNothing,
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(service.currentState.currentChannel?.id, 'movies-1');
+      expect(find.text('Cinema Prime'), findsOneWidget);
+      expect(find.text('Uncategorized'), findsNothing);
+
+    await service.stop();
+  });
+
+  testWidgets(
+    'transport hint starts when controls appear and hides after idle',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const current = IPTVChannel(
+        id: 'sports-1',
+        name: 'Stadium Sports',
+        streamUrl: 'https://example.com/sports.m3u8',
+        group: 'Sports',
+        category: ChannelCategory.sports,
+      );
+      final service = VideoPlayerStreamingService(
+        engine: FakeAiroPlaybackEngine(),
+      );
+      addTearDown(service.dispose);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+          streamProbeTransportProvider.overrideWithValue(
+            _AlwaysAvailableProbeTransport(),
+          ),
+          iptvChannelsProvider.overrideWith((ref) async => const [current]),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: VideoPlayerWidget(
+                useTvTransportBar: true,
+                enableTouchGestures: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('←→ Move    OK Select    Back Close'), findsNothing);
+
+      await service.playChannel(current);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('←→ Move    OK Select    Back Close'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('←→ Move    OK Select    Back Close'), findsNothing);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(find.text('←→ Move    OK Select    Back Close'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('←→ Move    OK Select    Back Close'), findsNothing);
+
+      await service.stop();
+    },
+  );
+
   testWidgets(
     'locking hides playback controls but keeps the lock button interactive',
     (tester) async {

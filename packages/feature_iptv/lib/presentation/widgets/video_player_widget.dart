@@ -226,13 +226,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   );
   Timer? _tvPlaybackFocusTimer;
   String? _lastTvPlaybackFocusChannelId;
+  bool _tvTransportRevealArmed = false;
   FocusNode? _contextMenuRestoreFocusNode;
   bool _playerModalOpen = false;
   String? _lastRecoveryFocusToken;
   Set<Key> _overflowedTvTransportKeys = {};
 
-  // Channel change overlay state
-  String? _channelChangeOverlayText;
+  // Channel change overlay state. Name is always shown; group is shown only
+  // when it is non-empty and not the placeholder "Uncategorized".
+  String? _channelChangeName;
+  String? _channelChangeGroup;
   Timer? _channelChangeOverlayTimer;
   Timer? _adjacentChannelWarmupDebounce;
   String _adjacentChannelWarmupSignature = '';
@@ -287,7 +290,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _haptics = ref.read(aikaHapticsProvider);
     _loadInitialBrightness();
     _startHideControlsTimer();
-    _armWatchHint();
     unawaited(_haptics.attachLocalPlayback());
     // Wakelock is managed by WakelockPlaybackCoordinator at screen scope,
     // not by this widget's lifetime. PiP state comes from
@@ -383,8 +385,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // surface while locked, regardless of how the render-gating evolves.
   void _showControls() {
     if (_isLocked) return;
+    final becomingVisible = !_showControlsOverlay;
     setState(() => _showControlsOverlay = true);
     _startHideControlsTimer();
+    if (becomingVisible) _armWatchHint();
   }
 
   void _showControlsForPointer() {
@@ -532,7 +536,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final nextChannel = ref.read(nextSelectableChannelProvider);
     if (nextChannel != null) {
       streamingService.playChannel(nextChannel);
-      _showChannelChangeOverlay(nextChannel.name);
+      _showChannelChangeOverlay(nextChannel);
       _scheduleAdjacentChannelWarmupFor(nextChannel);
       unawaited(
         ref.read(aikaHapticsProvider).play(AikaHapticIntent.channelStep),
@@ -545,7 +549,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final prevChannel = ref.read(previousSelectableChannelProvider);
     if (prevChannel != null) {
       streamingService.playChannel(prevChannel);
-      _showChannelChangeOverlay(prevChannel.name);
+      _showChannelChangeOverlay(prevChannel);
       _scheduleAdjacentChannelWarmupFor(prevChannel);
       unawaited(
         ref.read(aikaHapticsProvider).play(AikaHapticIntent.channelStep),
@@ -557,7 +561,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final channel = randomFilteredChannel(ref.read(filteredChannelsProvider));
     if (channel == null) return;
     service.playChannel(channel);
-    _showChannelChangeOverlay(channel.name);
+    _showChannelChangeOverlay(channel);
     _scheduleAdjacentChannelWarmupFor(channel);
   }
 
@@ -689,7 +693,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   void _showWatchControls() {
-    _armWatchHint();
     setState(() => _quickBrowse = null);
     _showControls();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -705,7 +708,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   /// BACK begins a new, intentional operation. Down dismisses the guide
   /// without arming that latch.
   void _closeWatchChrome({required bool suppressPlatformBack}) {
-    _armWatchHint();
     _suppressNextPlatformBack = suppressPlatformBack;
     setState(() {
       _showControlsOverlay = false;
@@ -750,18 +752,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             null) {
           return TvInputResult.notHandled;
         }
-        _armWatchHint();
         setState(() {
           _showControlsOverlay = false;
           _quickBrowse = _TvQuickBrowse.miniGuide;
         });
         return TvInputResult.handled;
       case WatchRemoteAction.previousChannel:
-        _armWatchHint();
         _goToPreviousChannel();
         return TvInputResult.handled;
       case WatchRemoteAction.nextChannel:
-        _armWatchHint();
         _goToNextChannel();
         return TvInputResult.handled;
       case WatchRemoteAction.closeControls:
@@ -775,7 +774,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         _suppressNextPlatformBack = false;
         final closeFullscreen = widget.onBack ?? widget.onFullscreenToggle;
         if (widget.initiallyFullscreen && closeFullscreen != null) {
-          _armWatchHint();
           closeFullscreen();
           return TvInputResult.handled;
         }
@@ -793,7 +791,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             restoreFocusNode: _centerControlFocusNode,
           ),
         );
-        _armWatchHint();
         return TvInputResult.handled;
       case WatchRemoteAction.moveControl:
         // The full-screen player surface is skipTraversal, so a LEFT/RIGHT
@@ -889,7 +886,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   void _playChannelFromQuickBrowse(IPTVChannel channel) {
     final streamingService = ref.read(iptvStreamingServiceProvider);
     streamingService.playChannel(channel);
-    _showChannelChangeOverlay(channel.name);
+    _showChannelChangeOverlay(channel);
     _scheduleAdjacentChannelWarmupFor(channel);
     setState(() => _quickBrowse = null);
   }
@@ -1101,15 +1098,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ..showSnackBar(const SnackBar(content: Text('Stream link copied')));
   }
 
-  void _showChannelChangeOverlay(String text) {
+  void _showChannelChangeOverlay(IPTVChannel channel) {
+    final group = channel.group.trim();
+    final showGroup = group.isNotEmpty && group != 'Uncategorized';
     _channelChangeOverlayTimer?.cancel();
     setState(() {
-      _channelChangeOverlayText = text;
+      _channelChangeName = channel.name;
+      _channelChangeGroup = showGroup ? group : null;
     });
     _channelChangeOverlayTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
-          _channelChangeOverlayText = null;
+          _channelChangeName = null;
+          _channelChangeGroup = null;
         });
       }
     });
@@ -1470,12 +1471,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       ),
 
                     // Channel change overlay
-                    if (_channelChangeOverlayText != null)
+                    if (_channelChangeName != null)
                       Positioned(
                         child: AnimatedOpacity(
-                          opacity: _channelChangeOverlayText != null
-                              ? 1.0
-                              : 0.0,
+                          opacity: 1,
                           duration: const Duration(milliseconds: 200),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -1486,13 +1485,27 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                               color: Colors.black.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(
-                              _channelChangeOverlayText!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _channelChangeName!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (_channelChangeGroup != null)
+                                  Text(
+                                    _channelChangeGroup!,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
@@ -1642,16 +1655,21 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       return;
     }
     if (_lastTvPlaybackFocusChannelId == channelId) return;
+    final firstPlayback = !_tvTransportRevealArmed;
     _lastTvPlaybackFocusChannelId = channelId;
+    // A later channel step must leave the video zone alone. Revealing the
+    // transport here would make the next Left/Right walk the rail.
+    if (!firstPlayback) return;
+    _tvTransportRevealArmed = true;
 
     void claimTransportFocus() {
       if (!mounted || _lastTvPlaybackFocusChannelId != channelId) return;
       // Never reset deliberate movement within the transport or steal from a
       // player-owned modal. The delayed claim exists only to beat focus that
-      // escaped back to the retained channel grid.
+      // escaped back to the retained channel grid on the first start.
       if (_controlsHaveFocus || _playerModalOpen || _showContextMenu) return;
       if (!_showControlsOverlay) {
-        setState(() => _showControlsOverlay = true);
+        _showControls();
       }
       _claimTvTransportFocus();
     }
