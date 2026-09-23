@@ -14,6 +14,7 @@ export "application/providers/provider_health_providers.dart";
 export "application/providers/iptv_org_api_providers.dart";
 export "application/providers/last_channel_provider.dart";
 export "application/providers/resume_last_channel_preference.dart";
+export "application/providers/sleep_timer_provider.dart";
 export "application/providers/rails_provider.dart";
 export "application/providers/iptv_cast_providers.dart";
 export "application/providers/cast_multiview_receiver_provider.dart";

@@ -26,6 +26,7 @@ void main() {
     FocusNode? retainedFocusNode,
     List<String> favoriteIds = const [],
     List<AiroPlaybackTrackOption> tracks = const [],
+    int sleepMinutes = 0,
   }) async {
     SharedPreferences.setMockInitialValues({
       if (favoriteIds.isNotEmpty) 'iptv_favorite_channel_ids': favoriteIds,
@@ -58,6 +59,11 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
+    if (sleepMinutes > 0) {
+      container
+          .read(sleepTimerRemainingProvider.notifier)
+          .setMinutes(sleepMinutes);
+    }
 
     tester.view.physicalSize = Size(width, height);
     tester.view.devicePixelRatio = 1;
@@ -602,6 +608,32 @@ void main() {
     );
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('sleep chip shows remaining and cancels on select', (
+    tester,
+  ) async {
+    final container = await pumpTransportBar(
+      tester,
+      width: 1280,
+      sleepMinutes: 15,
+    );
+
+    expect(find.text('Sleep in 15 min'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('iptv-tv-sleep-timer-chip')));
+    await tester.pump();
+
+    expect(container.read(sleepTimerRemainingProvider), 0);
+    expect(find.text('Sleep in 15 min'), findsNothing);
+  });
+
+  testWidgets('sleep chip is absent when timer is off', (tester) async {
+    await pumpTransportBar(tester, width: 1280);
+    expect(
+      find.byKey(const ValueKey('iptv-tv-sleep-timer-chip')),
+      findsNothing,
+    );
   });
 }
 

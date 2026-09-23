@@ -17,6 +17,11 @@ class PlaybackSettingsScreen extends ConsumerWidget {
     final pipEnabled = ref.watch(pictureInPicturePreferenceProvider);
     final hapticStrength = ref.watch(aikaHapticStrengthProvider);
     final extraSections = ref.watch(playbackSettingsExtraSectionsProvider);
+    final sleepMinutes = ref.watch(sleepTimerRemainingProvider);
+    final sleepGroupValue =
+        sleepMinutes == 0 || sleepTimerPresetMinutes.contains(sleepMinutes)
+        ? sleepMinutes
+        : 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Playback Settings')),
@@ -61,6 +66,43 @@ class PlaybackSettingsScreen extends ConsumerWidget {
             onChanged: (enabled) => ref
                 .read(resumeLastChannelEnabledProvider.notifier)
                 .setEnabled(enabled),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 8),
+            child: Text(
+              'Sleep timer',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Text(
+            'Stop playback and return to Library after this time.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          RadioGroup<int>(
+            groupValue: sleepGroupValue,
+            onChanged: (minutes) {
+              if (minutes == null) return;
+              if (minutes == 0) {
+                ref.read(sleepTimerRemainingProvider.notifier).cancel();
+              } else {
+                ref
+                    .read(sleepTimerRemainingProvider.notifier)
+                    .setMinutes(minutes);
+              }
+            },
+            child: Column(
+              children: [
+                for (final minutes in [0, 15, 30, 45, 60])
+                  RadioListTile<int>(
+                    key: ValueKey('playback-sleep-timer-$minutes'),
+                    value: minutes,
+                    title: Text(minutes == 0 ? 'Off' : '$minutes minutes'),
+                  ),
+              ],
+            ),
           ),
           SwitchListTile(
             key: const ValueKey('playback-picture-in-picture-toggle'),
