@@ -6,10 +6,7 @@ import '../../../../core/audio/audio_context_settings.dart';
 
 /// Audio Settings Screen for context-aware audio configuration
 class AudioSettingsScreen extends ConsumerWidget {
-  const AudioSettingsScreen({
-    super.key,
-    this.shellId = ShellId.mobile,
-  });
+  const AudioSettingsScreen({super.key, this.shellId = ShellId.mobile});
 
   final ShellId shellId;
 
