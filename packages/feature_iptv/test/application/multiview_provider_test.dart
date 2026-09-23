@@ -462,6 +462,32 @@ void main() {
     expect(sessions['one']!.volume, closeTo(half, 0.01));
     expect(sessions['two']!.volume, closeTo(half, 0.01));
   });
+
+  test('muteAll in two-pane keeps both volumes at zero', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 2,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setSplitRatio(MultiviewSplitRatio.fifty);
+    await Future<void>.delayed(Duration.zero);
+    final half = math.sqrt(0.5);
+    expect(sessions['one']!.volume, closeTo(half, 0.01));
+    expect(sessions['two']!.volume, closeTo(half, 0.01));
+
+    await controller.muteAll();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.state.featuredChannelId, isNull);
+    expect(sessions['one']!.volume, closeTo(0, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+  });
 }
 
 class _FakeMultiviewSession implements IptvMultiviewSession {

@@ -166,7 +166,10 @@ class MultiviewController extends StateNotifier<MultiviewState> {
   }
 
   /// Silences every active tile — see [AiroMultiviewPool.muteAll].
-  Future<void> muteAll() => _pool.muteAll();
+  Future<void> muteAll() async {
+    _invalidateTwoPaneMix();
+    await _pool.muteAll();
+  }
 
   void swap(String firstChannelId, String secondChannelId) {
     _pool.swap(firstChannelId, secondChannelId);
@@ -321,6 +324,10 @@ class MultiviewController extends StateNotifier<MultiviewState> {
       ),
     );
     if (_isTwoPane) {
+      if (poolState.featuredSessionId == null) {
+        _invalidateTwoPaneMix();
+        return;
+      }
       _scheduleTwoPaneMix();
     } else if (wasTwoPane) {
       _invalidateTwoPaneMix();
