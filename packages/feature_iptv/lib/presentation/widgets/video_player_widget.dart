@@ -35,6 +35,7 @@ import 'player_lock_button.dart';
 import 'player_overlay.dart';
 import 'tv_transport_bar.dart';
 import 'tv_mini_guide_overlay.dart';
+import 'watch_remote_contract.dart';
 import '../tv_ux/sections/remote_overlay.dart';
 
 /// Video player widget with YouTube-like controls
@@ -156,7 +157,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _controlsHaveFocus = false;
   Timer? _hideControlsTimer;
   bool _suppressNextPlatformBack = false;
+  bool _hintVisible = true;
+  Timer? _watchHintTimer;
   static const _controlsHideDelay = Duration(seconds: 5);
+  static const _watchHintDuration = Duration(seconds: 4);
+  static const _controlsHint = '←→ Move    OK Select    Back Close';
   static const _pointerExitHideDelay = Duration(seconds: 3);
 
   /// Marks the video surface's own bounds (excluding surrounding chrome
@@ -246,10 +251,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   Timer? _selectLongPressTimer;
   bool _selectConsumedByLongPress = false;
 
-  // UP/DOWN quick-browse overlays (AiroTV D-pad design "MINI GUIDE (UP)" /
-  // "RECENT CHANNELS (DOWN)"). Replaces the previous instant channel-surf
-  // on up/down: browsing now stops on a channel instead of committing to
-  // it, and OK is what actually switches.
+  // Mini Guide is the only Watch browse overlay. Down from the video opens
+  // it; Up hands focus to the transport. OK inside the guide switches.
   _TvQuickBrowse? _quickBrowse;
 
   // Netflix-style gesture controls (CV-PLAYER-GESTURES) + lock button.
@@ -279,6 +282,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _haptics = ref.read(aikaHapticsProvider);
     _loadInitialBrightness();
     _startHideControlsTimer();
+    _armWatchHint();
     unawaited(_haptics.attachLocalPlayback());
     // Wakelock is managed by WakelockPlaybackCoordinator at screen scope,
     // not by this widget's lifetime. PiP state comes from
@@ -299,6 +303,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   @override
   void dispose() {
     _cancelHideControlsTimer();
+    _watchHintTimer?.cancel();
     _channelChangeOverlayTimer?.cancel();
     _adjacentChannelWarmupDebounce?.cancel();
     _selectLongPressTimer?.cancel();
@@ -650,10 +655,67 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     unawaited(ref.read(aikaHapticsProvider).play(AikaHapticIntent.goLive));
   }
 
-  // CV-008 UC-002: D-pad surf mode. Up/Down changes channel while playback
-  // stays primary; boundary channels are a no-op via
-  // nextChannelProvider/previousChannelProvider already returning null there.
-  // Gated on !_isLocked, matching every other in-player interaction.
+  WatchFocusZone get _watchZone {
+    if (_quickBrowse == _TvQuickBrowse.miniGuide) {
+      return WatchFocusZone.miniGuide;
+    }
+    if (_showControlsOverlay && widget.showControls) {
+      return WatchFocusZone.controls;
+    }
+    return WatchFocusZone.video;
+  }
+
+  String get _transportHint {
+    if (_watchZone == WatchFocusZone.controls && _hintVisible) {
+      return _controlsHint;
+    }
+    return '';
+  }
+
+  void _armWatchHint() {
+    _watchHintTimer?.cancel();
+    final reveal = !_hintVisible;
+    _hintVisible = true;
+    _watchHintTimer = Timer(_watchHintDuration, () {
+      if (!mounted) return;
+      setState(() => _hintVisible = false);
+    });
+    if (reveal && mounted) setState(() {});
+  }
+
+  void _showWatchControls() {
+    _armWatchHint();
+    setState(() => _quickBrowse = null);
+    _showControls();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _claimTvTransportFocus();
+    });
+  }
+
+  /// Closes transport or the Mini Guide.
+  ///
+  /// Fire OS follows a raw BACK that closed the guide with a platform
+  /// pop-route request. Some devices dispatch that paired route callback
+  /// more than once, so [suppressPlatformBack] stays set until the next raw
+  /// BACK begins a new, intentional operation. Down dismisses the guide
+  /// without arming that latch.
+  void _closeWatchChrome({required bool suppressPlatformBack}) {
+    _armWatchHint();
+    _suppressNextPlatformBack = suppressPlatformBack;
+    setState(() {
+      _showControlsOverlay = false;
+      _quickBrowse = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_playerFocusNode.canRequestFocus) {
+        _playerFocusNode.requestFocus();
+      }
+    });
+  }
+
+  // D-pad Watch contract. Locked playback and diagnostic recovery own the
+  // keys before the zone map, matching the previous early returns.
   TvInputResult _handleSurfInput(TvInputKey key) {
     if (_isLocked) return TvInputResult.notHandled;
     final remoteResult = handleRemoteOverlayInput(
@@ -666,27 +728,54 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final streamingState = ref.read(streamingStateProvider).asData?.value;
     final recoveryOwnsFocus =
         streamingState?.hasError == true && streamingState?.diagnostic != null;
-    final controlsVisible = _showControlsOverlay && widget.showControls;
-    if (controlsVisible && !recoveryOwnsFocus) {
-      // Keep the overlay alive while the remote is being used.
-      _startHideControlsTimer();
-    }
+    if (recoveryOwnsFocus) return TvInputResult.notHandled;
 
-    switch (key) {
-      // UP opens the Mini Guide, DOWN opens Recent Channels — browsing
-      // stops on a channel instead of committing to it; OK inside the
-      // overlay is what actually switches (AiroTV D-pad design).
-      case TvInputKey.up:
+    final action = watchRemoteAction(zone: _watchZone, key: key);
+    switch (action) {
+      case WatchRemoteAction.openControls:
+      case WatchRemoteAction.showControls:
+        // Select stays with _detectSelectLongPress: handling the key-down
+        // here would reveal controls under a long-press that opens the
+        // context menu (issues/01-remote-focus-contract.md criterion 5).
+        if (key == TvInputKey.select) return TvInputResult.notHandled;
+        _showWatchControls();
+        return TvInputResult.handled;
+      case WatchRemoteAction.openMiniGuide:
         if (ref.read(streamingStateProvider).asData?.value.currentChannel ==
             null) {
           return TvInputResult.notHandled;
         }
-        setState(() => _quickBrowse = _TvQuickBrowse.miniGuide);
+        _armWatchHint();
+        setState(() {
+          _showControlsOverlay = false;
+          _quickBrowse = _TvQuickBrowse.miniGuide;
+        });
         return TvInputResult.handled;
-      case TvInputKey.down:
-        setState(() => _quickBrowse = _TvQuickBrowse.recent);
+      case WatchRemoteAction.previousChannel:
+        _armWatchHint();
+        _goToPreviousChannel();
         return TvInputResult.handled;
-      case TvInputKey.menu:
+      case WatchRemoteAction.nextChannel:
+        _armWatchHint();
+        _goToNextChannel();
+        return TvInputResult.handled;
+      case WatchRemoteAction.closeControls:
+      case WatchRemoteAction.closeGuide:
+        _closeWatchChrome(
+          suppressPlatformBack:
+              action == WatchRemoteAction.closeGuide && key == TvInputKey.back,
+        );
+        return TvInputResult.handled;
+      case WatchRemoteAction.exitPlayer:
+        _suppressNextPlatformBack = false;
+        final closeFullscreen = widget.onBack ?? widget.onFullscreenToggle;
+        if (widget.initiallyFullscreen && closeFullscreen != null) {
+          _armWatchHint();
+          closeFullscreen();
+          return TvInputResult.handled;
+        }
+        return TvInputResult.notHandled;
+      case WatchRemoteAction.moreActions:
         final state = ref.read(streamingStateProvider).asData?.value;
         if (state?.currentChannel == null) {
           return TvInputResult.notHandled;
@@ -699,53 +788,22 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             restoreFocusNode: _centerControlFocusNode,
           ),
         );
+        _armWatchHint();
         return TvInputResult.handled;
-      case TvInputKey.left:
-      case TvInputKey.right:
-        if (!controlsVisible) {
-          _showControls();
-          // ExcludeFocus still has the bar detached this frame. Claim Pause
-          // after the overlay remounts so D-pad reveal can start a walk.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _claimTvTransportFocus();
-          });
-          return TvInputResult.handled;
-        }
-        // Chrome is already on screen. The player surface is skipTraversal and
-        // full-screen, so Flutter's geometric D-pad search cannot enter the
-        // transport descendants. Claim Pause so LEFT/RIGHT can start a walk.
+      case WatchRemoteAction.moveControl:
+        // The full-screen player surface is skipTraversal, so a LEFT/RIGHT
+        // that arrives before Pause has focus cannot walk the row. Claim
+        // Pause; once it is focused the transport bar handles the walk.
         if (!_tvTransportHasPrimaryFocus()) {
+          _armWatchHint();
           _claimTvTransportFocus();
           return TvInputResult.handled;
         }
         return TvInputResult.notHandled;
-      case TvInputKey.back:
-        if (_quickBrowse != null) {
-          // Fire OS follows this raw BACK event with a platform pop-route
-          // request. Some devices dispatch that paired route callback more
-          // than once, so keep suppressing it until the next raw BACK begins
-          // a new, intentional operation.
-          _suppressNextPlatformBack = true;
-          setState(() => _quickBrowse = null);
-          return TvInputResult.handled;
-        }
-        _suppressNextPlatformBack = false;
-        final closeFullscreen = widget.onBack ?? widget.onFullscreenToggle;
-        if (widget.initiallyFullscreen && closeFullscreen != null) {
-          closeFullscreen();
-          return TvInputResult.handled;
-        }
-        return TvInputResult.notHandled;
-      // Select is deliberately NOT handled here: TvInputHandler fires on
-      // every key-down, which would reveal controls the instant Select is
-      // pressed -- including the down-stroke of what turns out to be a
-      // long-press. That doubled the short-press action on top of the
-      // context menu opening (issues/01-remote-focus-contract.md
-      // acceptance criterion 5: "Holding Select does not also trigger the
-      // short-press action"). _detectSelectLongPress below owns Select
-      // entirely and only fires the short-press reveal on a clean key-up.
-      default:
+      case WatchRemoteAction.activateFocusedControl:
+      case WatchRemoteAction.switchFocusedChannel:
+      case WatchRemoteAction.moveChannel:
+      case WatchRemoteAction.ignored:
         return TvInputResult.notHandled;
     }
   }
@@ -773,6 +831,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   static const _miniGuideWindowSize = 12;
 
   List<IPTVChannel> _miniGuideChannels(IPTVChannel current) {
+    final recent = ref.read(recentlyWatchedChannelsProvider).asData?.value;
+    if (recent != null && recent.isNotEmpty) return recent;
     final all = ref.read(filteredChannelsProvider);
     if (all.isEmpty) return const [];
     final currentIndex = all.indexWhere((c) => c.id == current.id);
@@ -1326,7 +1386,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     // video to control, and its own recovery buttons occupy
                     // the same vertical band the center play/pause button
                     // would otherwise sit in and silently swallow taps for).
-                    if (!_isLocked && !isPipActive && !blocksPlaybackChrome)
+                    // TV Watch keeps a single bottom child: transport, Mini
+                    // Guide, or nothing.
+                    if (widget.useTvTransportBar &&
+                        !_isLocked &&
+                        !isPipActive &&
+                        !blocksPlaybackChrome)
+                      Positioned.fill(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          layoutBuilder: (currentChild, previousChildren) {
+                            return Stack(
+                              alignment: Alignment.bottomCenter,
+                              fit: StackFit.expand,
+                              children: [
+                                ...previousChildren,
+                                ?currentChild,
+                              ],
+                            );
+                          },
+                          child: _watchBottomOverlay(context, service, state),
+                        ),
+                      )
+                    else if (!_isLocked &&
+                        !isPipActive &&
+                        !blocksPlaybackChrome)
                       AnimatedOpacity(
                         key: const ValueKey('iptv-player-controls-opacity'),
                         opacity: (widget.showControls && _showControlsOverlay)
@@ -1433,18 +1517,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         onClose: _closeContextMenu,
                       ),
 
-                    // UP/DOWN quick-browse overlays.
-                    if (_quickBrowse == _TvQuickBrowse.miniGuide &&
+                    if (!widget.useTvTransportBar &&
+                        _quickBrowse == _TvQuickBrowse.miniGuide &&
                         state.currentChannel != null)
-                      TvMiniGuideOverlay(
-                        channels: _miniGuideChannels(state.currentChannel!),
-                        currentChannelId: state.currentChannel!.id,
-                        onSelected: _playChannelFromQuickBrowse,
-                        onMoveToControls: () {},
-                        onDismiss: () => setState(() => _quickBrowse = null),
-                        previewFactory: ref.read(
-                          tvMiniGuidePreviewFactoryProvider,
-                        ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _miniGuideOverlay(state),
                       ),
                     if (showPauseAd && adPlacements.pauseCard != null)
                       Positioned.fill(
@@ -1480,27 +1560,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                             ),
                           ),
                         ),
-                      ),
-
-                    if (_quickBrowse == _TvQuickBrowse.recent)
-                      Consumer(
-                        builder: (context, ref, _) {
-                          final recent = ref.watch(
-                            recentlyWatchedChannelsProvider,
-                          );
-                          return recent.when(
-                            data: (channels) => channels.isEmpty
-                                ? const SizedBox.shrink()
-                                : _QuickBrowseOverlay(
-                                    title: 'Recently watched',
-                                    channels: channels,
-                                    currentChannelId: state.currentChannel?.id,
-                                    onSelected: _playChannelFromQuickBrowse,
-                                  ),
-                            loading: () => const SizedBox.shrink(),
-                            error: (_, _) => const SizedBox.shrink(),
-                          );
-                        },
                       ),
                   ],
                 ),
@@ -2180,6 +2239,42 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     );
   }
 
+  Widget _watchBottomOverlay(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    if (_quickBrowse == _TvQuickBrowse.miniGuide &&
+        state.currentChannel != null) {
+      return KeyedSubtree(
+        key: const ValueKey('watch-bottom-guide'),
+        child: _miniGuideOverlay(state),
+      );
+    }
+    if (_showControlsOverlay && widget.showControls) {
+      return Focus(
+        key: const ValueKey('watch-bottom-transport'),
+        canRequestFocus: false,
+        onFocusChange: _onControlsFocusChange,
+        child: _buildTvTransportBar(context, service, state),
+      );
+    }
+    return const SizedBox.shrink(key: ValueKey('watch-bottom-none'));
+  }
+
+  Widget _miniGuideOverlay(StreamingState state) {
+    return TvMiniGuideOverlay(
+      channels: _miniGuideChannels(state.currentChannel!),
+      currentChannelId: state.currentChannel!.id,
+      onSelected: _playChannelFromQuickBrowse,
+      onMoveToControls: _showWatchControls,
+      onDismiss: ({bool fromBack = false}) {
+        _closeWatchChrome(suppressPlatformBack: fromBack);
+      },
+      previewFactory: ref.read(tvMiniGuidePreviewFactoryProvider),
+    );
+  }
+
   /// Bottom-centered Watch overlay: one width-capped action row. Overflow
   /// drops trailing actions (except More) rather than wrapping.
   Widget _buildTvTransportBar(
@@ -2196,6 +2291,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       channelName: channel?.name ?? '',
       detailLine: detailLine,
       isLive: state.isLiveStream,
+      menuHint: _transportHint,
       onKeyEvent: _handleTvTransportKey,
       onDroppedKeys: _onTvTransportOverflow,
       actions: _buildTvTransportButtons(context, service, state),
@@ -3406,225 +3502,9 @@ class _PlayerStepperPillar extends StatelessWidget {
   }
 }
 
+enum _TvQuickBrowse { miniGuide }
+
 /// Right-side overlay panel for actions on the currently-playing channel.
-enum _TvQuickBrowse { miniGuide, recent }
-
-/// Bottom-docked horizontal browse strip for UP (Mini Guide) and DOWN
-/// (Recent Channels). AiroTV D-pad design: "◀ ▶ browse · OK switch".
-class _QuickBrowseOverlay extends StatefulWidget {
-  const _QuickBrowseOverlay({
-    required this.title,
-    required this.channels,
-    required this.currentChannelId,
-    required this.onSelected,
-  });
-
-  final String title;
-  final List<IPTVChannel> channels;
-  final String? currentChannelId;
-  final ValueChanged<IPTVChannel> onSelected;
-
-  @override
-  State<_QuickBrowseOverlay> createState() => _QuickBrowseOverlayState();
-}
-
-class _QuickBrowseOverlayState extends State<_QuickBrowseOverlay> {
-  late List<FocusNode> _focusNodes;
-  late int _focusedIndex;
-
-  String get _channelSignature =>
-      widget.channels.map((channel) => channel.id).join('|');
-
-  @override
-  void initState() {
-    super.initState();
-    _createFocusNodes();
-    _requestInitialFocus();
-  }
-
-  @override
-  void didUpdateWidget(covariant _QuickBrowseOverlay oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final oldSignature = oldWidget.channels
-        .map((channel) => channel.id)
-        .join('|');
-    if (oldSignature == _channelSignature &&
-        oldWidget.currentChannelId == widget.currentChannelId) {
-      return;
-    }
-    for (final node in _focusNodes) {
-      node.dispose();
-    }
-    _createFocusNodes();
-    _requestInitialFocus();
-  }
-
-  @override
-  void dispose() {
-    for (final node in _focusNodes) {
-      node.dispose();
-    }
-    super.dispose();
-  }
-
-  void _createFocusNodes() {
-    _focusedIndex = widget.channels.indexWhere(
-      (channel) => channel.id == widget.currentChannelId,
-    );
-    if (_focusedIndex < 0) _focusedIndex = 0;
-    _focusNodes = [
-      for (final channel in widget.channels)
-        FocusNode(debugLabel: 'quick browse ${channel.name}'),
-    ];
-  }
-
-  void _requestInitialFocus() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _focusNodes.isEmpty) return;
-      _focusNodes[_focusedIndex].requestFocus();
-    });
-  }
-
-  KeyEventResult _handleBrowseKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent || widget.channels.isEmpty) {
-      return KeyEventResult.ignored;
-    }
-    final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
-    final nextIndex = switch (key) {
-      TvInputKey.left => (_focusedIndex - 1).clamp(
-        0,
-        widget.channels.length - 1,
-      ),
-      TvInputKey.right => (_focusedIndex + 1).clamp(
-        0,
-        widget.channels.length - 1,
-      ),
-      _ => null,
-    };
-    if (nextIndex != null) {
-      _focusedIndex = nextIndex;
-      _focusNodes[_focusedIndex].requestFocus();
-      return KeyEventResult.handled;
-    }
-    if (key == TvInputKey.up || key == TvInputKey.down) {
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Focus(
-        canRequestFocus: false,
-        skipTraversal: true,
-        onKeyEvent: _handleBrowseKey,
-        child: FocusScope(
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.97),
-                  Colors.black.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      widget.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Text(
-                      '◀ ▶ browse   OK switch',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 96,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: widget.channels.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(width: 10),
-                    itemBuilder: (context, index) {
-                      final channel = widget.channels[index];
-                      final isCurrent = channel.id == widget.currentChannelId;
-                      return TvFocusable(
-                        key: ValueKey('quick-browse-${channel.id}'),
-                        focusNode: _focusNodes[index],
-                        semanticLabel: channel.name,
-                        onFocus: () => _focusedIndex = index,
-                        onSelect: () => widget.onSelected(channel),
-                        child: Container(
-                          width: 130,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: isCurrent
-                                ? Colors.white.withValues(alpha: 0.16)
-                                : Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              if (isCurrent)
-                                const Padding(
-                                  padding: EdgeInsets.only(bottom: 6),
-                                  child: Text(
-                                    'ON NOW',
-                                    style: TextStyle(
-                                      color: Colors.greenAccent,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.6,
-                                    ),
-                                  ),
-                                ),
-                              Text(
-                                channel.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ContextMenuOverlay extends ConsumerWidget {
   const _ContextMenuOverlay({
     required this.channel,

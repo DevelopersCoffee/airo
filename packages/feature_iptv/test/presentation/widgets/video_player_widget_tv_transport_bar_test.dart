@@ -184,7 +184,11 @@ void main() {
       find.byKey(const ValueKey('iptv-player-more-button')),
       findsOneWidget,
     );
-    expect(find.text('MENU for more actions'), findsOneWidget);
+    expect(find.text('←→ Move    OK Select    Back Close'), findsOneWidget);
+    expect(find.text('MENU for more actions'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('←→ Move    OK Select    Back Close'), findsNothing);
     expect(find.text('City News Live'), findsOneWidget);
     expect(find.text('LIVE'), findsOneWidget);
     // The touch-oriented layout must not appear alongside it.
@@ -336,10 +340,10 @@ void main() {
       await tester.pump();
       expect(surface.hasPrimaryFocus, isTrue);
 
-      final opacity = tester.widget<AnimatedOpacity>(
-        find.byKey(const ValueKey('iptv-player-controls-opacity')),
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+        findsOneWidget,
       );
-      expect(opacity.opacity, 1);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
@@ -368,23 +372,25 @@ void main() {
     await tester.pump();
 
     await tester.pump(const Duration(milliseconds: 4999));
-    var opacity = tester.widget<AnimatedOpacity>(
-      find.byKey(const ValueKey('iptv-player-controls-opacity')),
+    expect(
+      find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+      findsOneWidget,
     );
-    expect(opacity.opacity, 1);
 
     await tester.pump(const Duration(milliseconds: 1));
-    opacity = tester.widget<AnimatedOpacity>(
-      find.byKey(const ValueKey('iptv-player-controls-opacity')),
-    );
-    expect(opacity.opacity, 0);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
-    opacity = tester.widget<AnimatedOpacity>(
-      find.byKey(const ValueKey('iptv-player-controls-opacity')),
+    expect(
+      find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+      findsNothing,
     );
-    expect(opacity.opacity, 1);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+      findsOneWidget,
+    );
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
       'player center control',
@@ -478,10 +484,7 @@ void main() {
 
       await tester.pump(const Duration(seconds: 5));
 
-      final opacity = tester.widget<AnimatedOpacity>(
-        find.byKey(const ValueKey('iptv-player-controls-opacity')),
-      );
-      expect(opacity.opacity, 1);
+      expect(more, findsOneWidget);
       expect(moreFocus.focusNode!.hasPrimaryFocus, isTrue);
     },
   );

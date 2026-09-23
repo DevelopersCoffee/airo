@@ -117,18 +117,21 @@ void main() {
   );
 
   testWidgets(
-    'D-pad up opens the Mini Guide, and selecting a channel there switches '
-    'playback (CV-008 UC-002, superseded by the AiroTV D-pad design: '
-    'UP browses instead of instantly surfing)',
+    'Down opens the Mini Guide; Up opens controls; Left steps the channel',
     (tester) async {
-      const current = IPTVChannel(
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const previous = IPTVChannel(
         id: 'news-1',
         name: 'City News Live',
         streamUrl: 'https://example.com/news.m3u8',
         group: 'News',
         category: ChannelCategory.news,
       );
-      const next = IPTVChannel(
+      const current = IPTVChannel(
         id: 'sports-1',
         name: 'Stadium Sports',
         streamUrl: 'https://example.com/sports.m3u8',
@@ -155,51 +158,80 @@ void main() {
             _AlwaysAvailableProbeTransport(),
           ),
           iptvChannelsProvider.overrideWith(
-            (ref) async => const [current, next],
+            (ref) async => const [previous, current],
           ),
         ],
       );
       addTearDown(container.dispose);
-      // Pre-warm so nextChannelProvider sees both channels the moment the
-      // key event fires, instead of starting from AsyncLoading (nothing
-      // else reads iptvChannelsProvider until then).
+      // Pre-warm so channel stepping sees both channels the moment the key
+      // event fires, instead of starting from AsyncLoading.
       await container.read(iptvChannelsProvider.future);
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+          child: const MaterialApp(
+            home: Scaffold(
+              body: VideoPlayerWidget(
+                useTvTransportBar: true,
+                enableTouchGestures: false,
+              ),
+            ),
+          ),
         ),
       );
       await tester.pump();
 
       await service.playChannel(current);
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Playback claims the transport. Back returns to the video zone, where
+      // Down opens the Mini Guide.
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+
+      expect(find.text('Mini guide'), findsOneWidget);
+      expect(find.text('City News Live'), findsWidgets);
+      expect(service.currentState.currentChannel?.id, 'sports-1');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
-
-      // Mini Guide is open — browsing, not yet switched.
-      expect(find.text('Mini guide'), findsOneWidget);
-      expect(find.text('Stadium Sports'), findsWidgets);
-      expect(service.currentState.currentChannel?.id, 'news-1');
-      expect(
-        FocusManager.instance.primaryFocus?.debugLabel,
-        'quick browse City News Live',
-      );
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
-      expect(
-        FocusManager.instance.primaryFocus?.debugLabel,
-        'quick browse Stadium Sports',
-      );
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await tester.pump();
 
-      expect(service.currentState.currentChannel?.id, 'sports-1');
       expect(find.text('Mini guide'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+        findsOneWidget,
+      );
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player center control',
+      );
+
+      // Hide the transport again, then Left steps to the previous channel
+      // without revealing the bar.
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+        findsNothing,
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+
+      expect(service.currentState.currentChannel?.id, 'news-1');
+      expect(find.text('City News Live'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+        findsNothing,
+      );
 
       // Pending timers (buffer monitor, live-edge detector) must be stopped
       // inside the test body -- the pending-timer check runs before
