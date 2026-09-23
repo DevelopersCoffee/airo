@@ -81,6 +81,8 @@ void main() {
     required VideoPlayerStreamingService main,
     required TvMiniGuidePreviewFactory previewFactory,
     List<IPTVChannel> recents = const [_sports],
+    bool useTvTransportBar = false,
+    bool enableTouchGestures = true,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -109,7 +111,14 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        child: MaterialApp(
+          home: Scaffold(
+            body: VideoPlayerWidget(
+              useTvTransportBar: useTvTransportBar,
+              enableTouchGestures: enableTouchGestures,
+            ),
+          ),
+        ),
       ),
     );
     await tester.pump();
@@ -325,6 +334,34 @@ void main() {
     expect(previews.single.stopCount, greaterThanOrEqualTo(1));
     expect(previews.single.disposed, isTrue);
     expect(main.currentState.currentChannel?.id, 'sports-1');
+
+    await main.stop();
+  });
+
+  testWidgets('Mini Guide stays a bottom strip under the player height', (
+    tester,
+  ) async {
+    final main = _RecordingMainService();
+    await pumpPlayer(
+      tester,
+      main: main,
+      previewFactory: _RecordingPreviewService.new,
+      useTvTransportBar: true,
+      enableTouchGestures: false,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    await openMiniGuideFromVideo(tester);
+    await tester.pump();
+
+    expect(find.text('Mini guide'), findsOneWidget);
+    final guide = tester.getRect(find.byType(TvMiniGuideOverlay));
+    final player = tester.getRect(find.byType(VideoPlayerWidget));
+    expect(guide.height, lessThan(player.height * 0.5));
+    expect(guide.height, greaterThan(96));
+    expect(guide.bottom, closeTo(player.bottom, 1));
+    expect(guide.top, greaterThan(player.top));
 
     await main.stop();
   });

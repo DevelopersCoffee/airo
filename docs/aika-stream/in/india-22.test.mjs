@@ -11,6 +11,12 @@ assert.match(css, /\.tv-bezel/);
 assert.match(css, /prefers-reduced-motion:\s*reduce/);
 assert.equal((css.match(/linear-gradient\(/g) || []).length, 0);
 assert.match(css, /\.tv-stage[\s\S]*radial-gradient/);
+assert.match(
+  css,
+  /\.india-page \.hero::before,\s*\.india-page \.hero::after\s*\{[^}]*display:\s*none/,
+);
+assert.match(css, /\.india-page \.hero::before[\s\S]*content:\s*none/);
+assert.match(css, /\.india-page \.hero::after[\s\S]*background:\s*none/);
 
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 assert.match(html, /Your TV\. Reimagined\./);

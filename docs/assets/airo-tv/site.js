@@ -155,6 +155,7 @@
 
   if (!reducedMotion && finePointer && heroes.length) {
     heroes.forEach(function (hero) {
+      if (hero.closest(".india-page")) return;
       const glow = document.createElement("div");
       glow.className = "hero-glow";
       glow.setAttribute("aria-hidden", "true");

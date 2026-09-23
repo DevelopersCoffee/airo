@@ -1403,9 +1403,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
                           layoutBuilder: (currentChild, previousChildren) {
+                            // Loose fit keeps each bottom surface at its
+                            // content height. Expand would pin the Mini Guide
+                            // to the full player and cover the video.
                             return Stack(
                               alignment: Alignment.bottomCenter,
-                              fit: StackFit.expand,
+                              fit: StackFit.loose,
                               children: [...previousChildren, ?currentChild],
                             );
                           },

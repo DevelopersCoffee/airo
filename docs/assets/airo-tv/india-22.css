@@ -2,6 +2,12 @@
   background: #070A12;
   color: #fff;
 }
+.india-page .hero::before,
+.india-page .hero::after {
+  display: none;
+  content: none;
+  background: none;
+}
 .india-page .hero-grid {
   display: grid;
   grid-template-columns: minmax(280px, 460px) minmax(0, 1fr);
