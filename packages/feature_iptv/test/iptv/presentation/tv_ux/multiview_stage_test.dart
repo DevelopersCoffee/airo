@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:feature_iptv/application/multiview_split_ratio.dart';
 import 'package:feature_iptv/application/providers/multiview_provider.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/multiview_stage.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,8 @@ void main() {
     MultiviewLayoutKind? layout,
     ValueChanged<String>? onDismiss,
     VoidCallback? onEmptySlotTap,
+    MultiviewSplitRatio splitRatio = MultiviewSplitRatio.fifty,
+    ValueChanged<MultiviewSplitRatio>? onSplitRatioChanged,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -41,6 +44,8 @@ void main() {
               layout: layout,
               onDismiss: onDismiss,
               onEmptySlotTap: onEmptySlotTap,
+              splitRatio: splitRatio,
+              onSplitRatioChanged: onSplitRatioChanged,
             ),
           ),
         ),
@@ -187,6 +192,7 @@ void main() {
       onSwap: (first, second) => swapped = (first, second),
     );
 
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -387,6 +393,243 @@ void main() {
       expect(tapCount, 1);
     },
   );
+
+  List<Expanded> splitExpanded(WidgetTester tester, Key layoutKey) {
+    final handle = find.descendant(
+      of: find.byKey(layoutKey),
+      matching: find.byKey(const ValueKey('multiview-split-handle')),
+    );
+    final splitFinder = find.ancestor(
+      of: handle,
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Row || widget is Column,
+      ),
+    );
+    final panes = <Expanded>[];
+    tester.element(splitFinder.first).visitChildren((child) {
+      final widget = child.widget;
+      if (widget is Expanded) {
+        panes.add(widget);
+      }
+    });
+    return panes;
+  }
+
+  testWidgets('two-pane split shows a handle and 50/50 flex by default', (
+    tester,
+  ) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions);
+
+    expect(
+      find.byKey(const ValueKey('multiview-split-handle')),
+      findsOneWidget,
+    );
+    final panes = splitExpanded(
+      tester,
+      const ValueKey('multiview-layout-split'),
+    );
+    expect(panes, hasLength(2));
+    expect(panes[0].flex, 1);
+    expect(panes[1].flex, 1);
+  });
+
+  testWidgets('seventy stop paints flex 7/3 on the horizontal split', (
+    tester,
+  ) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions, splitRatio: MultiviewSplitRatio.seventy);
+
+    final panes = splitExpanded(
+      tester,
+      const ValueKey('multiview-layout-split'),
+    );
+    expect(panes[0].flex, 7);
+    expect(panes[1].flex, 3);
+  });
+
+  testWidgets('stacked two-pane also shows the handle', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions, layout: MultiviewLayoutKind.splitVertical);
+
+    expect(
+      find.byKey(const ValueKey('multiview-layout-split-vertical')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('multiview-split-handle')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('triple and quad mosaics have no split handle', (tester) async {
+    final triple = [session('1'), session('2'), session('3')];
+    addTearDown(() => Future.wait(triple.map((item) => item.close())));
+    await pump(tester, triple);
+    expect(find.byKey(const ValueKey('multiview-split-handle')), findsNothing);
+
+    final quad = [session('a'), session('b'), session('c'), session('d')];
+    addTearDown(() => Future.wait(quad.map((item) => item.close())));
+    await pump(tester, quad);
+    expect(find.byKey(const ValueKey('multiview-split-handle')), findsNothing);
+  });
+
+  testWidgets('split handle is not focused after the initial pump', (
+    tester,
+  ) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions);
+
+    final handleContext = tester.element(
+      find.byKey(const ValueKey('multiview-split-handle')),
+    );
+    expect(Focus.maybeOf(handleContext)?.hasPrimaryFocus, isNot(true));
+  });
+
+  testWidgets('drag toward the left edge snaps to thirty', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    MultiviewSplitRatio? committed;
+    await pump(
+      tester,
+      sessions,
+      onSplitRatioChanged: (ratio) => committed = ratio,
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('multiview-split-handle')),
+      const Offset(-180, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(committed, MultiviewSplitRatio.thirty);
+  });
+
+  testWidgets('drag that stays near center snaps to fifty', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    MultiviewSplitRatio? committed;
+    await pump(
+      tester,
+      sessions,
+      onSplitRatioChanged: (ratio) => committed = ratio,
+    );
+
+    // 24px exceeds Flutter kTouchSlop (~18) so the drag arena wins.
+    await tester.drag(
+      find.byKey(const ValueKey('multiview-split-handle')),
+      const Offset(24, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(committed, MultiviewSplitRatio.fifty);
+  });
+
+  testWidgets('tap on the handle does not commit a split', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    MultiviewSplitRatio? committed;
+    await pump(
+      tester,
+      sessions,
+      onSplitRatioChanged: (ratio) => committed = ratio,
+    );
+    await tester.tap(find.byKey(const ValueKey('multiview-split-handle')));
+    await tester.pumpAndSettle();
+    expect(committed, isNull);
+  });
+
+  FocusNode focusableNode(WidgetTester tester, Finder host) {
+    return tester
+        .widgetList<Focus>(
+          find.descendant(of: host, matching: find.byType(Focus)),
+        )
+        .map((focus) => focus.focusNode)
+        .whereType<FocusNode>()
+        .firstWhere((candidate) => candidate.canRequestFocus);
+  }
+
+  Future<void> focusHandle(WidgetTester tester) async {
+    final handle = find.byKey(const ValueKey('multiview-split-handle'));
+    // The handle key is on TvFocusable. Focus.maybeOf that element hits the
+    // ancestor TvInputHandler Focus (not focusable); ExcludeFocus adds a
+    // second descendant Focus. Drive the inner node that can take focus.
+    final node = focusableNode(tester, handle);
+    node.requestFocus();
+    await tester.pump();
+    expect(node.hasPrimaryFocus, isTrue);
+  }
+
+  testWidgets(
+    'Right from fifty commits seventy; further Right leaves the handle',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      final committed = <MultiviewSplitRatio>[];
+      await pump(tester, sessions, onSplitRatioChanged: committed.add);
+      await focusHandle(tester);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(committed, [MultiviewSplitRatio.seventy]);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 640,
+              height: 360,
+              child: MultiviewStage(
+                sessions: sessions,
+                featuredChannelId: sessions.first.id,
+                onPromote: (_) {},
+                splitRatio: MultiviewSplitRatio.seventy,
+                onSplitRatioChanged: committed.add,
+              ),
+            ),
+          ),
+        ),
+      );
+      await focusHandle(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(committed, [MultiviewSplitRatio.seventy]);
+      expect(
+        focusableNode(
+          tester,
+          find.byKey(const ValueKey('multiview-promote-two')),
+        ).hasPrimaryFocus,
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets('Select on the handle does not promote or swap', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    final promoted = <String>[];
+    var swapped = 0;
+    await pump(
+      tester,
+      sessions,
+      onPromote: promoted.add,
+      onSwap: (_, __) => swapped++,
+    );
+    promoted.clear();
+    await focusHandle(tester);
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(promoted, isEmpty);
+    expect(swapped, 0);
+  });
 }
 
 class _FakeSession implements IptvMultiviewSession {
