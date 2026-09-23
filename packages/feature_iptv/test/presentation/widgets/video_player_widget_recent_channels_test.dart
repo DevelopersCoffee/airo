@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// AiroTV D-pad design's "RECENT CHANNELS (DOWN)" screen.
+// Down from the video opens the Mini Guide, filled with recently watched
+// channels. Back still closes that guide without leaving Watch.
 void main() {
   Future<ProviderContainer> pumpPlayer(
     WidgetTester tester, {
@@ -58,6 +59,12 @@ void main() {
     return container;
   }
 
+  /// Controls start open. Back returns to the video, where Down opens the guide.
+  Future<void> returnToVideo(WidgetTester tester) async {
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+  }
+
   testWidgets('DOWN opens Recent Channels, and BACK closes it again', (
     tester,
   ) async {
@@ -75,13 +82,14 @@ void main() {
       ],
     );
 
-    expect(find.text('Recently watched'), findsNothing);
+    expect(find.text('Mini guide'), findsNothing);
 
+    await returnToVideo(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Recently watched'), findsOneWidget);
+    expect(find.text('Mini guide'), findsOneWidget);
     expect(find.text('Stadium Sports'), findsOneWidget);
 
     // Fire OS delivers a raw BACK key before the paired platform pop-route
@@ -89,7 +97,7 @@ void main() {
     // half of the same button press.
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
-    expect(find.text('Recently watched'), findsNothing);
+    expect(find.text('Mini guide'), findsNothing);
 
     // A physical Fire TV Stick delayed this platform callback while the video
     // surface was active.
@@ -98,7 +106,7 @@ void main() {
     await tester.pump();
 
     expect(handled, isTrue);
-    expect(find.text('Recently watched'), findsNothing);
+    expect(find.text('Mini guide'), findsNothing);
     expect(fullscreenCloseCount, 0);
 
     // Fire OS can issue another pop-route callback for the same physical
@@ -130,15 +138,17 @@ void main() {
       ],
     );
 
-    // Arm the latch: DOWN opens Recent Channels, BACK dismisses it.
+    // Arm the latch: Down opens the recent Mini Guide, Back dismisses it.
+    await returnToVideo(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
     await tester.pump();
-    expect(find.text('Recently watched'), findsOneWidget);
+    expect(find.text('Mini guide'), findsOneWidget);
+    expect(find.text('Stadium Sports'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
-    expect(find.text('Recently watched'), findsNothing);
+    expect(find.text('Mini guide'), findsNothing);
 
     // Long-press SELECT opens the context menu while the latch is still armed.
     await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
@@ -160,10 +170,12 @@ void main() {
   testWidgets('DOWN with no recent channels renders nothing', (tester) async {
     await pumpPlayer(tester, recent: const []);
 
+    await returnToVideo(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
     await tester.pump();
 
+    expect(find.text('Mini guide'), findsNothing);
     expect(find.text('Recently watched'), findsNothing);
   });
 }

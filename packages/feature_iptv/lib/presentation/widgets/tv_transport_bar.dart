@@ -80,7 +80,7 @@ class TvTransportBar extends StatelessWidget {
     required this.actions,
     required this.onKeyEvent,
     this.onDroppedKeys,
-    this.menuHint = 'MENU for more actions',
+    this.menuHint = '',
   });
 
   static const titleSafeFraction = 0.05;
@@ -111,91 +111,86 @@ class TvTransportBar extends StatelessWidget {
       color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
     );
 
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: SafeArea(
-        top: false,
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            key: const ValueKey('iptv-tv-transport-panel'),
-            constraints: BoxConstraints(maxWidth: maxPanelWidth),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AiroSpacing.radiusMd),
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.72),
-                    Colors.black.withValues(alpha: 0.28),
-                    Colors.transparent,
-                  ],
-                ),
+    return SafeArea(
+      top: false,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          key: const ValueKey('iptv-tv-transport-panel'),
+          constraints: BoxConstraints(maxWidth: maxPanelWidth),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AiroSpacing.radiusMd),
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.72),
+                  Colors.black.withValues(alpha: 0.28),
+                  Colors.transparent,
+                ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AiroSpacing.md,
-                  AiroSpacing.lg,
-                  AiroSpacing.md,
-                  AiroSpacing.md,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        _ChannelMark(name: channelName),
-                        const SizedBox(width: AiroSpacing.sm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  if (isLive) ...[
-                                    const _LiveChip(),
-                                    const SizedBox(width: AiroSpacing.sm),
-                                  ],
-                                  Flexible(
-                                    child: Text(
-                                      detailLine,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: detailStyle,
-                                    ),
-                                  ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AiroSpacing.md,
+                AiroSpacing.lg,
+                AiroSpacing.md,
+                AiroSpacing.md,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      _ChannelMark(name: channelName),
+                      const SizedBox(width: AiroSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                if (isLive) ...[
+                                  const _LiveChip(),
+                                  const SizedBox(width: AiroSpacing.sm),
                                 ],
-                              ),
-                              const SizedBox(height: AiroSpacing.xxs),
-                              Text(
-                                channelName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: titleStyle,
-                              ),
-                            ],
-                          ),
+                                Flexible(
+                                  child: Text(
+                                    detailLine,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: detailStyle,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AiroSpacing.xxs),
+                            Text(
+                              channelName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: titleStyle,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: AiroSpacing.md),
-                    Focus(
-                      canRequestFocus: false,
-                      skipTraversal: true,
-                      onKeyEvent: onKeyEvent,
-                      child: TvTransportOverflowRow(
-                        actions: actions,
-                        onDroppedKeys: onDroppedKeys,
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: AiroSpacing.md),
+                  Focus(
+                    canRequestFocus: false,
+                    skipTraversal: true,
+                    onKeyEvent: onKeyEvent,
+                    child: TvTransportOverflowRow(
+                      actions: actions,
+                      onDroppedKeys: onDroppedKeys,
                     ),
-                    const SizedBox(height: AiroSpacing.sm),
-                    Text(menuHint, style: hintStyle),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: AiroSpacing.sm),
+                  Text(menuHint, style: hintStyle),
+                ],
               ),
             ),
           ),

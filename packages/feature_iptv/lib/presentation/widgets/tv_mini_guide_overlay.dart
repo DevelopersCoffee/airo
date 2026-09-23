@@ -9,6 +9,7 @@ import 'package:platform_media/platform_media.dart';
 import 'package:platform_player/platform_player.dart';
 
 import 'channel_logo.dart';
+import 'watch_remote_contract.dart';
 
 /// Creates the single Mini Guide preview decoder. Tests override this so they
 /// can count start/stop without opening a real engine.
@@ -28,6 +29,8 @@ class TvMiniGuideOverlay extends StatefulWidget {
     required this.channels,
     required this.currentChannelId,
     required this.onSelected,
+    required this.onMoveToControls,
+    required this.onDismiss,
     required this.previewFactory,
     this.settleDuration = defaultSettleDuration,
   });
@@ -37,6 +40,11 @@ class TvMiniGuideOverlay extends StatefulWidget {
   final List<IPTVChannel> channels;
   final String? currentChannelId;
   final ValueChanged<IPTVChannel> onSelected;
+  final VoidCallback onMoveToControls;
+
+  /// [fromBack] is true when Back closed the guide. Down passes false so the
+  /// player can arm Fire OS paired-pop suppression only for Back.
+  final void Function({bool fromBack}) onDismiss;
   final TvMiniGuidePreviewFactory previewFactory;
   final Duration settleDuration;
 
@@ -55,6 +63,11 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
   String? _errorChannelId;
   String? _scheduledChannelId;
   bool _previewHasFrame = false;
+  bool _hintVisible = true;
+  Timer? _hintTimer;
+
+  static const _hintText = '←→ Browse    OK Switch    Back Close';
+  static const _hintDuration = Duration(seconds: 4);
 
   String get _channelSignature =>
       widget.channels.map((channel) => channel.id).join('|');
@@ -64,6 +77,18 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
     super.initState();
     _createFocusNodes();
     _requestInitialFocus();
+    _armHint();
+  }
+
+  void _armHint() {
+    _hintTimer?.cancel();
+    final reveal = !_hintVisible;
+    _hintVisible = true;
+    _hintTimer = Timer(_hintDuration, () {
+      if (!mounted) return;
+      setState(() => _hintVisible = false);
+    });
+    if (reveal && mounted) setState(() {});
   }
 
   @override
@@ -87,6 +112,7 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
   void dispose() {
     _epoch++;
     _settleTimer?.cancel();
+    _hintTimer?.cancel();
     _stopPreviewSession();
     for (final node in _focusNodes) {
       node.dispose();
@@ -129,14 +155,34 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
       _ => null,
     };
     if (nextIndex != null) {
+      _armHint();
       _focusedIndex = nextIndex;
       _focusNodes[_focusedIndex].requestFocus();
       return KeyEventResult.handled;
     }
-    if (key == TvInputKey.up || key == TvInputKey.down) {
-      return KeyEventResult.handled;
+    final action = watchRemoteAction(
+      zone: WatchFocusZone.miniGuide,
+      key: key ?? TvInputKey.home,
+    );
+    if (key == null) return KeyEventResult.ignored;
+    switch (action) {
+      case WatchRemoteAction.moveChannel:
+        return KeyEventResult
+            .ignored; // Left/Right already requested focus above.
+      case WatchRemoteAction.showControls:
+        _armHint();
+        widget.onMoveToControls();
+        return KeyEventResult.handled;
+      case WatchRemoteAction.closeGuide:
+        _armHint();
+        widget.onDismiss(fromBack: key == TvInputKey.back);
+        return KeyEventResult.handled;
+      case WatchRemoteAction.switchFocusedChannel:
+      case WatchRemoteAction.moreActions:
+        return KeyEventResult.ignored; // Select and Menu stay with the parent.
+      default:
+        return KeyEventResult.ignored;
     }
-    return KeyEventResult.ignored;
   }
 
   void _onCardFocused(int index) {
@@ -245,10 +291,8 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
     final onSurface = Colors.white;
     final muted = Colors.white54;
 
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
+    return SizedBox(
+      width: double.infinity,
       child: Focus(
         canRequestFocus: false,
         skipTraversal: true,
@@ -286,7 +330,7 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
                       ),
                     ),
                     Text(
-                      '◀ ▶ browse   OK switch',
+                      _hintVisible ? _hintText : '',
                       style: AiroTypography.labelSmall.copyWith(color: muted),
                     ),
                   ],
