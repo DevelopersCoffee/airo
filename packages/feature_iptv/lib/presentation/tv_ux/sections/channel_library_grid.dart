@@ -16,13 +16,17 @@ const _cardWidth = 155.0;
 // own card-width constant (a grid cell's width is flexible — the Sliver
 // divides available width evenly across columns — but its height is a hard,
 // non-scrollable constraint). MediaCard.railHeightFor(MediaCardVariant.standard)
-// is 169; shrinking this below that overflows the card's name/subtitle
-// column by a few pixels every frame (verified: widget tests below fail with
-// a real `RenderFlex overflowed` exception at 155). Left at 169 so only
-// _cardWidth (which drives _columnCountFor, and is layout-flexible) does the
-// column-gaining work; revisit together with a smaller MediaCardVariant if
-// the tile needs to shrink vertically too.
+// is 169 at text scale 1. TV `rowExtent` grows the 65px name/subtitle block
+// with `tvFontModeProvider` so Extra large does not overflow the sliver cell.
+// Phone 5-up already drops subtitle via `compactGridShowSubtitle`.
 const _cardHeight = 169.0; // MediaCard.railHeightFor(MediaCardVariant.standard)
+const _mediaCardThumbHeight = 104.0;
+const _mediaCardTextBlockHeight = _cardHeight - _mediaCardThumbHeight;
+
+double _tvRowExtent(double textScale) {
+  return _mediaCardThumbHeight + _mediaCardTextBlockHeight * textScale;
+}
+
 const _gridSpacing = 14.0;
 const _phoneGridSpacing = 8.0;
 const _phoneGridPadding = 8.0;
@@ -120,7 +124,7 @@ Widget _channelArtwork({
 /// [ChannelTable]. Matches the "LIBRARY" screen of the AiroTV D-pad design
 /// (Claude Design project 02b0b312): tiles instead of rows, sort collapsed
 /// to a compact chip row instead of clickable column headers.
-class ChannelLibraryGrid extends StatefulWidget {
+class ChannelLibraryGrid extends ConsumerStatefulWidget {
   static const browseAdSlotKey = ValueKey<String>('browse-ad-slot');
 
   const ChannelLibraryGrid({
@@ -190,10 +194,10 @@ class ChannelLibraryGrid extends StatefulWidget {
   final double floatingNavScrollClearance;
 
   @override
-  State<ChannelLibraryGrid> createState() => _ChannelLibraryGridState();
+  ConsumerState<ChannelLibraryGrid> createState() => _ChannelLibraryGridState();
 }
 
-class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
+class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
   late final ScrollController _scrollController;
   String _lastVisibleSignature = '';
   int _lastColumnCount = 1;
@@ -341,109 +345,90 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isPhone = constraints.maxWidth < _phoneBreakpoint;
-        // Phone width defaults to the single-column editorial list; the user
-        // can opt into the same dynamic tile grid tablet/TV always uses.
-        // Above the breakpoint there's no cramped single column to choose an
-        // alternative to, so the toggle (and this widget's viewMode) has no
-        // effect there.
-        final usePhoneList = isPhone && widget.viewMode == ChannelViewMode.list;
-        final usePhoneGrid = isPhone && !usePhoneList;
-        final columns = usePhoneList
-            ? 1
-            : usePhoneGrid
-            ? widget.phoneGridColumns.clamp(2, 5)
-            : _columnCountFor(constraints.maxWidth);
-        final rowExtent = usePhoneList
-            ? _horizontalCardHeight
-            : usePhoneGrid
-            ? _phoneGridRowExtent(columns)
-            : _cardHeight;
-        final rowSpacing = usePhoneList
-            ? _horizontalRowSpacing
-            : usePhoneGrid
-            ? _phoneGridSpacing
-            : _gridSpacing;
-        final gridHPad = usePhoneGrid ? _phoneGridPadding : 12.0;
-        if (columns != _lastColumnCount ||
-            rowExtent != _lastRowExtent ||
-            rowSpacing != _lastRowSpacing) {
-          _lastColumnCount = columns;
-          _lastRowExtent = rowExtent;
-          _lastRowSpacing = rowSpacing;
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _reportVisibleChannels(force: true),
-          );
-        }
-        return CustomScrollView(
-          controller: _scrollController,
-          key: const PageStorageKey<String>('airo-tv-channel-library-scroll'),
-          physics: const AlwaysScrollableScrollPhysics(),
-          scrollCacheExtent: const ScrollCacheExtent.pixels(640),
-          slivers: [
-            if (widget.showSortRow)
-              SliverToBoxAdapter(
-                child: _LibrarySortRow(
-                  sort: widget.sort,
-                  onSort: widget.onSort,
-                  viewMode: widget.viewMode,
-                  onViewModeChanged: isPhone ? widget.onViewModeChanged : null,
+    final fontMode = ref.watch(tvFontModeProvider);
+    final mediaQuery = MediaQuery.of(context);
+    final baseScale = mediaQuery.textScaler.scale(1.0);
+    return MediaQuery(
+      data: mediaQuery.copyWith(
+        textScaler: TextScaler.linear(baseScale * fontMode.scale),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isPhone = constraints.maxWidth < _phoneBreakpoint;
+          // Phone width defaults to the single-column editorial list; the user
+          // can opt into the same dynamic tile grid tablet/TV always uses.
+          // Above the breakpoint there's no cramped single column to choose an
+          // alternative to, so the toggle (and this widget's viewMode) has no
+          // effect there.
+          final usePhoneList =
+              isPhone && widget.viewMode == ChannelViewMode.list;
+          final usePhoneGrid = isPhone && !usePhoneList;
+          final columns = usePhoneList
+              ? 1
+              : usePhoneGrid
+              ? widget.phoneGridColumns.clamp(2, 5)
+              : _columnCountFor(constraints.maxWidth);
+          final rowExtent = usePhoneList
+              ? _horizontalCardHeight
+              : usePhoneGrid
+              ? _phoneGridRowExtent(columns)
+              : _tvRowExtent(fontMode.scale);
+          final rowSpacing = usePhoneList
+              ? _horizontalRowSpacing
+              : usePhoneGrid
+              ? _phoneGridSpacing
+              : _gridSpacing;
+          final gridHPad = usePhoneGrid ? _phoneGridPadding : 12.0;
+          if (columns != _lastColumnCount ||
+              rowExtent != _lastRowExtent ||
+              rowSpacing != _lastRowSpacing) {
+            _lastColumnCount = columns;
+            _lastRowExtent = rowExtent;
+            _lastRowSpacing = rowSpacing;
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _reportVisibleChannels(force: true),
+            );
+          }
+          return CustomScrollView(
+            controller: _scrollController,
+            key: const PageStorageKey<String>('airo-tv-channel-library-scroll'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            scrollCacheExtent: const ScrollCacheExtent.pixels(640),
+            slivers: [
+              if (widget.showSortRow)
+                SliverToBoxAdapter(
+                  child: _LibrarySortRow(
+                    sort: widget.sort,
+                    onSort: widget.onSort,
+                    viewMode: widget.viewMode,
+                    onViewModeChanged: isPhone
+                        ? widget.onViewModeChanged
+                        : null,
+                  ),
                 ),
-              ),
-            // The shell only builds this grid once the unfiltered library is
-            // non-empty (an empty library gets the onboarding view instead),
-            // so zero channels here always means the filters excluded them
-            // all. Without this the panel just rendered blank below the sort
-            // row, which the first-run country prompt makes easy to hit: it
-            // sets a country filter that a playlist may have nothing for.
-            if (widget.channels.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: _NoMatchesView(onClearFilters: widget.onClearFilters),
-              )
-            else ...[
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(gridHPad, 4, gridHPad, rowSpacing),
-                sliver: _channelsSliver(
-                  channels: _adIndex < 0
-                      ? widget.channels
-                      : widget.channels.sublist(0, _adIndex),
-                  columns: columns,
-                  rowExtent: rowExtent,
-                  rowSpacing: rowSpacing,
-                  usePhoneList: usePhoneList,
-                  usePhoneGrid: usePhoneGrid,
-                ),
-              ),
-              if (_adIndex >= 0)
+              // The shell only builds this grid once the unfiltered library is
+              // non-empty (an empty library gets the onboarding view instead),
+              // so zero channels here always means the filters excluded them
+              // all. Without this the panel just rendered blank below the sort
+              // row, which the first-run country prompt makes easy to hit: it
+              // sets a country filter that a playlist may have nothing for.
+              if (widget.channels.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _NoMatchesView(onClearFilters: widget.onClearFilters),
+                )
+              else ...[
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(
                     gridHPad,
-                    0,
-                    gridHPad,
-                    rowSpacing,
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: RepaintBoundary(
-                      child: KeyedSubtree(
-                        key: ChannelLibraryGrid.browseAdSlotKey,
-                        child: widget.browseAdCard!,
-                      ),
-                    ),
-                  ),
-                ),
-              if (_adIndex >= 0 && _adIndex < widget.channels.length)
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(
-                    gridHPad,
-                    0,
+                    4,
                     gridHPad,
                     rowSpacing,
                   ),
                   sliver: _channelsSliver(
-                    channels: widget.channels.sublist(_adIndex),
+                    channels: _adIndex < 0
+                        ? widget.channels
+                        : widget.channels.sublist(0, _adIndex),
                     columns: columns,
                     rowExtent: rowExtent,
                     rowSpacing: rowSpacing,
@@ -451,18 +436,53 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                     usePhoneGrid: usePhoneGrid,
                   ),
                 ),
-              if (widget.floatingNavScrollClearance > 0)
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height:
-                        widget.floatingNavScrollClearance +
-                        MediaQuery.paddingOf(context).bottom,
+                if (_adIndex >= 0)
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      gridHPad,
+                      0,
+                      gridHPad,
+                      rowSpacing,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: RepaintBoundary(
+                        child: KeyedSubtree(
+                          key: ChannelLibraryGrid.browseAdSlotKey,
+                          child: widget.browseAdCard!,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                if (_adIndex >= 0 && _adIndex < widget.channels.length)
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      gridHPad,
+                      0,
+                      gridHPad,
+                      rowSpacing,
+                    ),
+                    sliver: _channelsSliver(
+                      channels: widget.channels.sublist(_adIndex),
+                      columns: columns,
+                      rowExtent: rowExtent,
+                      rowSpacing: rowSpacing,
+                      usePhoneList: usePhoneList,
+                      usePhoneGrid: usePhoneGrid,
+                    ),
+                  ),
+                if (widget.floatingNavScrollClearance > 0)
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height:
+                          widget.floatingNavScrollClearance +
+                          MediaQuery.paddingOf(context).bottom,
+                    ),
+                  ),
+              ],
             ],
-          ],
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
@@ -972,35 +992,9 @@ class _ChannelTileState extends State<_ChannelTile> {
             onUnfocus: _cancelFocusPlay,
           );
 
-    Widget scaledCard;
-    try {
-      final scopeExists = ProviderScope.containerOf(context, listen: false) != null;
-      if (scopeExists) {
-        scaledCard = Consumer(
-          builder: (context, ref, child) {
-            final fontMode = ref.watch(tvFontModeProvider);
-            if (fontMode.scale == 1.0) return child!;
-            final mediaQuery = MediaQuery.of(context);
-            final baseScale = mediaQuery.textScaler.scale(1.0);
-            return MediaQuery(
-              data: mediaQuery.copyWith(
-                textScaler: TextScaler.linear(baseScale * fontMode.scale),
-              ),
-              child: child!,
-            );
-          },
-          child: card,
-        );
-      } else {
-        scaledCard = card;
-      }
-    } catch (_) {
-      scaledCard = card;
-    }
-
     return Stack(
       children: [
-        scaledCard,
+        card,
         Positioned(
           top: 7,
           left: 7,
