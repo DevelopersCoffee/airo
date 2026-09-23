@@ -93,6 +93,9 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    // Playback reveals the transport on the frame after mount, then the
+    // favourite id future rebuilds the icon.
+    await tester.pump();
     return container;
   }
 

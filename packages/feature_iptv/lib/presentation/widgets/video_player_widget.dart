@@ -275,6 +275,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   void initState() {
     super.initState();
     _isFullscreen = widget.initiallyFullscreen;
+    // TV chrome stays off until playback or a remote reveal. A bare video
+    // Back must exit Watch; visible transport Back only closes the bar.
+    if (widget.useTvTransportBar) {
+      _showControlsOverlay = false;
+    }
     _brightnessController =
         widget.brightnessController ?? SystemPlayerBrightnessController();
     _setAudioOnlyMode =
@@ -1120,6 +1125,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       }
     });
     ref.watch(recentlyWatchedRecorderProvider);
+    ref.watch(recentlyWatchedChannelsProvider);
     final streamingService = ref.watch(iptvStreamingServiceProvider);
     final streamingState = ref.watch(streamingStateProvider);
     final aspectRatioFit = ref.watch(videoAspectRatioProvider);
@@ -1399,10 +1405,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                             return Stack(
                               alignment: Alignment.bottomCenter,
                               fit: StackFit.expand,
-                              children: [
-                                ...previousChildren,
-                                ?currentChild,
-                              ],
+                              children: [...previousChildren, ?currentChild],
                             );
                           },
                           child: _watchBottomOverlay(context, service, state),
@@ -2252,19 +2255,25 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       );
     }
     if (_showControlsOverlay && widget.showControls) {
-      return Focus(
-        key: const ValueKey('watch-bottom-transport'),
-        canRequestFocus: false,
-        onFocusChange: _onControlsFocusChange,
-        child: _buildTvTransportBar(context, service, state),
+      return AnimatedOpacity(
+        key: const ValueKey('iptv-player-controls-opacity'),
+        opacity: 1,
+        duration: const Duration(milliseconds: 300),
+        child: Focus(
+          canRequestFocus: false,
+          onFocusChange: _onControlsFocusChange,
+          child: _buildTvTransportBar(context, service, state),
+        ),
       );
     }
     return const SizedBox.shrink(key: ValueKey('watch-bottom-none'));
   }
 
   Widget _miniGuideOverlay(StreamingState state) {
+    final channels = _miniGuideChannels(state.currentChannel!);
+    if (channels.isEmpty) return const SizedBox.shrink();
     return TvMiniGuideOverlay(
-      channels: _miniGuideChannels(state.currentChannel!),
+      channels: channels,
       currentChannelId: state.currentChannel!.id,
       onSelected: _playChannelFromQuickBrowse,
       onMoveToControls: _showWatchControls,

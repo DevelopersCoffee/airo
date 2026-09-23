@@ -160,6 +160,7 @@ void main() {
           iptvChannelsProvider.overrideWith(
             (ref) async => const [previous, current],
           ),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
         ],
       );
       addTearDown(container.dispose);
