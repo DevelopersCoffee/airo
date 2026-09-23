@@ -1112,10 +1112,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       }
       // MultiView sessions were being silently dropped on entering
       // fullscreen: this branch previously always rendered a single-channel
-              // VideoPlayerWidget bound to the primary streaming service, which
-              // multiview_provider.dart's toggle() silences and stops the
-              // moment a MultiView session starts — so "activeChannel" itself
-              // is likely null here.
+      // VideoPlayerWidget bound to the primary streaming service, which
+      // multiview_provider.dart's toggle() silences and stops the
+      // moment a MultiView session starts — so "activeChannel" itself
+      // is likely null here.
       // Render the same MultiviewStage the browse grid uses instead,
       // whenever there is a live session to show.
       final fullscreenBody = multiview.sessions.isNotEmpty
@@ -1872,6 +1872,9 @@ class _FullscreenMultiviewStage extends ConsumerWidget {
           sessions: multiview.sessions,
           featuredChannelId: multiview.featuredChannelId,
           layout: multiview.layout,
+          splitRatio: multiview.splitRatio,
+          onSplitRatioChanged: (ratio) =>
+              ref.read(multiviewProvider.notifier).setSplitRatio(ratio),
           onPromote: (channelId) =>
               ref.read(multiviewProvider.notifier).promote(channelId),
           onSwap: (firstId, secondId) =>
