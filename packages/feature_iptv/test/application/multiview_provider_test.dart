@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:feature_iptv/application/multiview_split_ratio.dart';
 import 'package:feature_iptv/application/providers/multiview_provider.dart';
@@ -331,6 +332,82 @@ void main() {
     controller.setSplitRatio(MultiviewSplitRatio.five);
     controller.setLayout(MultiviewLayoutKind.splitVertical);
     expect(controller.state.splitRatio, MultiviewSplitRatio.five);
+  });
+
+  test('setSplitRatio on two-pane applies equal-power gains', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    expect(controller.state.sessions, hasLength(2));
+
+    controller.setSplitRatio(MultiviewSplitRatio.five);
+    await Future<void>.delayed(Duration.zero);
+    expect(sessions['one']!.volume, closeTo(0, 0.01));
+    expect(sessions['two']!.volume, closeTo(1, 0.01));
+
+    controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
+    await Future<void>.delayed(Duration.zero);
+    expect(sessions['one']!.volume, closeTo(1, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+  });
+
+  test('promote in two-pane does not mute the mixed second tile', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setSplitRatio(MultiviewSplitRatio.fifty);
+    await Future<void>.delayed(Duration.zero);
+
+    final half = math.sqrt(0.5);
+    expect(sessions['one']!.volume, closeTo(half, 0.01));
+    expect(sessions['two']!.volume, closeTo(half, 0.01));
+
+    await controller.promote('two');
+    expect(sessions['one']!.volume, closeTo(half, 0.01));
+    expect(sessions['two']!.volume, closeTo(half, 0.01));
+    expect(controller.state.featuredChannelId, 'two');
+  });
+
+  test('adding a third session restores exclusive featured audio', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setSplitRatio(MultiviewSplitRatio.fifty);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      await controller.toggle(channel('three')),
+      MultiviewToggleResult.added,
+    );
+
+    expect(sessions['one']!.volume, closeTo(1, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+    expect(sessions['three']!.volume, closeTo(0, 0.01));
+    expect(controller.state.featuredChannelId, 'one');
   });
 }
 
