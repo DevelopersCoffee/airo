@@ -24,19 +24,29 @@ class MultiviewTwoPaneSplit extends StatefulWidget {
 
 class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   double? _dragFraction;
+  double? _dragExtent;
 
   bool get _horizontal => widget.axis == Axis.horizontal;
+
+  (int first, int second) _dragFlexes(double drag, double extent) {
+    final minFlex = (effectiveMultiviewSplitMin(extent) * 1000).round();
+    final maxFlex = 1000 - minFlex;
+    final first = (drag * 1000).round().clamp(minFlex, maxFlex);
+    return (first, 1000 - first);
+  }
 
   int get _firstFlex {
     final drag = _dragFraction;
     if (drag == null) return widget.ratio.firstFlex;
-    return (drag * 100).round().clamp(30, 70);
+    final (first, _) = _dragFlexes(drag, _dragExtent ?? 0);
+    return first;
   }
 
   int get _secondFlex {
     final drag = _dragFraction;
     if (drag == null) return widget.ratio.secondFlex;
-    return 100 - (drag * 100).round().clamp(30, 70);
+    final (_, second) = _dragFlexes(drag, _dragExtent ?? 0);
+    return second;
   }
 
   void _onDragUpdate(DragUpdateDetails details, BoxConstraints constraints) {
@@ -45,21 +55,32 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
     final delta = _horizontal ? details.delta.dx : details.delta.dy;
     final current = _dragFraction ?? widget.ratio.firstFraction;
     setState(() {
-      _dragFraction = clampMultiviewSplitFraction(current + delta / extent);
+      _dragExtent = extent;
+      _dragFraction = clampMultiviewSplitFraction(
+        current + delta / extent,
+        extent: extent,
+      );
     });
   }
 
   void _onDragEnd(DragEndDetails _) {
     final drag = _dragFraction;
-    if (drag == null) return;
-    final snapped = snapMultiviewSplitFraction(drag);
-    setState(() => _dragFraction = null);
+    final extent = _dragExtent;
+    if (drag == null || extent == null) return;
+    final snapped = snapMultiviewSplitFraction(drag, extent: extent);
+    setState(() {
+      _dragFraction = null;
+      _dragExtent = null;
+    });
     widget.onSplitRatioChanged?.call(snapped);
   }
 
   void _onDragCancel() {
     if (_dragFraction == null) return;
-    setState(() => _dragFraction = null);
+    setState(() {
+      _dragFraction = null;
+      _dragExtent = null;
+    });
   }
 
   TvInputResult _onHandleInput(TvInputKey key) {
