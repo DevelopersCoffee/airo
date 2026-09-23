@@ -111,14 +111,19 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final extent = _horizontal ? constraints.maxWidth : constraints.maxHeight;
+        final extent = _horizontal
+            ? constraints.maxWidth
+            : constraints.maxHeight;
         if (extent > 0) {
           _layoutExtent = extent;
         }
+        final compact =
+            constraints.maxWidth < 600 || constraints.maxHeight < 600;
         final children = [
           Expanded(flex: _firstFlex, child: widget.first),
           _SplitHandle(
             axis: widget.axis,
+            hitCrossAxis: compact ? 48 : 24,
             onDragUpdate: (details) => _onDragUpdate(details, constraints),
             onDragEnd: _onDragEnd,
             onDragCancel: _onDragCancel,
@@ -135,9 +140,10 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   }
 }
 
-class _SplitHandle extends StatelessWidget {
+class _SplitHandle extends StatefulWidget {
   const _SplitHandle({
     required this.axis,
+    required this.hitCrossAxis,
     required this.onDragUpdate,
     required this.onDragEnd,
     required this.onDragCancel,
@@ -145,57 +151,114 @@ class _SplitHandle extends StatelessWidget {
   });
 
   final Axis axis;
+  final double hitCrossAxis;
   final GestureDragUpdateCallback onDragUpdate;
   final GestureDragEndCallback onDragEnd;
   final VoidCallback onDragCancel;
   final TvInputCallback onInput;
 
   @override
+  State<_SplitHandle> createState() => _SplitHandleState();
+}
+
+class _SplitHandleState extends State<_SplitHandle> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final horizontal = axis == Axis.horizontal;
-    final gesture = horizontal
-        ? GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragUpdate: onDragUpdate,
-            onHorizontalDragEnd: onDragEnd,
-            onHorizontalDragCancel: onDragCancel,
-            child: _seam(horizontal),
-          )
-        : GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onVerticalDragUpdate: onDragUpdate,
-            onVerticalDragEnd: onDragEnd,
-            onVerticalDragCancel: onDragCancel,
-            child: _seam(horizontal),
-          );
+    final horizontal = widget.axis == Axis.horizontal;
     return TvInputHandler(
-      onInput: onInput,
+      onInput: widget.onInput,
       child: TvFocusable(
         key: const ValueKey('multiview-split-handle'),
+        focusNode: _focusNode,
         autofocus: false,
+        showScaleEffect: false,
+        showBorderEffect: false,
+        showGlowEffect: false,
         semanticLabel: 'Resize split',
         semanticHint: horizontal
             ? 'Left or right to change size'
             : 'Up or down to change size',
         onSelect: () {},
-        child: gesture,
+        child: ListenableBuilder(
+          listenable: _focusNode,
+          builder: (context, _) {
+            final seam = _seam(
+              horizontal: horizontal,
+              focused: _focusNode.hasFocus,
+            );
+            if (horizontal) {
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragUpdate: widget.onDragUpdate,
+                onHorizontalDragEnd: widget.onDragEnd,
+                onHorizontalDragCancel: widget.onDragCancel,
+                child: seam,
+              );
+            }
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: widget.onDragUpdate,
+              onVerticalDragEnd: widget.onDragEnd,
+              onVerticalDragCancel: widget.onDragCancel,
+              child: seam,
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _seam(bool horizontal) {
-    return ColoredBox(
-      color: Colors.white24,
-      child: SizedBox(
-        width: horizontal ? 24 : double.infinity,
-        height: horizontal ? double.infinity : 24,
-        child: Center(
-          child: ColoredBox(
-            color: Colors.white70,
-            child: SizedBox(
-              width: horizontal ? 4 : 32,
-              height: horizontal ? 32 : 4,
-            ),
+  Widget _seam({required bool horizontal, required bool focused}) {
+    const hairline = 2.0;
+    const gripCross = 8.0;
+    const gripAlong = 28.0;
+    final hit = widget.hitCrossAxis;
+    return SizedBox(
+      width: horizontal ? hit : double.infinity,
+      height: horizontal ? double.infinity : hit,
+      child: Align(
+        child: FractionallySizedBox(
+          widthFactor: horizontal ? null : 1 / 3,
+          heightFactor: horizontal ? 1 / 3 : null,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              ColoredBox(
+                color: Colors.white.withValues(alpha: 0.28),
+                child: SizedBox(
+                  width: horizontal ? hairline : double.infinity,
+                  height: horizontal ? double.infinity : hairline,
+                ),
+              ),
+              Transform.scale(
+                scale: focused ? 1.05 : 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(
+                      alpha: focused ? 0.80 : 0.55,
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: focused
+                        ? const [
+                            BoxShadow(color: Colors.white70, blurRadius: 8),
+                          ]
+                        : null,
+                  ),
+                  child: SizedBox(
+                    width: horizontal ? gripCross : gripAlong,
+                    height: horizontal ? gripAlong : gripCross,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

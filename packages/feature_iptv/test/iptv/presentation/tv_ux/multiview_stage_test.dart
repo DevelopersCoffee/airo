@@ -437,7 +437,9 @@ void main() {
     expect(panes[1].flex, 1);
   });
 
-  testWidgets('five stop paints 80dp floor flex at 360px width', (tester) async {
+  testWidgets('five stop paints 80dp floor flex at 360px width', (
+    tester,
+  ) async {
     final sessions = [session('one'), session('two')];
     addTearDown(() => Future.wait(sessions.map((item) => item.close())));
     await pump(
@@ -452,7 +454,10 @@ void main() {
       tester,
       const ValueKey('multiview-layout-split'),
     );
-    expect(panes[0].flex, inInclusiveRange(expectedFirst - 1, expectedFirst + 1));
+    expect(
+      panes[0].flex,
+      inInclusiveRange(expectedFirst - 1, expectedFirst + 1),
+    );
     expect(panes[1].flex, 1000 - panes[0].flex);
   });
 
@@ -482,6 +487,66 @@ void main() {
     );
     expect(panes[0].flex, expectedMax);
     expect(panes[1].flex, expectedMin);
+  });
+
+  testWidgets('compact host uses a 48dp split hit sliver', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            height: 640,
+            child: MultiviewStage(
+              sessions: sessions,
+              featuredChannelId: sessions.first.id,
+              onPromote: (_) {},
+              splitRatio: MultiviewSplitRatio.fifty,
+            ),
+          ),
+        ),
+      ),
+    );
+    final box = tester.getSize(
+      find.byKey(const ValueKey('multiview-split-handle')),
+    );
+    expect(box.width, 48);
+  });
+
+  testWidgets('1920 host uses a 24dp split hit sliver', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 1920,
+            height: 1080,
+            child: MultiviewStage(
+              sessions: sessions,
+              featuredChannelId: sessions.first.id,
+              onPromote: (_) {},
+              splitRatio: MultiviewSplitRatio.fifty,
+            ),
+          ),
+        ),
+      ),
+    );
+    final box = tester.getSize(
+      find.byKey(const ValueKey('multiview-split-handle')),
+    );
+    expect(box.width, 24);
   });
 
   testWidgets('stacked two-pane also shows the handle', (tester) async {
