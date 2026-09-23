@@ -521,7 +521,7 @@ void main() {
 
     await tester.drag(
       find.byKey(const ValueKey('multiview-split-handle')),
-      const Offset(12, 0),
+      const Offset(24, 0),
     );
     await tester.pumpAndSettle();
 
