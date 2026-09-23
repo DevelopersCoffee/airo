@@ -489,6 +489,44 @@ void main() {
     );
     expect(Focus.maybeOf(handleContext)?.hasPrimaryFocus, isNot(true));
   });
+
+  testWidgets('drag toward the left edge snaps to thirty', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    MultiviewSplitRatio? committed;
+    await pump(
+      tester,
+      sessions,
+      onSplitRatioChanged: (ratio) => committed = ratio,
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('multiview-split-handle')),
+      const Offset(-180, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(committed, MultiviewSplitRatio.thirty);
+  });
+
+  testWidgets('drag that stays near center snaps to fifty', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    MultiviewSplitRatio? committed;
+    await pump(
+      tester,
+      sessions,
+      onSplitRatioChanged: (ratio) => committed = ratio,
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('multiview-split-handle')),
+      const Offset(12, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(committed, MultiviewSplitRatio.fifty);
+  });
 }
 
 class _FakeSession implements IptvMultiviewSession {

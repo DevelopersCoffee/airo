@@ -49,13 +49,19 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
     });
   }
 
-  void _onDragEnd(DragEndDetails _) {
-    final drag = _dragFraction;
-    if (drag == null) return;
+  void _commitSnap() {
+    final drag = _dragFraction ?? widget.ratio.firstFraction;
     final snapped = snapMultiviewSplitFraction(drag);
-    setState(() => _dragFraction = null);
+    if (_dragFraction != null) {
+      setState(() => _dragFraction = null);
+    }
     widget.onSplitRatioChanged?.call(snapped);
   }
+
+  void _onDragEnd(DragEndDetails _) => _commitSnap();
+
+  // Sub-slop moves (e.g. +12px) lose the drag arena to tap; still snap.
+  void _onTap() => _commitSnap();
 
   void _onDragCancel() {
     if (_dragFraction == null) return;
@@ -90,6 +96,7 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
             onDragUpdate: (details) => _onDragUpdate(details, constraints),
             onDragEnd: _onDragEnd,
             onDragCancel: _onDragCancel,
+            onTap: _onTap,
             onInput: _onHandleInput,
           ),
           Expanded(flex: _secondFlex, child: widget.second),
@@ -109,6 +116,7 @@ class _SplitHandle extends StatelessWidget {
     required this.onDragUpdate,
     required this.onDragEnd,
     required this.onDragCancel,
+    required this.onTap,
     required this.onInput,
   });
 
@@ -116,6 +124,7 @@ class _SplitHandle extends StatelessWidget {
   final GestureDragUpdateCallback onDragUpdate;
   final GestureDragEndCallback onDragEnd;
   final VoidCallback onDragCancel;
+  final VoidCallback onTap;
   final TvInputCallback onInput;
 
   @override
@@ -127,6 +136,7 @@ class _SplitHandle extends StatelessWidget {
             onHorizontalDragUpdate: onDragUpdate,
             onHorizontalDragEnd: onDragEnd,
             onHorizontalDragCancel: onDragCancel,
+            onTap: onTap,
             child: _seam(horizontal),
           )
         : GestureDetector(
@@ -134,6 +144,7 @@ class _SplitHandle extends StatelessWidget {
             onVerticalDragUpdate: onDragUpdate,
             onVerticalDragEnd: onDragEnd,
             onVerticalDragCancel: onDragCancel,
+            onTap: onTap,
             child: _seam(horizontal),
           );
     return TvInputHandler(
