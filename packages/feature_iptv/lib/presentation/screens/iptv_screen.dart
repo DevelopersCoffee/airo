@@ -1872,6 +1872,9 @@ class _FullscreenMultiviewStage extends ConsumerWidget {
           sessions: multiview.sessions,
           featuredChannelId: multiview.featuredChannelId,
           layout: multiview.layout,
+          splitRatio: multiview.splitRatio,
+          onSplitRatioChanged: (ratio) =>
+              ref.read(multiviewProvider.notifier).setSplitRatio(ratio),
           onPromote: (channelId) =>
               ref.read(multiviewProvider.notifier).promote(channelId),
           onSwap: (firstId, secondId) =>
