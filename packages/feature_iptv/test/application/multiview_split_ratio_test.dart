@@ -28,34 +28,22 @@ void main() {
 
   test('step toward second does not wrap past seventy', () {
     expect(
-      stepMultiviewSplitRatio(
-        MultiviewSplitRatio.fifty,
-        towardSecond: true,
-      ),
+      stepMultiviewSplitRatio(MultiviewSplitRatio.fifty, towardSecond: true),
       MultiviewSplitRatio.seventy,
     );
     expect(
-      stepMultiviewSplitRatio(
-        MultiviewSplitRatio.seventy,
-        towardSecond: true,
-      ),
+      stepMultiviewSplitRatio(MultiviewSplitRatio.seventy, towardSecond: true),
       isNull,
     );
   });
 
   test('step toward first does not wrap past thirty', () {
     expect(
-      stepMultiviewSplitRatio(
-        MultiviewSplitRatio.fifty,
-        towardSecond: false,
-      ),
+      stepMultiviewSplitRatio(MultiviewSplitRatio.fifty, towardSecond: false),
       MultiviewSplitRatio.thirty,
     );
     expect(
-      stepMultiviewSplitRatio(
-        MultiviewSplitRatio.thirty,
-        towardSecond: false,
-      ),
+      stepMultiviewSplitRatio(MultiviewSplitRatio.thirty, towardSecond: false),
       isNull,
     );
   });

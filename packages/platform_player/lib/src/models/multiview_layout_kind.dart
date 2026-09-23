@@ -20,8 +20,7 @@ enum MultiviewLayoutKind {
   final int tileCount;
 
   /// True for the two-pane mosaics that own a magnetic split handle.
-  bool get isTwoPane =>
-      this == splitHorizontal || this == splitVertical;
+  bool get isTwoPane => this == splitHorizontal || this == splitVertical;
 
   /// Wire name on the Cast MultiView protocol (`multiview.set_layout` /
   /// `multiview.state.layout`). Stable; do not rename without a protocol

@@ -247,21 +247,23 @@ void main() {
     expect(primary.resumeCalls, 1);
   });
 
-  test('splitRatio defaults to fifty and setSplitRatio keeps a two-pane stop',
-      () async {
-    final controller = MultiviewController(
-      decoderBudget: 4,
-      primaryService: _FakePrimaryService(),
-      sessionFactory: (item) async => _FakeMultiviewSession(item),
-    );
-    addTearDown(controller.close);
+  test(
+    'splitRatio defaults to fifty and setSplitRatio keeps a two-pane stop',
+    () async {
+      final controller = MultiviewController(
+        decoderBudget: 4,
+        primaryService: _FakePrimaryService(),
+        sessionFactory: (item) async => _FakeMultiviewSession(item),
+      );
+      addTearDown(controller.close);
 
-    expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
-    await controller.toggle(channel('one'));
-    await controller.toggle(channel('two'));
-    controller.setSplitRatio(MultiviewSplitRatio.seventy);
-    expect(controller.state.splitRatio, MultiviewSplitRatio.seventy);
-  });
+      expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
+      await controller.toggle(channel('one'));
+      await controller.toggle(channel('two'));
+      controller.setSplitRatio(MultiviewSplitRatio.seventy);
+      expect(controller.state.splitRatio, MultiviewSplitRatio.seventy);
+    },
+  );
 
   test('third session resets splitRatio to fifty', () async {
     final controller = MultiviewController(
@@ -296,23 +298,25 @@ void main() {
     expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
   });
 
-  test('returning to two-pane after a reset starts at fifty, not the old 70',
-      () async {
-    final controller = MultiviewController(
-      decoderBudget: 4,
-      primaryService: _FakePrimaryService(),
-      sessionFactory: (item) async => _FakeMultiviewSession(item),
-    );
-    addTearDown(controller.close);
+  test(
+    'returning to two-pane after a reset starts at fifty, not the old 70',
+    () async {
+      final controller = MultiviewController(
+        decoderBudget: 4,
+        primaryService: _FakePrimaryService(),
+        sessionFactory: (item) async => _FakeMultiviewSession(item),
+      );
+      addTearDown(controller.close);
 
-    await controller.toggle(channel('one'));
-    await controller.toggle(channel('two'));
-    controller.setSplitRatio(MultiviewSplitRatio.seventy);
-    controller.setLayout(MultiviewLayoutKind.quad);
-    expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
-    controller.setLayout(MultiviewLayoutKind.splitHorizontal);
-    expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
-  });
+      await controller.toggle(channel('one'));
+      await controller.toggle(channel('two'));
+      controller.setSplitRatio(MultiviewSplitRatio.seventy);
+      controller.setLayout(MultiviewLayoutKind.quad);
+      expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
+      controller.setLayout(MultiviewLayoutKind.splitHorizontal);
+      expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
+    },
+  );
 
   test('setLayout between the two two-pane mosaics keeps the stop', () async {
     final controller = MultiviewController(
