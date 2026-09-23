@@ -12,11 +12,13 @@ void main() {
   Widget harness({
     required bool playbackReady,
     required VoidCallback onFinished,
+    VoidCallback? onSkipped,
   }) {
     return MaterialApp(
       home: IptvResumeSplash(
         playbackReady: playbackReady,
         onFinished: onFinished,
+        onSkipped: onSkipped,
         minDisplay: minDisplay,
         maxDisplay: maxDisplay,
       ),
@@ -86,6 +88,41 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pump();
     expect(finished, 1);
+  });
+
+  testWidgets('onSkipped receives tap and onFinished does not', (tester) async {
+    var finished = 0;
+    var skipped = 0;
+    await tester.pumpWidget(
+      harness(
+        playbackReady: false,
+        onFinished: () => finished++,
+        onSkipped: () => skipped++,
+      ),
+    );
+
+    await tester.tap(find.byType(IptvResumeSplash));
+    await tester.pump();
+    expect(skipped, 1);
+    expect(finished, 0);
+  });
+
+  testWidgets('maxDisplay still calls onFinished when onSkipped is set', (
+    tester,
+  ) async {
+    var finished = 0;
+    var skipped = 0;
+    await tester.pumpWidget(
+      harness(
+        playbackReady: false,
+        onFinished: () => finished++,
+        onSkipped: () => skipped++,
+      ),
+    );
+
+    await tester.pump(maxDisplay + const Duration(milliseconds: 100));
+    expect(finished, 1);
+    expect(skipped, 0);
   });
 
   testWidgets('onFinished never fires twice', (tester) async {

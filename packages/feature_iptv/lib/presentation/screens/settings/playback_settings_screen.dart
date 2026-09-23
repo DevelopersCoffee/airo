@@ -51,6 +51,18 @@ class PlaybackSettingsScreen extends ConsumerWidget {
             ),
           ),
           SwitchListTile(
+            key: const ValueKey('playback-resume-last-channel-toggle'),
+            secondary: const Icon(Icons.history),
+            title: const Text('Resume last channel'),
+            subtitle: const Text(
+              'Open the last live channel when Aika Stream starts.',
+            ),
+            value: ref.watch(resumeLastChannelEnabledProvider),
+            onChanged: (enabled) => ref
+                .read(resumeLastChannelEnabledProvider.notifier)
+                .setEnabled(enabled),
+          ),
+          SwitchListTile(
             key: const ValueKey('playback-picture-in-picture-toggle'),
             secondary: const Icon(Icons.picture_in_picture_alt_outlined),
             title: const Text('Picture-in-picture'),
