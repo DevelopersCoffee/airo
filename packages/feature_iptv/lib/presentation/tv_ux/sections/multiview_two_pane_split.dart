@@ -24,9 +24,22 @@ class MultiviewTwoPaneSplit extends StatefulWidget {
 
 class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   double? _dragFraction;
-  double? _dragExtent;
+  double? _layoutExtent;
 
   bool get _horizontal => widget.axis == Axis.horizontal;
+
+  (int first, int second) _committedFlexes(
+    MultiviewSplitRatio ratio,
+    double extent,
+  ) {
+    final minFlex = (effectiveMultiviewSplitMin(extent) * 1000).round();
+    final maxFlex = 1000 - minFlex;
+    return switch (ratio) {
+      MultiviewSplitRatio.five => (minFlex, maxFlex),
+      MultiviewSplitRatio.fifty => (1, 1),
+      MultiviewSplitRatio.ninetyFive => (maxFlex, minFlex),
+    };
+  }
 
   (int first, int second) _dragFlexes(double drag, double extent) {
     final minFlex = (effectiveMultiviewSplitMin(extent) * 1000).round();
@@ -36,17 +49,17 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   }
 
   int get _firstFlex {
+    final extent = _layoutExtent ?? 0;
     final drag = _dragFraction;
-    if (drag == null) return widget.ratio.firstFlex;
-    final (first, _) = _dragFlexes(drag, _dragExtent ?? 0);
-    return first;
+    if (drag != null) return _dragFlexes(drag, extent).$1;
+    return _committedFlexes(widget.ratio, extent).$1;
   }
 
   int get _secondFlex {
+    final extent = _layoutExtent ?? 0;
     final drag = _dragFraction;
-    if (drag == null) return widget.ratio.secondFlex;
-    final (_, second) = _dragFlexes(drag, _dragExtent ?? 0);
-    return second;
+    if (drag != null) return _dragFlexes(drag, extent).$2;
+    return _committedFlexes(widget.ratio, extent).$2;
   }
 
   void _onDragUpdate(DragUpdateDetails details, BoxConstraints constraints) {
@@ -55,7 +68,7 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
     final delta = _horizontal ? details.delta.dx : details.delta.dy;
     final current = _dragFraction ?? widget.ratio.firstFraction;
     setState(() {
-      _dragExtent = extent;
+      _layoutExtent = extent;
       _dragFraction = clampMultiviewSplitFraction(
         current + delta / extent,
         extent: extent,
@@ -65,22 +78,16 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
 
   void _onDragEnd(DragEndDetails _) {
     final drag = _dragFraction;
-    final extent = _dragExtent;
+    final extent = _layoutExtent;
     if (drag == null || extent == null) return;
     final snapped = snapMultiviewSplitFraction(drag, extent: extent);
-    setState(() {
-      _dragFraction = null;
-      _dragExtent = null;
-    });
+    setState(() => _dragFraction = null);
     widget.onSplitRatioChanged?.call(snapped);
   }
 
   void _onDragCancel() {
     if (_dragFraction == null) return;
-    setState(() {
-      _dragFraction = null;
-      _dragExtent = null;
-    });
+    setState(() => _dragFraction = null);
   }
 
   TvInputResult _onHandleInput(TvInputKey key) {
@@ -104,6 +111,10 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final extent = _horizontal ? constraints.maxWidth : constraints.maxHeight;
+        if (extent > 0) {
+          _layoutExtent = extent;
+        }
         final children = [
           Expanded(flex: _firstFlex, child: widget.first),
           _SplitHandle(
