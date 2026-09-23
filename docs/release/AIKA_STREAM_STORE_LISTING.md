@@ -70,6 +70,11 @@ Paste into Play Console → Internal testing → Release notes. Keep under 500
 characters. Do not claim bundled channels or Aika Stream Pro.
 
 ```text
+0.0.3 (23)
+• Two-pane live split snaps 5 / 50 / 95; mix follows the bar
+• Phone handle stays 48dp; TV stays a short grip
+• Resume the last live channel on launch
+
 0.0.2 (21)
 • TV remote can move across visible playback controls
 • Split view keeps only the featured channel audible
