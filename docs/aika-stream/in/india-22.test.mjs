@@ -18,3 +18,19 @@ assert.match(html, /Explore Features/);
 assert.match(html, /01-tv-home-channel-grid\.png/);
 assert.doesNotMatch(html, /aika-stream-split-screen-banner\.jpg/);
 assert.doesNotMatch(html, /Download APK/);
+
+for (const heading of [
+  'Watch more. At the same time.',
+  'One screen. Everything you watch.',
+  'Pick up where you left off.',
+  'Designed for your TV.',
+  'Simple enough for everyone.',
+  'Everything you watch. In one place.',
+  'One screen. Endless possibilities.',
+  'Turn on your TV.',
+]) {
+  assert.match(html, new RegExp(heading.replace(/[.]/g, '\\.')));
+}
+assert.match(html, /data-panes="4"/);
+assert.match(html, /does not sell, host, or provide television channels/);
+assert.doesNotMatch(html, /India vs Afghanistan/);
