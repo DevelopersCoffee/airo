@@ -72,9 +72,7 @@ void main() {
 
   for (final size in [tabletSize, tvDesktopSize]) {
     group('at ${size.width.toInt()}x${size.height.toInt()}', () {
-      testWidgets('renders exactly one fullscreen affordance', (
-        tester,
-      ) async {
+      testWidgets('renders exactly one fullscreen affordance', (tester) async {
         await pumpPlayer(tester, size: size);
 
         expect(find.byIcon(Icons.fullscreen), findsOneWidget);

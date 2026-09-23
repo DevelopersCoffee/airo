@@ -119,7 +119,10 @@ class AiroMultiviewPool {
     _audioRouteTail = _audioRouteTail.then((_) => _applyMuteAll());
     await _audioRouteTail;
     _setState(
-      AiroMultiviewPoolState(sessions: _state.sessions, featuredSessionId: null),
+      AiroMultiviewPoolState(
+        sessions: _state.sessions,
+        featuredSessionId: null,
+      ),
     );
   }
 
