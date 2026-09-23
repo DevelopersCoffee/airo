@@ -59,6 +59,7 @@ export "presentation/screens/iptv_screen.dart";
 export "presentation/screens/shared_channel_import_screen.dart";
 export "presentation/screens/mobile_favorites_screen.dart";
 export "presentation/screens/settings/country_settings_tile.dart";
+export "presentation/screens/settings/accessibility_settings_section.dart";
 export 'domain/regional_discovery.dart';
 export 'domain/channel_region_availability.dart';
 export 'application/providers/regional_discovery_providers.dart';

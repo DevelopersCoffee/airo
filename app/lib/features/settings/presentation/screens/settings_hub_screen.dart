@@ -5,6 +5,7 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:go_router/go_router.dart';
 import 'audio_settings_screen.dart';
 import 'theme_settings_screen.dart';
+import '../tv/tv_privacy_section.dart';
 import '../widgets/app_info_tile.dart';
 import '../widgets/sibling_app_card.dart';
 
@@ -110,25 +111,59 @@ class SettingsHubScreen extends ConsumerWidget {
               },
             ),
 
-            const SizedBox(height: 24),
-
             ListTile(
               leading: Icon(
-                _section(IptvSettingsSectionId.audio).iconFor(ShellId.mobile),
+                _section(IptvSettingsSectionId.accessibility).iconFor(shellId),
               ),
               title: Text(
-                _section(IptvSettingsSectionId.audio).labelFor(ShellId.mobile),
+                _section(IptvSettingsSectionId.accessibility).labelFor(shellId),
               ),
-              subtitle: const Text('Configure context-aware audio behavior'),
+              subtitle: const Text('Text size and captions'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => AudioSettingsScreen(shellId: shellId),
+                    builder: (context) => Scaffold(
+                      appBar: AppBar(
+                        title: Text(
+                          _section(
+                            IptvSettingsSectionId.accessibility,
+                          ).labelFor(shellId),
+                        ),
+                      ),
+                      body: const AccessibilitySettingsSection(forTv: false),
+                    ),
                   ),
                 );
               },
             ),
+
+            const SizedBox(height: 24),
+
+            // Compact `ShellId.tv` hub is phone layout + opt-in Privacy;
+            // do not iterate the TV-visible manifest set. Audio stays
+            // super-app only — Aika Stream has no Smart Audio on TV.
+            if (shellId == ShellId.mobile)
+              ListTile(
+                leading: Icon(
+                  _section(IptvSettingsSectionId.audio).iconFor(ShellId.mobile),
+                ),
+                title: Text(
+                  _section(
+                    IptvSettingsSectionId.audio,
+                  ).labelFor(ShellId.mobile),
+                ),
+                subtitle: const Text('Configure context-aware audio behavior'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          AudioSettingsScreen(shellId: shellId),
+                    ),
+                  );
+                },
+              ),
 
             ListTile(
               leading: Icon(
@@ -185,6 +220,39 @@ class SettingsHubScreen extends ConsumerWidget {
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () => showXmltvSourceSheet(context),
             ),
+
+            if (shellId == ShellId.tv)
+              ListTile(
+                leading: Icon(
+                  _section(IptvSettingsSectionId.privacy).iconFor(ShellId.tv),
+                ),
+                title: Text(
+                  _section(IptvSettingsSectionId.privacy).labelFor(ShellId.tv),
+                ),
+                subtitle: const Text(
+                  'Delete playlists and history on this device',
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => Scaffold(
+                        appBar: AppBar(
+                          title: Text(
+                            _section(
+                              IptvSettingsSectionId.privacy,
+                            ).labelFor(ShellId.tv),
+                          ),
+                        ),
+                        body: const TvPrivacySection(
+                          showTelemetry: false,
+                          deleteFirst: true,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
 
             // Hidden entirely while no listing is live: a heading over three
             // inert "Coming soon" cards promotes nothing.

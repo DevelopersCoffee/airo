@@ -324,6 +324,37 @@ void main() {
     expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
   });
 
+  testWidgets(
+    'RIGHT from the player surface still walks visible transport chrome',
+    (tester) async {
+      await pumpTransportBar(tester, width: 1280, height: 720);
+
+      final surface = FocusManager.instance.rootScope.descendants.firstWhere(
+        (node) => node.debugLabel == 'player surface',
+      );
+      surface.requestFocus();
+      await tester.pump();
+      expect(surface.hasPrimaryFocus, isTrue);
+
+      final opacity = tester.widget<AnimatedOpacity>(
+        find.byKey(const ValueKey('iptv-player-controls-opacity')),
+      );
+      expect(opacity.opacity, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player center control',
+        reason:
+            'visible Pause/Play must take D-pad focus when chrome is already '
+            'on screen; geometric traversal from the full-screen surface '
+            'cannot reach descendants of a skipTraversal node',
+      );
+    },
+  );
+
   testWidgets('chrome auto-hides after 5s idle and D-pad shows it again', (
     tester,
   ) async {

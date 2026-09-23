@@ -209,9 +209,19 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
     switch (_selected) {
       case IptvSettingsSectionId.theme:
         return const TvThemeSection(key: ValueKey('tv_settings_section_theme'));
+      case IptvSettingsSectionId.accessibility:
+        return const AccessibilitySettingsSection(
+          key: ValueKey('tv_settings_section_accessibility'),
+          forTv: true,
+        );
       case IptvSettingsSectionId.playback:
         return const TvPlaybackSection(
           key: ValueKey('tv_settings_section_playback'),
+        );
+      case IptvSettingsSectionId.country:
+        return const CountrySettingsTile(
+          key: ValueKey('tv_settings_section_country'),
+          forTv: true,
         );
       case IptvSettingsSectionId.sources:
         return ref.watch(tvSourceManagementSectionBuilderProvider)(
@@ -223,9 +233,8 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
         );
       case IptvSettingsSectionId.playlistSource:
       case IptvSettingsSectionId.epgGuideSource:
-      case IptvSettingsSectionId.country:
       case IptvSettingsSectionId.audio:
-        // Not part of the TV rail today (`_sections` filters to sections
+        // Not part of the TV rail (`_sections` filters to sections
         // `isVisibleFor(ShellId.tv)`), so `_selected` can never actually
         // resolve here. Kept exhaustive since `IptvSettingsSectionId` is a
         // shared enum other shells also declare visibility for.

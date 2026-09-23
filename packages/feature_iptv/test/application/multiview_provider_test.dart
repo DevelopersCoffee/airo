@@ -144,7 +144,7 @@ void main() {
       expect(ids, hasLength(1));
       expect(ids, contains('old2'));
       expect(oldSessions['old1']!.closed, isTrue);
-      // replace() must not touch _primaryPausedByMultiview bookkeeping --
+      // replace() must not touch _primaryHeldByMultiview bookkeeping --
       // one session (old2) is still active, so primary stays paused.
       expect(primary.resumeCalls, 0);
     },
@@ -172,6 +172,55 @@ void main() {
       final ids = controller.state.sessions.map((s) => s.id).toList();
       expect(ids, containsAll(['old1', 'old2']));
       expect(ids, isNot(contains('newX')));
+    },
+  );
+
+  test(
+    'first split-view session silences and releases primary even while buffering',
+    () async {
+      final watching = channel('one');
+      final primary = _FakePrimaryService(
+        state: StreamingState(
+          playbackState: PlaybackState.buffering,
+          currentChannel: watching,
+          volume: 1,
+          isLiveStream: true,
+        ),
+      );
+      final controller = MultiviewController(
+        decoderBudget: 2,
+        primaryService: primary,
+        sessionFactory: (item) async => _FakeMultiviewSession(item),
+      );
+      addTearDown(controller.close);
+
+      expect(
+        await controller.toggle(channel('two')),
+        MultiviewToggleResult.added,
+      );
+
+      expect(
+        primary.volume,
+        0,
+        reason: 'Watch audio must not keep mixing under split-view tiles',
+      );
+      expect(primary.pauseCalls, 1);
+      expect(
+        primary.stopCalls,
+        1,
+        reason:
+            'Pixel 9 otherwise keeps the original ExoPlayer plus two tiles, '
+            'so three containers stay alive and two voices leak',
+      );
+      expect(primary.currentState.currentChannel, isNull);
+      expect(primary.engineHeld, isFalse);
+
+      expect(
+        await controller.toggle(channel('two')),
+        MultiviewToggleResult.removed,
+      );
+      expect(primary.playedChannels, [watching]);
+      expect(primary.volume, 1);
     },
   );
 
@@ -249,9 +298,16 @@ class _FakeMultiviewSession implements IptvMultiviewSession {
 }
 
 class _FakePrimaryService implements IPTVStreamingService {
+  _FakePrimaryService({StreamingState? state})
+    : _state = state ?? StreamingState(playbackState: PlaybackState.playing);
+
   int pauseCalls = 0;
   int resumeCalls = 0;
-  StreamingState _state = StreamingState(playbackState: PlaybackState.playing);
+  int stopCalls = 0;
+  double volume = 1;
+  bool engineHeld = true;
+  final playedChannels = <IPTVChannel>[];
+  StreamingState _state;
 
   @override
   StreamingState get currentState => _state;
@@ -268,6 +324,7 @@ class _FakePrimaryService implements IPTVStreamingService {
   @override
   Future<void> resume() async {
     resumeCalls++;
+    engineHeld = true;
     _state = _state.copyWith(playbackState: PlaybackState.playing);
   }
 
@@ -284,7 +341,16 @@ class _FakePrimaryService implements IPTVStreamingService {
   Future<void> initialize() async {}
 
   @override
-  Future<void> playChannel(IPTVChannel channel) async {}
+  Future<void> playChannel(IPTVChannel channel) async {
+    playedChannels.add(channel);
+    engineHeld = true;
+    _state = StreamingState(
+      playbackState: PlaybackState.playing,
+      currentChannel: channel,
+      volume: volume,
+      isMuted: volume <= 0,
+    );
+  }
 
   @override
   Future<void> retry() async {}
@@ -299,10 +365,17 @@ class _FakePrimaryService implements IPTVStreamingService {
   Future<void> setQuality(VideoQuality quality) async {}
 
   @override
-  Future<void> setVolume(double volume) async {}
+  Future<void> setVolume(double volume) async {
+    this.volume = volume;
+    _state = _state.copyWith(volume: volume, isMuted: volume <= 0);
+  }
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async {
+    stopCalls++;
+    engineHeld = false;
+    _state = StreamingState();
+  }
 
   @override
   Future<void> toggleMute() async {}
