@@ -29,6 +29,7 @@ void main() {
     VoidCallback? onEmptySlotTap,
     MultiviewSplitRatio splitRatio = MultiviewSplitRatio.fifty,
     ValueChanged<MultiviewSplitRatio>? onSplitRatioChanged,
+    void Function(double fraction, double extent)? onSplitMixPreview,
     double width = 640,
     double height = 360,
   }) {
@@ -48,6 +49,7 @@ void main() {
               onEmptySlotTap: onEmptySlotTap,
               splitRatio: splitRatio,
               onSplitRatioChanged: onSplitRatioChanged,
+              onSplitMixPreview: onSplitMixPreview,
             ),
           ),
         ),
@@ -645,6 +647,43 @@ void main() {
 
     expect(committed, MultiviewSplitRatio.fifty);
   });
+
+  testWidgets(
+    'dragging the handle previews mix once per frame and not after up',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      final previews = <(double, double)>[];
+      MultiviewSplitRatio? committed;
+      await pump(
+        tester,
+        sessions,
+        onSplitRatioChanged: (ratio) => committed = ratio,
+        onSplitMixPreview: (fraction, extent) =>
+            previews.add((fraction, extent)),
+      );
+
+      final handle = find.byKey(const ValueKey('multiview-split-handle'));
+      final gesture = await tester.startGesture(tester.getCenter(handle));
+      // DragStartBehavior.start consumes the slop-winning move as onStart,
+      // so a second move is required before onUpdate / mix preview fires.
+      await gesture.moveBy(const Offset(-20, 0));
+      await gesture.moveBy(const Offset(-80, 0));
+      await tester.pump(); // flush the scheduled frame callback
+      expect(previews, isNotEmpty);
+      expect(previews.last.$1, inInclusiveRange(0.0, 1.0));
+      expect(previews.last.$2, greaterThan(0));
+      final countAtHold = previews.length;
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(committed, isNotNull);
+      expect(
+        previews.length,
+        countAtHold,
+      ); // cancel on end; no post-up mix apply
+    },
+  );
 
   testWidgets('tap on the handle does not commit a split', (tester) async {
     final sessions = [session('one'), session('two')];

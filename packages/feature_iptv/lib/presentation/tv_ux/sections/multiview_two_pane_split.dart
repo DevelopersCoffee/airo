@@ -76,9 +76,12 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
 
   void _cancelMixPreview() {
     final frameId = _mixPreviewFrameId;
-    if (frameId == null) return;
-    SchedulerBinding.instance.cancelFrameCallbackWithId(frameId);
-    _mixPreviewFrameId = null;
+    if (frameId != null) {
+      SchedulerBinding.instance.cancelFrameCallbackWithId(frameId);
+      _mixPreviewFrameId = null;
+    }
+    _pendingMixFraction = null;
+    _pendingMixExtent = null;
   }
 
   void _scheduleMixPreview(double fraction, double extent) {
@@ -90,7 +93,9 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
       _mixPreviewFrameId = null;
       final pendingFraction = _pendingMixFraction;
       final pendingExtent = _pendingMixExtent;
-      if (pendingFraction == null || pendingExtent == null) return;
+      _pendingMixFraction = null;
+      _pendingMixExtent = null;
+      if (!mounted || pendingFraction == null || pendingExtent == null) return;
       widget.onSplitMixPreview?.call(pendingFraction, pendingExtent);
     });
   }
@@ -124,7 +129,11 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
   void _onDragCancel() {
     _cancelMixPreview();
     if (_dragFraction == null) return;
+    final extent = _layoutExtent;
     setState(() => _dragFraction = null);
+    if (extent != null && extent > 0) {
+      widget.onSplitMixPreview?.call(widget.ratio.firstFraction, extent);
+    }
   }
 
   TvInputResult _onHandleInput(TvInputKey key) {
