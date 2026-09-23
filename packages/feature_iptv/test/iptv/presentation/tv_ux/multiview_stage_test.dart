@@ -29,13 +29,15 @@ void main() {
     VoidCallback? onEmptySlotTap,
     MultiviewSplitRatio splitRatio = MultiviewSplitRatio.fifty,
     ValueChanged<MultiviewSplitRatio>? onSplitRatioChanged,
+    double width = 640,
+    double height = 360,
   }) {
     return tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: SizedBox(
-            width: 640,
-            height: 360,
+            width: width,
+            height: height,
             child: MultiviewStage(
               sessions: sessions,
               featuredChannelId: sessions.first.id,
@@ -435,19 +437,24 @@ void main() {
     expect(panes[1].flex, 1);
   });
 
-  testWidgets('seventy stop paints flex 7/3 on the horizontal split', (
+  testWidgets('ninetyFive stop paints flex 950/50 on the horizontal split', (
     tester,
   ) async {
     final sessions = [session('one'), session('two')];
     addTearDown(() => Future.wait(sessions.map((item) => item.close())));
-    await pump(tester, sessions, splitRatio: MultiviewSplitRatio.seventy);
+    await pump(
+      tester,
+      sessions,
+      splitRatio: MultiviewSplitRatio.ninetyFive,
+      width: 1600,
+    );
 
     final panes = splitExpanded(
       tester,
       const ValueKey('multiview-layout-split'),
     );
-    expect(panes[0].flex, 7);
-    expect(panes[1].flex, 3);
+    expect(panes[0].flex, 950);
+    expect(panes[1].flex, 50);
   });
 
   testWidgets('stacked two-pane also shows the handle', (tester) async {
@@ -490,7 +497,7 @@ void main() {
     expect(Focus.maybeOf(handleContext)?.hasPrimaryFocus, isNot(true));
   });
 
-  testWidgets('drag toward the left edge snaps to thirty', (tester) async {
+  testWidgets('drag toward the left edge snaps to five', (tester) async {
     final sessions = [session('one'), session('two')];
     addTearDown(() => Future.wait(sessions.map((item) => item.close())));
     MultiviewSplitRatio? committed;
@@ -506,7 +513,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(committed, MultiviewSplitRatio.thirty);
+    expect(committed, MultiviewSplitRatio.five);
   });
 
   testWidgets('drag that stays near center snaps to fifty', (tester) async {
@@ -565,7 +572,7 @@ void main() {
   }
 
   testWidgets(
-    'Right from fifty commits seventy; further Right leaves the handle',
+    'Right from fifty commits ninetyFive; further Right leaves the handle',
     (tester) async {
       final sessions = [session('one'), session('two')];
       addTearDown(() => Future.wait(sessions.map((item) => item.close())));
@@ -575,19 +582,19 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
-      expect(committed, [MultiviewSplitRatio.seventy]);
+      expect(committed, [MultiviewSplitRatio.ninetyFive]);
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: SizedBox(
-              width: 640,
+              width: 1600,
               height: 360,
               child: MultiviewStage(
                 sessions: sessions,
                 featuredChannelId: sessions.first.id,
                 onPromote: (_) {},
-                splitRatio: MultiviewSplitRatio.seventy,
+                splitRatio: MultiviewSplitRatio.ninetyFive,
                 onSplitRatioChanged: committed.add,
               ),
             ),
@@ -598,7 +605,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
 
-      expect(committed, [MultiviewSplitRatio.seventy]);
+      expect(committed, [MultiviewSplitRatio.ninetyFive]);
       expect(
         focusableNode(
           tester,

@@ -260,8 +260,8 @@ void main() {
       expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
       await controller.toggle(channel('one'));
       await controller.toggle(channel('two'));
-      controller.setSplitRatio(MultiviewSplitRatio.seventy);
-      expect(controller.state.splitRatio, MultiviewSplitRatio.seventy);
+      controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
+      expect(controller.state.splitRatio, MultiviewSplitRatio.ninetyFive);
     },
   );
 
@@ -275,7 +275,7 @@ void main() {
 
     await controller.toggle(channel('one'));
     await controller.toggle(channel('two'));
-    controller.setSplitRatio(MultiviewSplitRatio.seventy);
+    controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
     expect(
       await controller.toggle(channel('three')),
       MultiviewToggleResult.added,
@@ -293,13 +293,13 @@ void main() {
 
     await controller.toggle(channel('one'));
     await controller.toggle(channel('two'));
-    controller.setSplitRatio(MultiviewSplitRatio.thirty);
+    controller.setSplitRatio(MultiviewSplitRatio.five);
     controller.setLayout(MultiviewLayoutKind.spotlight);
     expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
   });
 
   test(
-    'returning to two-pane after a reset starts at fifty, not the old 70',
+    'returning to two-pane after a reset starts at fifty, not the old 95',
     () async {
       final controller = MultiviewController(
         decoderBudget: 4,
@@ -310,7 +310,7 @@ void main() {
 
       await controller.toggle(channel('one'));
       await controller.toggle(channel('two'));
-      controller.setSplitRatio(MultiviewSplitRatio.seventy);
+      controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
       controller.setLayout(MultiviewLayoutKind.quad);
       expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
       controller.setLayout(MultiviewLayoutKind.splitHorizontal);
@@ -328,9 +328,9 @@ void main() {
 
     await controller.toggle(channel('one'));
     await controller.toggle(channel('two'));
-    controller.setSplitRatio(MultiviewSplitRatio.thirty);
+    controller.setSplitRatio(MultiviewSplitRatio.five);
     controller.setLayout(MultiviewLayoutKind.splitVertical);
-    expect(controller.state.splitRatio, MultiviewSplitRatio.thirty);
+    expect(controller.state.splitRatio, MultiviewSplitRatio.five);
   });
 }
 
