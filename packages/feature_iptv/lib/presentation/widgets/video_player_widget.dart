@@ -1440,6 +1440,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         channels: _miniGuideChannels(state.currentChannel!),
                         currentChannelId: state.currentChannel!.id,
                         onSelected: _playChannelFromQuickBrowse,
+                        onMoveToControls: () {},
+                        onDismiss: () => setState(() => _quickBrowse = null),
                         previewFactory: ref.read(
                           tvMiniGuidePreviewFactoryProvider,
                         ),

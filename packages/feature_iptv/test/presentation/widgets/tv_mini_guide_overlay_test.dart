@@ -42,6 +42,8 @@ void main() {
     WidgetTester tester, {
     required TvMiniGuidePreviewFactory previewFactory,
     ValueChanged<IPTVChannel>? onSelected,
+    VoidCallback? onMoveToControls,
+    VoidCallback? onDismiss,
     List<IPTVChannel> channels = const [_news, _sports, _movies],
     String currentChannelId = 'news-1',
   }) async {
@@ -60,6 +62,8 @@ void main() {
                   channels: channels,
                   currentChannelId: currentChannelId,
                   onSelected: onSelected ?? (_) {},
+                  onMoveToControls: onMoveToControls ?? () {},
+                  onDismiss: onDismiss ?? () {},
                   previewFactory: previewFactory,
                 ),
               ],
@@ -112,6 +116,23 @@ void main() {
     await main.playChannel(_news);
     await tester.pump();
   }
+
+  testWidgets('Up asks the parent to show controls and Down asks it to close', (
+    tester,
+  ) async {
+    var moved = 0;
+    var dismissed = 0;
+    await pumpOverlay(
+      tester,
+      previewFactory: _RecordingPreviewService.new,
+      onMoveToControls: () => moved++,
+      onDismiss: () => dismissed++,
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    expect(moved, 1);
+    expect(dismissed, 1);
+  });
 
   testWidgets(
     'settles 500 ms then starts at most one muted preview on the focused card',

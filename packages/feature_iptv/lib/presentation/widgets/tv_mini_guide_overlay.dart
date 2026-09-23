@@ -9,6 +9,7 @@ import 'package:platform_media/platform_media.dart';
 import 'package:platform_player/platform_player.dart';
 
 import 'channel_logo.dart';
+import 'watch_remote_contract.dart';
 
 /// Creates the single Mini Guide preview decoder. Tests override this so they
 /// can count start/stop without opening a real engine.
@@ -28,6 +29,8 @@ class TvMiniGuideOverlay extends StatefulWidget {
     required this.channels,
     required this.currentChannelId,
     required this.onSelected,
+    required this.onMoveToControls,
+    required this.onDismiss,
     required this.previewFactory,
     this.settleDuration = defaultSettleDuration,
   });
@@ -37,6 +40,8 @@ class TvMiniGuideOverlay extends StatefulWidget {
   final List<IPTVChannel> channels;
   final String? currentChannelId;
   final ValueChanged<IPTVChannel> onSelected;
+  final VoidCallback onMoveToControls;
+  final VoidCallback onDismiss;
   final TvMiniGuidePreviewFactory previewFactory;
   final Duration settleDuration;
 
@@ -133,10 +138,26 @@ class _TvMiniGuideOverlayState extends State<TvMiniGuideOverlay> {
       _focusNodes[_focusedIndex].requestFocus();
       return KeyEventResult.handled;
     }
-    if (key == TvInputKey.up || key == TvInputKey.down) {
-      return KeyEventResult.handled;
+    final action = watchRemoteAction(
+      zone: WatchFocusZone.miniGuide,
+      key: key ?? TvInputKey.home,
+    );
+    if (key == null) return KeyEventResult.ignored;
+    switch (action) {
+      case WatchRemoteAction.moveChannel:
+        return KeyEventResult.ignored; // Left/Right already requested focus above.
+      case WatchRemoteAction.showControls:
+        widget.onMoveToControls();
+        return KeyEventResult.handled;
+      case WatchRemoteAction.closeGuide:
+        widget.onDismiss();
+        return KeyEventResult.handled;
+      case WatchRemoteAction.switchFocusedChannel:
+      case WatchRemoteAction.moreActions:
+        return KeyEventResult.ignored; // Select and Menu stay with the parent.
+      default:
+        return KeyEventResult.ignored;
     }
-    return KeyEventResult.ignored;
   }
 
   void _onCardFocused(int index) {
