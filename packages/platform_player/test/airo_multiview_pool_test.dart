@@ -69,6 +69,30 @@ void main() {
     await pool.close();
   });
 
+  test('promote with routeAudio false keeps mixed volumes', () async {
+    final sessions = <String, _FakeSession>{};
+    final pool = AiroMultiviewPool(decoderBudget: 4);
+    for (final id in ['one', 'two']) {
+      await pool.add(
+        id: id,
+        openSession: () async =>
+            sessions.putIfAbsent(id, () => _FakeSession(id)),
+      );
+    }
+
+    await sessions['one']!.setVolume(0.7);
+    await sessions['two']!.setVolume(0.7);
+
+    await pool.promote('two', routeAudio: false);
+
+    expect(pool.state.featuredSessionId, 'two');
+    expect(sessions['one']!.volume, 0.7);
+    expect(sessions['two']!.volume, 0.7);
+    expect(sessions['one']!.audible, isTrue);
+    expect(sessions['two']!.audible, isTrue);
+    await pool.close();
+  });
+
   test('promotion keeps exactly one session audible', () async {
     final sessions = <String, _FakeSession>{};
     final pool = AiroMultiviewPool(decoderBudget: 4);
