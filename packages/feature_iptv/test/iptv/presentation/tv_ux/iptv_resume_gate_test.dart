@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/last_channel_provider.dart';
 import 'package:feature_iptv/application/resume_last_channel_controller.dart';
@@ -19,10 +21,20 @@ final testPlaybackStateProvider = StateProvider<PlaybackState>(
 );
 
 void main() {
-  Widget harness(List<Override> overrides) {
+  Widget harness(
+    List<Override> overrides, {
+    bool holdUntilTerminal = false,
+    VoidCallback? onEnterWatch,
+  }) {
     return ProviderScope(
       overrides: overrides,
-      child: const MaterialApp(home: IptvResumeGate(child: Text('BROWSE'))),
+      child: MaterialApp(
+        home: IptvResumeGate(
+          holdUntilTerminal: holdUntilTerminal,
+          onEnterWatch: onEnterWatch,
+          child: const Text('BROWSE'),
+        ),
+      ),
     );
   }
 
@@ -166,5 +178,99 @@ void main() {
     expect(played, isEmpty);
     expect(find.byType(IptvResumeSplash), findsNothing);
     expect(find.text('BROWSE'), findsOneWidget);
+  });
+
+  testWidgets(
+    'holdUntilTerminal keeps splash after cap while lookup is still pending',
+    (tester) async {
+      final completer = Completer<IPTVChannel?>();
+      await tester.pumpWidget(
+        harness([
+          resumeChannelProvider.overrideWith((ref) => completer.future),
+          playChannelDelegateProvider.overrideWithValue((channel) async {}),
+        ], holdUntilTerminal: true),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(IptvResumeSplash), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 7));
+      expect(find.byType(IptvResumeSplash), findsOneWidget);
+
+      completer.complete(null);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(IptvResumeSplash), findsNothing);
+    },
+  );
+
+  testWidgets('onEnterWatch fires once when done splash dismisses', (
+    tester,
+  ) async {
+    var entered = 0;
+    await tester.pumpWidget(
+      harness(
+        [
+          resumeChannelProvider.overrideWith((ref) async => channel('aajtak')),
+          playChannelDelegateProvider.overrideWithValue((channel) async {}),
+        ],
+        holdUntilTerminal: true,
+        onEnterWatch: () => entered++,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 7));
+    await tester.pump();
+
+    expect(entered, 1);
+    expect(find.byType(IptvResumeSplash), findsNothing);
+  });
+
+  testWidgets('noTarget never calls onEnterWatch', (tester) async {
+    var entered = 0;
+    await tester.pumpWidget(
+      harness(
+        [resumeChannelProvider.overrideWith((ref) async => null)],
+        holdUntilTerminal: true,
+        onEnterWatch: () => entered++,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 7));
+
+    expect(entered, 0);
+    expect(find.byType(IptvResumeSplash), findsNothing);
+  });
+
+  testWidgets('skip before done never calls onEnterWatch later', (
+    tester,
+  ) async {
+    final completer = Completer<IPTVChannel?>();
+    var entered = 0;
+    await tester.pumpWidget(
+      harness(
+        [
+          resumeChannelProvider.overrideWith((ref) => completer.future),
+          playChannelDelegateProvider.overrideWithValue((channel) async {}),
+        ],
+        holdUntilTerminal: true,
+        onEnterWatch: () => entered++,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(IptvResumeSplash), findsOneWidget);
+
+    await tester.tap(find.byType(IptvResumeSplash));
+    await tester.pump();
+    expect(find.byType(IptvResumeSplash), findsNothing);
+    expect(entered, 0);
+
+    completer.complete(channel('aajtak'));
+    await tester.pump();
+    await tester.pump();
+    expect(entered, 0);
   });
 }

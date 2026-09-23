@@ -7,12 +7,14 @@ class IptvResumeSplash extends StatefulWidget {
     super.key,
     required this.playbackReady,
     required this.onFinished,
+    this.onSkipped,
     this.minDisplay = const Duration(milliseconds: 500),
     this.maxDisplay = const Duration(seconds: 2),
   });
 
   final bool playbackReady;
   final VoidCallback onFinished;
+  final VoidCallback? onSkipped;
   final Duration minDisplay;
   final Duration maxDisplay;
 
@@ -46,12 +48,16 @@ class _IptvResumeSplashState extends State<IptvResumeSplash> {
     if (_minElapsed && widget.playbackReady) _finish();
   }
 
-  void _finish() {
+  void _finish({bool skipped = false}) {
     if (_finished) return;
     _finished = true;
     _minTimer?.cancel();
     _capTimer?.cancel();
-    widget.onFinished();
+    if (skipped && widget.onSkipped != null) {
+      widget.onSkipped!();
+    } else {
+      widget.onFinished();
+    }
   }
 
   @override
@@ -66,12 +72,12 @@ class _IptvResumeSplashState extends State<IptvResumeSplash> {
     return Focus(
       autofocus: true,
       onKeyEvent: (_, event) {
-        _finish();
+        _finish(skipped: true);
         return KeyEventResult.handled;
       },
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: _finish,
+        onTap: () => _finish(skipped: true),
         child: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: LinearGradient(

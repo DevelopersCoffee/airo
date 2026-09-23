@@ -18,6 +18,7 @@ class TvPlaybackSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(videoAspectRatioProvider);
     final extraSections = ref.watch(playbackSettingsExtraSectionsProvider);
+    final resumeEnabled = ref.watch(resumeLastChannelEnabledProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return ListView(
@@ -38,6 +39,48 @@ class TvPlaybackSection extends ConsumerWidget {
               colorScheme: colorScheme,
             ),
           ),
+        const SizedBox(height: 16),
+        TvFocusable(
+          onSelect: () => ref
+              .read(resumeLastChannelEnabledProvider.notifier)
+              .setEnabled(!resumeEnabled),
+          semanticLabel: resumeEnabled
+              ? 'Resume last channel, on'
+              : 'Resume last channel, off',
+          semanticButton: true,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Resume last channel',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        'Open the last live channel when Aika Stream starts.',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  resumeEnabled ? 'On' : 'Off',
+                  style: TextStyle(color: colorScheme.primary, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
         if (extraSections.isNotEmpty) const SizedBox(height: 24),
         ...extraSections,
       ],

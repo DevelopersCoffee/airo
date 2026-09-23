@@ -123,4 +123,29 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('resume last channel row toggles the preference', (tester) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: Scaffold(body: TvPlaybackSection())),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Resume last channel'), findsOneWidget);
+    expect(
+      find.text('Open the last live channel when Aika Stream starts.'),
+      findsOneWidget,
+    );
+    expect(container.read(resumeLastChannelEnabledProvider), isTrue);
+
+    await tester.tap(find.text('Resume last channel'));
+    await tester.pump();
+
+    expect(container.read(resumeLastChannelEnabledProvider), isFalse);
+  });
 }
