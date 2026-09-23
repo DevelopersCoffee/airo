@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- Primary Meta Tags -->
-    <title>Aika Stream | Watch more. At the same time.</title>
-    <meta name="title" content="Aika Stream | Watch more. At the same time." />
-    <meta name="description" content="Watch a cricket match and listen to music at the same time on Android TV. Aika Stream Split Screen lets you play two streams on one screen." />
+    <title>Aika Stream | Your TV. Reimagined.</title>
+    <meta name="title" content="Aika Stream | Your TV. Reimagined." />
+    <meta name="description" content="Aika Stream is a TV-first media player for Android TV and Google TV. Live TV, music, and entertainment from the playlists you add." />
 
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#071010" />
@@ -15,14 +15,14 @@
       property="og:url"
       content="https://developerscoffee.github.io/airo/aika-stream/in/"
     />
-    <meta property="og:title" content="Aika Stream — Watch more. At the same time." />
+    <meta property="og:title" content="Aika Stream — Your TV. Reimagined." />
     <meta
       property="og:description"
-      content="Watch one thing. Listen to another. At the same time. Dual stream Split Screen for Android TV and Google TV."
+      content="A TV-first media player for Android TV and Google TV. Live TV, music, and entertainment from the playlists you add."
     />
     <meta
       property="og:image"
-      content="https://developerscoffee.github.io/airo/store-assets/airo-tv/aika-stream-split-screen-banner.jpg"
+      content="https://developerscoffee.github.io/airo/store-assets/airo-tv/01-tv-home-channel-grid.png"
     />
     <link
       rel="icon"
@@ -37,6 +37,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../assets/airo-tv/site.css" />
+    <link rel="stylesheet" href="../../assets/airo-tv/india-22.css" />
     <script defer src="../../assets/airo-tv/third-party/lucide.min.js"></script>
     <script
       defer
@@ -44,7 +45,7 @@
     ></script>
     <script defer src="../../assets/airo-tv/site.js"></script>
   </head>
-  <body>
+  <body class="india-page">
     <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
       <div class="container nav-shell">
@@ -68,8 +69,8 @@
           aria-label="Primary navigation"
           data-navigation
         >
-          <a href="#split-screen">Split Screen</a><a href="#features">Features</a
-          ><a href="#devices">Devices</a><a href="#sources">Sources</a
+          <a href="#multiview">MultiView</a><a href="#experience">Experience</a
+          ><a href="#screens">Screens</a><a href="#library">Library</a
           ><a href="../">Global 🌐</a
           ><a
             class="button button-primary"
@@ -83,149 +84,198 @@
     </header>
 
     <main id="main-content">
-      <section class="hero hero-tv-board" id="top">
-        <div class="container">
+      <section class="hero" id="top">
+        <div class="container hero-grid">
           <div class="hero-content">
-            <p class="eyebrow">
-              Born from Airo
-              <span class="status status-available">Live on Google Play</span>
-            </p>
-            <h1>Watch more. At the same time.</h1>
-            <p class="hero-lede">Your TV should not make you choose.</p>
-            <p class="hero-copy">
-              Watching a live cricket match like <strong>India vs Afghanistan</strong> but want your favorite music playing in the background? With <strong>Aika Stream Split Screen</strong>, play two streams on the same TV screen.
-            </p>
+            <p class="eyebrow">Aika Stream · India</p>
+            <h1 id="hero-title">Your TV. Reimagined.</h1>
+            <p class="hero-lede">Live TV, music, news and entertainment in one beautiful experience.</p>
             <div class="hero-actions">
-              <a
-                class="button button-primary"
-                href="https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas"
-                target="_blank"
-                rel="noopener"
-                ><i data-lucide="shopping-bag" aria-hidden="true"></i> Get on Google Play</a
-              ><a
-                class="button button-secondary"
-                href="https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6"
-                ><i data-lucide="download" aria-hidden="true"></i> Download APK</a
-              >
+              <a class="button button-primary" href="https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas">Watch Aika Stream</a>
+              <a class="button button-secondary" href="#experience">Explore Features</a>
             </div>
           </div>
-          <div class="hero-preview-stage">
-            <div class="banner-frame" style="margin: 0;">
-              <img
-                src="../../store-assets/airo-tv/aika-stream-split-screen-banner.jpg"
-                alt="Aika Stream Split Screen showcasing Cricket match and Music stream side by side"
-                fetchpriority="high"
-                class="split-screen-banner-img"
-              />
+          <div class="tv-stage">
+            <div class="tv-bezel">
+              <div class="tv-glass">
+                <img src="../../store-assets/airo-tv/01-tv-home-channel-grid.png" alt="Aika Stream home on a television" width="1920" height="1080" />
+              </div>
+            </div>
+            <div class="tv-stand" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="multiview">
+        <div class="container">
+          <p class="eyebrow">MultiView</p>
+          <h2>Watch more. At the same time.</h2>
+          <p class="hero-lede">One screen, side by side, or four at once. The streams are yours.</p>
+          <div class="mv-stage" data-india-multiview data-panes="1">
+            <div class="mv-pane">1</div>
+            <div class="mv-pane">2</div>
+            <div class="mv-pane">3</div>
+            <div class="mv-pane">4</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band band-alt" id="experience" aria-labelledby="experience-title">
+        <div class="container">
+          <p class="eyebrow">Experience</p>
+          <h2 id="experience-title">One screen. Everything you watch.</h2>
+          <div class="experience-lines">
+            <div class="experience-line">
+              <strong>Live TV</strong>
+              <p>Jump straight into live channels without navigating through complicated menus.</p>
+            </div>
+            <div class="experience-line">
+              <strong>Continue Watching</strong>
+              <p>Pick up exactly where you stopped.</p>
+            </div>
+            <div class="experience-line">
+              <strong>MultiView</strong>
+              <p>Watch multiple streams together on one screen.</p>
+            </div>
+            <div class="experience-line">
+              <strong>Fast &amp; Simple</strong>
+              <p>Built for TV. Large controls. Fast navigation. No clutter.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="band" id="split-screen" aria-labelledby="split-title">
+      <section class="band" id="continue" aria-labelledby="continue-title">
         <div class="container">
-          <div class="section-intro">
-            <div>
-              <p class="eyebrow">One screen. Two streams.</p>
-              <h2 id="split-title">Introducing Split Screen for Android TV</h2>
-            </div>
-            <p>
-              Why switch between streams when you can watch them together? Aika Stream lets you add a second stream to your current playback and arrange them side by side. You decide what goes on your screen.
-            </p>
-          </div>
-
-          <div class="split-screen-highlights">
-            <article class="highlight-card">
-              <i data-lucide="music" aria-hidden="true"></i>
-              <h3>🎵 Music + Sports</h3>
-              <p>Listen to your favorite songs or music channels while watching live sports on the other side.</p>
-            </article>
-            <article class="highlight-card">
-              <i data-lucide="trophy" aria-hidden="true"></i>
-              <h3>🏏 Follow Live Matches</h3>
-              <p>Follow an India vs Afghanistan match live while keeping another stream or entertainment show open.</p>
-            </article>
-            <article class="highlight-card">
-              <i data-lucide="columns-2" aria-hidden="true"></i>
-              <h3>📺 Two Streams at Once</h3>
-              <p>Watch two different live streams simultaneously on your big living room screen.</p>
-            </article>
-            <article class="highlight-card">
-              <i data-lucide="tv-2" aria-hidden="true"></i>
-              <h3>🎬 Sports + Entertainment</h3>
-              <p>Keep your favorite show playing while staying updated on live scores and matches.</p>
-            </article>
+          <p class="eyebrow">Continue Watching</p>
+          <h2 id="continue-title">Pick up where you left off.</h2>
+          <div class="cw-rail" data-india-continue>
+            <div class="cw-card" aria-hidden="true"></div>
+            <div class="cw-card" aria-hidden="true"></div>
+            <div class="cw-card" aria-hidden="true"></div>
+            <div class="cw-card" aria-hidden="true"></div>
           </div>
         </div>
       </section>
 
-      <section class="band band-alt" id="features" aria-labelledby="build-title">
+      <section class="band band-alt" id="screens" aria-labelledby="screens-title">
         <div class="container">
-          <div class="section-intro">
-            <div>
-              <p class="eyebrow">Built for the way India watches</p>
-              <h2 id="build-title">Sports, music, news, entertainment in one player</h2>
+          <p class="eyebrow">TV-first</p>
+          <h2 id="screens-title">Designed for your TV.</h2>
+          <p class="hero-lede">Aika Stream puts your entertainment where it belongs — on the big screen.</p>
+          <div class="screen-row">
+            <div class="screen-frame">
+              <span class="screen-frame-label">Phone</span>
+              <div class="device-bezel phone">
+                <div class="device-glass">Aika Stream</div>
+              </div>
             </div>
-            <p>
-              Your viewing habits don't fit into one channel. Aika Stream gives you one place to manage and play your own streams.
-            </p>
-          </div>
-
-          <div class="difference-list">
-            <article class="difference-row">
-              <span class="difference-icon"><i data-lucide="columns-2" aria-hidden="true"></i></span>
-              <h3>🔀 Split Screen</h3>
-              <p>Play two streams together on one screen with dual audio controls.</p>
-              <span class="status status-available">Available</span>
-            </article>
-            <article class="difference-row">
-              <span class="difference-icon"><i data-lucide="search" aria-hidden="true"></i></span>
-              <h3>🔎 Instant Search</h3>
-              <p>Find channels and streams quickly instead of scrolling through a huge playlist.</p>
-              <span class="status status-available">Available</span>
-            </article>
-            <article class="difference-row">
-              <span class="difference-icon"><i data-lucide="heart" aria-hidden="true"></i></span>
-              <h3>❤️ Favorites</h3>
-              <p>Keep your frequently watched sports and music streams one tap away.</p>
-              <span class="status status-available">Available</span>
-            </article>
-            <article class="difference-row">
-              <span class="difference-icon"><i data-lucide="tv" aria-hidden="true"></i></span>
-              <h3>📺 TV-first experience</h3>
-              <p>Designed for Android TV and Google TV with a simple, remote-friendly interface.</p>
-              <span class="status status-available">Available</span>
-            </article>
+            <div class="screen-frame">
+              <span class="screen-frame-label">Tablet</span>
+              <div class="device-bezel tablet">
+                <div class="device-glass">Aika Stream</div>
+              </div>
+            </div>
+            <div class="screen-frame">
+              <span class="screen-frame-label">TV</span>
+              <div class="tv-stage">
+                <div class="tv-bezel">
+                  <div class="tv-glass">
+                    <img src="../../store-assets/airo-tv/02-tv-now-playing.png" alt="Aika Stream now playing on a television" width="1920" height="1080" loading="lazy" />
+                  </div>
+                </div>
+                <div class="tv-stand" aria-hidden="true"></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="band" id="sources" aria-labelledby="sources-title">
+      <section class="band" id="remote" aria-labelledby="remote-title">
         <div class="container">
-          <div class="section-intro">
-            <div>
-              <p class="eyebrow">Bring your own streams</p>
-              <h2 id="sources-title">A media player, not a subscription service</h2>
+          <p class="eyebrow">Remote-friendly</p>
+          <h2 id="remote-title">Simple enough for everyone.</h2>
+          <div class="remote-lines">
+            <div class="remote-line">
+              <strong>Fast navigation</strong>
+              <p>Move through menus and channels with a layout built for the D-pad.</p>
             </div>
-            <p>
-              Add your own supported sources that you are legally entitled to access:
-            </p>
+            <div class="remote-line">
+              <strong>Big, clear controls</strong>
+              <p>Playback buttons and labels stay readable from across the room.</p>
+            </div>
+            <div class="remote-line">
+              <strong>Instant playback</strong>
+              <p>Pick a stream and start watching without extra loading steps.</p>
+            </div>
           </div>
+        </div>
+      </section>
 
-          <div class="proof-strip">
-            <div class="container proof-grid">
-              <div class="proof-item">
-                <strong>M3U / M3U8</strong><span>Authorized custom playlists & streams</span>
+      <section class="band band-alt" id="library" aria-labelledby="library-title">
+        <div class="container">
+          <p class="eyebrow">Your playlist</p>
+          <h2 id="library-title">Everything you watch. In one place.</h2>
+          <p class="hero-lede">From the playlists you add. Aika Stream does not include a channel catalog.</p>
+          <div class="library-groups">
+            <div class="library-group">
+              <div class="library-group-header">
+                <strong>Live TV</strong>
+                <span>News · Entertainment · Sports · Kids</span>
               </div>
-              <div class="proof-item">
-                <strong>Xtream API</strong><span>Fast authentication & group categories</span>
+              <div class="tile-strip">
+                <div class="tile">N</div>
+                <div class="tile">E</div>
+                <div class="tile">S</div>
+                <div class="tile">K</div>
               </div>
-              <div class="proof-item">
-                <strong>Jellyfin</strong><span>Personal home server media sources</span>
+            </div>
+            <div class="library-group">
+              <div class="library-group-header">
+                <strong>Music</strong>
+                <span>Music channels · Radio · Concerts</span>
               </div>
-              <div class="proof-item">
-                <strong>TV-First UX</strong><span>Living-room distance legibility</span>
+              <div class="tile-strip">
+                <div class="tile">M</div>
+                <div class="tile">R</div>
+                <div class="tile">C</div>
               </div>
+            </div>
+            <div class="library-group">
+              <div class="library-group-header">
+                <strong>International</strong>
+                <span>Channels from around the world</span>
+              </div>
+              <div class="tile-strip">
+                <div class="tile">W</div>
+                <div class="tile">A</div>
+                <div class="tile">E</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="showcase" aria-labelledby="showcase-title">
+        <div class="container">
+          <div class="showcase-grid">
+            <div class="showcase-copy">
+              <p class="eyebrow">AIKA STREAM</p>
+              <h2 id="showcase-title">One screen. Endless possibilities.</h2>
+              <ul class="showcase-list">
+                <li>Live TV</li>
+                <li>MultiView</li>
+                <li>Music</li>
+              </ul>
+              <p class="showcase-footnote">Built for Android TV.</p>
+            </div>
+            <div class="tv-stage">
+              <div class="tv-bezel">
+                <div class="tv-glass">
+                  <img src="../../store-assets/airo-tv/01-tv-home-channel-grid.png" alt="Aika Stream on a television" width="1920" height="1080" loading="lazy" />
+                </div>
+              </div>
+              <div class="tv-stand" aria-hidden="true"></div>
             </div>
           </div>
         </div>
@@ -236,7 +286,7 @@
           <div class="section-intro">
             <div>
               <p class="eyebrow">Made for your big screen</p>
-              <h2 id="devices-title">Android TV & Google TV</h2>
+              <h2 id="devices-title">Android TV &amp; Google TV</h2>
             </div>
             <p>No tiny mobile controls. No complicated desktop interface. Built around the living room TV experience.</p>
           </div>
@@ -257,10 +307,18 @@
         </div>
       </section>
 
+      <section class="band cta-band" id="start" aria-labelledby="start-title">
+        <div class="container">
+          <h2 id="start-title">Turn on your TV.</h2>
+          <p>Start watching with Aika Stream.</p>
+          <a class="button button-primary" href="https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas">Watch Aika Stream</a>
+        </div>
+      </section>
+
       <section class="band" id="trust" aria-labelledby="trust-title">
         <div class="container">
           <div class="trust-disclaimer-pl" style="font-size: 15px; line-height: 1.6; border-left-color: var(--green);">
-            <h3 id="trust-title" style="margin-top: 0; color: var(--text);">Your match. Your music. Your screen.</h3>
+            <h3 id="trust-title" style="margin-top: 0; color: var(--text);">Your streams. Your screen.</h3>
             <p>
               Aika Stream is a free media player for Android TV and Google TV. Aika Stream does not sell, host, or provide television channels, sports subscriptions, or copyrighted broadcasts. Users are responsible for the sources and content they add to the application.
             </p>
@@ -278,12 +336,12 @@
                 >Aika Stream</span
               ></a
             >
-            <h2>Watch more. At the same time.</h2>
+            <h2>Your TV. Reimagined.</h2>
             <p>A multi-stream TV player for Android TV and Google TV.</p>
           </div>
           <div class="footer-col">
             <h3>Product</h3>
-            <a href="#split-screen">Split Screen</a><a href="#features">Features</a><a href="#devices">Devices</a>
+            <a href="#multiview">MultiView</a><a href="#experience">Experience</a><a href="#screens">Screens</a><a href="#library">Library</a>
           </div>
           <div class="footer-col">
             <h3>Regions</h3>
@@ -303,5 +361,11 @@
         </div>
       </div>
     </footer>
+
+    <script type="module">
+      import { startIndiaMotion } from '../../assets/airo-tv/india-22.js';
+      // prefers-reduced-motion sets data-panes="4" on the MultiView stage.
+      startIndiaMotion(document);
+    </script>
   </body>
 </html>

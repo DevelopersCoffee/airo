@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 
+import '../../../application/multiview_split_ratio.dart';
 import '../../../application/providers/multiview_provider.dart';
+import 'multiview_two_pane_split.dart';
 
 class MultiviewStage extends StatelessWidget {
   const MultiviewStage({
@@ -15,6 +17,8 @@ class MultiviewStage extends StatelessWidget {
     this.layout,
     this.onDismiss,
     this.onEmptySlotTap,
+    this.splitRatio = MultiviewSplitRatio.fifty,
+    this.onSplitRatioChanged,
   });
 
   final List<IptvMultiviewSession> sessions;
@@ -33,6 +37,9 @@ class MultiviewStage extends StatelessWidget {
   /// Invoked when an empty mosaic slot is selected/tapped — the caller opens
   /// a channel picker to fill it. Null leaves empty slots inert.
   final VoidCallback? onEmptySlotTap;
+
+  final MultiviewSplitRatio splitRatio;
+  final ValueChanged<MultiviewSplitRatio>? onSplitRatioChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -68,19 +75,25 @@ class MultiviewStage extends StatelessWidget {
         key: const ValueKey('multiview-layout-single'),
         child: cell(0),
       ),
-      MultiviewLayoutKind.splitHorizontal => Row(
+      MultiviewLayoutKind.splitHorizontal => KeyedSubtree(
         key: const ValueKey('multiview-layout-split'),
-        children: [
-          Expanded(child: cell(0)),
-          Expanded(child: cell(1)),
-        ],
+        child: MultiviewTwoPaneSplit(
+          axis: Axis.horizontal,
+          ratio: splitRatio,
+          onSplitRatioChanged: onSplitRatioChanged,
+          first: cell(0),
+          second: cell(1),
+        ),
       ),
-      MultiviewLayoutKind.splitVertical => Column(
+      MultiviewLayoutKind.splitVertical => KeyedSubtree(
         key: const ValueKey('multiview-layout-split-vertical'),
-        children: [
-          Expanded(child: cell(0)),
-          Expanded(child: cell(1)),
-        ],
+        child: MultiviewTwoPaneSplit(
+          axis: Axis.vertical,
+          ratio: splitRatio,
+          onSplitRatioChanged: onSplitRatioChanged,
+          first: cell(0),
+          second: cell(1),
+        ),
       ),
       MultiviewLayoutKind.tripleTop => Column(
         key: const ValueKey('multiview-layout-triple-top'),

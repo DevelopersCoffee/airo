@@ -42,6 +42,8 @@ void main() {
     WidgetTester tester, {
     required TvMiniGuidePreviewFactory previewFactory,
     ValueChanged<IPTVChannel>? onSelected,
+    VoidCallback? onMoveToControls,
+    void Function({bool fromBack})? onDismiss,
     List<IPTVChannel> channels = const [_news, _sports, _movies],
     String currentChannelId = 'news-1',
   }) async {
@@ -60,6 +62,8 @@ void main() {
                   channels: channels,
                   currentChannelId: currentChannelId,
                   onSelected: onSelected ?? (_) {},
+                  onMoveToControls: onMoveToControls ?? () {},
+                  onDismiss: onDismiss ?? ({bool fromBack = false}) {},
                   previewFactory: previewFactory,
                 ),
               ],
@@ -77,6 +81,8 @@ void main() {
     required VideoPlayerStreamingService main,
     required TvMiniGuidePreviewFactory previewFactory,
     List<IPTVChannel> recents = const [_sports],
+    bool useTvTransportBar = false,
+    bool enableTouchGestures = true,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -105,13 +111,46 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        child: MaterialApp(
+          home: Scaffold(
+            body: VideoPlayerWidget(
+              useTvTransportBar: useTvTransportBar,
+              enableTouchGestures: enableTouchGestures,
+            ),
+          ),
+        ),
       ),
     );
     await tester.pump();
     await main.playChannel(_news);
     await tester.pump();
   }
+
+  /// Controls start visible, so Back returns to the video zone where Down
+  /// opens the Mini Guide.
+  Future<void> openMiniGuideFromVideo(WidgetTester tester) async {
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+  }
+
+  testWidgets('Up asks the parent to show controls and Down asks it to close', (
+    tester,
+  ) async {
+    var moved = 0;
+    var dismissed = 0;
+    await pumpOverlay(
+      tester,
+      previewFactory: _RecordingPreviewService.new,
+      onMoveToControls: () => moved++,
+      onDismiss: ({bool fromBack = false}) => dismissed++,
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    expect(moved, 1);
+    expect(dismissed, 1);
+  });
 
   testWidgets(
     'settles 500 ms then starts at most one muted preview on the focused card',
@@ -214,8 +253,7 @@ void main() {
       previewFactory: _FailingPreviewService.new,
     );
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
+    await openMiniGuideFromVideo(tester);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     await flushAsync(tester);
@@ -243,8 +281,7 @@ void main() {
       },
     );
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
+    await openMiniGuideFromVideo(tester);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     await flushAsync(tester);
@@ -280,8 +317,7 @@ void main() {
       },
     );
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
+    await openMiniGuideFromVideo(tester);
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
@@ -302,31 +338,52 @@ void main() {
     await main.stop();
   });
 
-  testWidgets('DOWN Recent Channels stays logos-only with no preview decoder', (
+  testWidgets('Mini Guide stays a bottom strip under the player height', (
     tester,
   ) async {
     final main = _RecordingMainService();
-    var previewFactoryCalls = 0;
     await pumpPlayer(
       tester,
       main: main,
-      previewFactory: () {
-        previewFactoryCalls++;
-        return _RecordingPreviewService();
-      },
+      previewFactory: _RecordingPreviewService.new,
+      useTvTransportBar: true,
+      enableTouchGestures: false,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    await openMiniGuideFromVideo(tester);
+    await tester.pump();
+
+    expect(find.text('Mini guide'), findsOneWidget);
+    final guide = tester.getRect(find.byType(TvMiniGuideOverlay));
+    final player = tester.getRect(find.byType(VideoPlayerWidget));
+    expect(guide.height, lessThan(player.height * 0.5));
+    expect(guide.height, greaterThan(96));
+    expect(guide.bottom, closeTo(player.bottom, 1));
+    expect(guide.top, greaterThan(player.top));
+
+    await main.stop();
+  });
+
+  testWidgets('Down opens the Mini Guide from recent channels', (tester) async {
+    final main = _RecordingMainService();
+    await pumpPlayer(
+      tester,
+      main: main,
+      previewFactory: _RecordingPreviewService.new,
     );
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await openMiniGuideFromVideo(tester);
     await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    await flushAsync(tester);
 
-    expect(find.text('Recently watched'), findsOneWidget);
+    expect(find.text('Mini guide'), findsOneWidget);
+    expect(find.text('Recently watched'), findsNothing);
     expect(find.text('Stadium Sports'), findsOneWidget);
-    expect(previewFactoryCalls, 0);
     expect(main.stopCount, 0);
 
+    await tester.pump(const Duration(milliseconds: 500));
+    await flushAsync(tester);
     await main.stop();
   });
 }

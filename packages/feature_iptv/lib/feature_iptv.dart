@@ -92,3 +92,4 @@ export "presentation/widgets/xmltv_source_sheet.dart";
 export "presentation/widgets/epg_match_override_sheet.dart";
 export "presentation/widgets/local_search_results_panel.dart";
 export "presentation/widgets/epg_touch_timeline_grid.dart";
+export "presentation/widgets/watch_remote_contract.dart";

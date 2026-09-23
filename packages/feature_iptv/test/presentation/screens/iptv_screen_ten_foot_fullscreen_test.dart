@@ -494,14 +494,21 @@ void main() {
             'propagated before testing the key event',
       );
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      // Controls may still be up after the idle wait when Pause holds focus.
+      // Down from the video opens the Mini Guide; a first Down only closes
+      // the transport. Either way the guide proves the key reached the player.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
+      if (find.text('Mini guide').evaluate().isEmpty) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pump();
+      }
 
       expect(
         find.text('Mini guide'),
         findsOneWidget,
         reason:
-            'Up must still reach the player\'s TvInputHandler after '
+            'Down must still reach the player\'s TvInputHandler after '
             'several rebuilds, not just on the first frame of fullscreen',
       );
     },

@@ -64,4 +64,16 @@ void main() {
     expect(MultiviewLayoutKind.tryParse(null), isNull);
     expect(MultiviewLayoutKind.tryParse('pip-asymmetric'), isNull);
   });
+
+  test('isTwoPane is only side-by-side and stacked', () {
+    expect(MultiviewLayoutKind.splitHorizontal.isTwoPane, isTrue);
+    expect(MultiviewLayoutKind.splitVertical.isTwoPane, isTrue);
+    for (final kind in MultiviewLayoutKind.values) {
+      if (kind == MultiviewLayoutKind.splitHorizontal ||
+          kind == MultiviewLayoutKind.splitVertical) {
+        continue;
+      }
+      expect(kind.isTwoPane, isFalse, reason: kind.wireName);
+    }
+  });
 }
