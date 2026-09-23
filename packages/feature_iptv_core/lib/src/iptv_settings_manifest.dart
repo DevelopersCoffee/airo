@@ -15,8 +15,9 @@ import 'package:flutter/material.dart';
 /// This intentionally mirrors today's real composition, not an idealized
 /// one: mobile currently exposes `playlistSource` and `epgGuideSource` as two
 /// separate entries, while TV exposes one combined `sources` entry; mobile
-/// exposes `country` and `audio`, which TV does not yet expose at all; TV
-/// exposes `privacy`, which mobile does not yet show. Declaring
+/// exposes `audio`, which TV does not; both shells expose `country` and
+/// `accessibility`; TV exposes `privacy`, which mobile does not show in the
+/// manifest (compact Aika Stream hub special-cases it). Declaring
 /// each of those as its own descriptor with an explicit
 /// [IptvSettingsSectionDescriptor.visibleForShells] set records the real gaps
 /// from `tasks/ssot_airo_airo_tv_gap_analysis.md` as data, so a future pass
@@ -24,6 +25,7 @@ import 'package:flutter/material.dart';
 /// forcing identical UI today.
 enum IptvSettingsSectionId {
   theme,
+  accessibility,
   playback,
   sources,
   playlistSource,
@@ -82,12 +84,24 @@ final List<IptvSettingsSectionDescriptor> iptvSettingsSections = [
     shellLabelOverrides: {ShellId.tv: 'Theme'},
   ),
   IptvSettingsSectionDescriptor(
+    id: IptvSettingsSectionId.accessibility,
+    label: 'Accessibility',
+    icon: Icons.accessibility_new,
+    visibleForShells: {ShellId.mobile, ShellId.tv},
+  ),
+  IptvSettingsSectionDescriptor(
     id: IptvSettingsSectionId.playback,
     label: 'Playback',
     icon: Icons.play_circle_outline,
     visibleForShells: {ShellId.mobile, ShellId.tv},
     shellLabelOverrides: {ShellId.mobile: 'Playback Settings'},
     shellIconOverrides: {ShellId.mobile: Icons.aspect_ratio},
+  ),
+  IptvSettingsSectionDescriptor(
+    id: IptvSettingsSectionId.country,
+    label: 'Country',
+    icon: Icons.flag_outlined,
+    visibleForShells: {ShellId.mobile, ShellId.tv},
   ),
   IptvSettingsSectionDescriptor(
     id: IptvSettingsSectionId.sources,
@@ -105,12 +119,6 @@ final List<IptvSettingsSectionDescriptor> iptvSettingsSections = [
     id: IptvSettingsSectionId.epgGuideSource,
     label: 'EPG Guide Source',
     icon: Icons.calendar_month_outlined,
-    visibleForShells: {ShellId.mobile},
-  ),
-  IptvSettingsSectionDescriptor(
-    id: IptvSettingsSectionId.country,
-    label: 'Country',
-    icon: Icons.flag_outlined,
     visibleForShells: {ShellId.mobile},
   ),
   IptvSettingsSectionDescriptor(

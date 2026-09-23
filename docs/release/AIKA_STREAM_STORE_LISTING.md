@@ -70,10 +70,10 @@ Paste into Play Console → Internal testing → Release notes. Keep under 500
 characters. Do not claim bundled channels or Aika Stream Pro.
 
 ```text
-0.0.2 (20)
+0.0.2 (21)
+• TV remote can move across visible playback controls
+• Split view keeps only the featured channel audible
 • Phone, tablet, and Android TV / D-pad from one listing
-• Compact phone browse, overlay chrome, smoother scrolling
-• Faster, smaller Play install (R8 shrinking)
 
 0.0.1 (17)
 Your sources. Your screen. Remote-first player for authorized M3U/M3U8. Search channels, keep favorites on device, add XMLTV. No bundled channels or catalog.

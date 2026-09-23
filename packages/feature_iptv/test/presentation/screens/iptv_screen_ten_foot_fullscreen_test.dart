@@ -315,6 +315,102 @@ void main() {
   );
 
   testWidgets(
+    'tenFootMode: D-pad navigates visible transport after playback starts',
+    (tester) async {
+      tester.view.physicalSize = const Size(960, 540);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final played = <IPTVChannel>[];
+      final stateController = StreamController<StreamingState>.broadcast();
+      addTearDown(stateController.close);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            iptvChannelsProvider.overrideWith((ref) async => _channels),
+            streamProbeTransportProvider.overrideWithValue(
+              _FakeProbeTransport(),
+            ),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => stateController.stream,
+            ),
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              final service = _RecordingStreamingService(played: played);
+              ref.onDispose(service.dispose);
+              return service;
+            }),
+          ],
+          child: const MaterialApp(home: IPTVScreen(tenFootMode: true)),
+        ),
+      );
+      await tester.pump();
+      stateController.add(
+        StreamingState(playbackState: PlaybackState.idle, isLiveStream: true),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Channel One'));
+      await tester.pump(const Duration(milliseconds: 400));
+      stateController.add(
+        StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          currentChannel: _channels.single,
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      final opacity = tester.widget<AnimatedOpacity>(
+        find.byKey(const ValueKey('iptv-player-controls-opacity')),
+      );
+      expect(
+        opacity.opacity,
+        1,
+        reason: 'Watch chrome is on screen as soon as playback starts',
+      );
+
+      final backHandler = tester
+          .widget<Focus>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is Focus &&
+                  widget.focusNode?.debugLabel ==
+                      'IPTV fullscreen back handler',
+            ),
+          )
+          .focusNode!;
+      // Sony Bravia / Fire OS restore the first focusable in the window —
+      // this Back-only ancestor — after Flutter has already claimed Pause.
+      if (backHandler.canRequestFocus) {
+        backHandler.requestFocus();
+        await tester.pump();
+      }
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(
+        backHandler.hasPrimaryFocus,
+        isFalse,
+        reason:
+            'D-pad must leave the full-screen Back handler and land on '
+            'the visible transport; otherwise the remote looks dead while '
+            'Pause/Play is on screen',
+      );
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        anyOf('player center control', 'player restart'),
+      );
+    },
+  );
+
+  testWidgets(
     'tenFootMode: the D-pad still reaches the player after rebuilds while '
     'fullscreen (regression: an outer focus node re-requested focus on '
     'every build, permanently stealing it back from the player once live '

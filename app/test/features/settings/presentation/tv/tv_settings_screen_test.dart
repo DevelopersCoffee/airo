@@ -19,6 +19,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+          iptvChannelsProvider.overrideWith(
+            (ref) async => const <IPTVChannel>[],
+          ),
         ],
         child: const MaterialApp(home: TvSettingsScreen()),
       ),
@@ -32,14 +35,28 @@ void main() {
       await pumpScreen(tester);
 
       expect(find.text('Theme'), findsOneWidget);
+      expect(find.text('Accessibility'), findsOneWidget);
       expect(find.text('Playback'), findsOneWidget);
+      expect(find.text('Country'), findsOneWidget);
       expect(find.text('Sources'), findsOneWidget);
       expect(find.text('Privacy'), findsOneWidget);
+      expect(find.text('About'), findsOneWidget);
 
-      // Accessibility was a rail stop whose detail pane only ever said
-      // "Coming soon". On a D-pad rail that is a focus stop leading nowhere,
-      // so the entry is gone rather than parked.
-      expect(find.text('Accessibility'), findsNothing);
+      final railOrder = [
+        'Theme',
+        'Accessibility',
+        'Playback',
+        'Country',
+        'Sources',
+        'Privacy',
+        'About',
+      ];
+      for (var i = 0; i < railOrder.length - 1; i++) {
+        expect(
+          tester.getTopLeft(find.text(railOrder[i])).dy,
+          lessThan(tester.getTopLeft(find.text(railOrder[i + 1])).dy),
+        );
+      }
 
       expect(
         find.byKey(const ValueKey('tv_settings_section_theme')),
@@ -134,4 +151,37 @@ void main() {
       );
     },
   );
+
+  testWidgets('selecting Accessibility shows font and captions options', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('Accessibility'));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('tv_settings_section_accessibility')),
+      findsOneWidget,
+    );
+    expect(find.text('Standard'), findsOneWidget);
+    expect(find.text('Large'), findsOneWidget);
+    expect(find.text('Extra large'), findsOneWidget);
+    expect(find.text('Off'), findsOneWidget);
+    expect(find.text('On'), findsOneWidget);
+    expect(find.byType(Switch), findsNothing);
+  });
+
+  testWidgets('selecting Country shows the country tile', (tester) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('Country'));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('tv_settings_section_country')),
+      findsOneWidget,
+    );
+    expect(find.byType(CountrySettingsTile), findsOneWidget);
+  });
 }

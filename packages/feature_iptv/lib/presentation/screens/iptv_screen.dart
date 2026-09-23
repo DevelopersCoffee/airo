@@ -353,7 +353,37 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       _exitFullscreen();
       return KeyEventResult.handled;
     }
+    if (widget.tenFootMode &&
+        node.hasPrimaryFocus &&
+        _isTvTransportHandoffKey(key) &&
+        _focusFirstDescendant(node)) {
+      // This ancestor is Back-only. Sony Bravia / Fire OS can restore it as
+      // the first focusable after playback starts, leaving visible Pause
+      // chrome unreachable. Hand the D-pad to the first transport child.
+      return KeyEventResult.handled;
+    }
     return KeyEventResult.ignored;
+  }
+
+  bool _isTvTransportHandoffKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight ||
+        key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter;
+  }
+
+  bool _focusFirstDescendant(FocusNode node) {
+    final context = node.context;
+    if (context == null || !context.mounted) return false;
+    final first = FocusTraversalGroup.of(context).findFirstFocus(node);
+    if (first == null || identical(first, node) || !first.canRequestFocus) {
+      return false;
+    }
+    first.requestFocus();
+    return true;
   }
 
   void _handleNativeFullscreenExit() {
@@ -1072,7 +1102,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     }
 
     if (showFullscreenPlayer) {
-      if (!_fullscreenFocusClaimed) {
+      if (!widget.tenFootMode && !_fullscreenFocusClaimed) {
         _fullscreenFocusClaimed = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && ref.read(isFullscreenModeProvider)) {
@@ -1082,9 +1112,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       }
       // MultiView sessions were being silently dropped on entering
       // fullscreen: this branch previously always rendered a single-channel
-      // VideoPlayerWidget bound to the primary streaming service, which
-      // multiview_provider.dart's toggle() pauses the moment a MultiView
-      // session starts — so "activeChannel" itself is likely null here.
+              // VideoPlayerWidget bound to the primary streaming service, which
+              // multiview_provider.dart's toggle() silences and stops the
+              // moment a MultiView session starts — so "activeChannel" itself
+              // is likely null here.
       // Render the same MultiviewStage the browse grid uses instead,
       // whenever there is a live session to show.
       final fullscreenBody = multiview.sessions.isNotEmpty
@@ -1123,7 +1154,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       return guardRouteBack(
         Focus(
           focusNode: _fullscreenFocusNode,
-          autofocus: true,
+          // On TV the player transport owns D-pad. Autofocusing this
+          // Back-only ancestor was leaving Pause visible but unreachable.
+          autofocus: !widget.tenFootMode,
+          skipTraversal: true,
+          canRequestFocus: !widget.tenFootMode,
           onKeyEvent: _handleFullscreenKey,
           child: AiroResponsiveScaffold(
             padding: EdgeInsets.zero,
