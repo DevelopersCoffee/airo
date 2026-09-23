@@ -129,16 +129,19 @@ void main() {
       expect(summary.throughputKbpsP10, isNull);
     });
 
-    test('a zero-sample session produces a valid summary with null throughput', () {
-      final c = collector();
+    test(
+      'a zero-sample session produces a valid summary with null throughput',
+      () {
+        final c = collector();
 
-      c.sessionStarted();
-      final summary = c.sessionStopped();
+        c.sessionStarted();
+        final summary = c.sessionStopped();
 
-      expect(summary.throughputKbpsP50, isNull);
-      expect(summary.throughputKbpsP10, isNull);
-      expect(summary.validate().accepted, isTrue);
-    });
+        expect(summary.throughputKbpsP50, isNull);
+        expect(summary.throughputKbpsP10, isNull);
+        expect(summary.validate().accepted, isTrue);
+      },
+    );
 
     test('stopping twice does not throw', () {
       final c = collector();
@@ -150,33 +153,42 @@ void main() {
       expect(c.sessionStopped, returnsNormally);
     });
 
-    test('an immediate stop (zero session duration) does not throw or produce NaN', () {
-      final c = collector();
+    test(
+      'an immediate stop (zero session duration) does not throw or produce NaN',
+      () {
+        final c = collector();
 
-      c.sessionStarted();
-      final summary = c.sessionStopped();
+        c.sessionStarted();
+        final summary = c.sessionStopped();
 
-      expect(summary.rebufferDurationRatio, 0.0);
-      expect(summary.rebufferDurationRatio.isNaN, isFalse);
-    });
+        expect(summary.rebufferDurationRatio, 0.0);
+        expect(summary.rebufferDurationRatio.isNaN, isFalse);
+      },
+    );
 
-    test('the produced summary passes AiroStreamingSessionSummary.validate()', () {
-      final c = collector();
+    test(
+      'the produced summary passes AiroStreamingSessionSummary.validate()',
+      () {
+        final c = collector();
 
-      c.sessionStarted();
-      advance(const Duration(milliseconds: 500));
-      c.firstFrameRendered();
-      c.throughputSampleKbps(4000);
-      final summary = c.sessionStopped();
+        c.sessionStarted();
+        advance(const Duration(milliseconds: 500));
+        c.firstFrameRendered();
+        c.throughputSampleKbps(4000);
+        final summary = c.sessionStopped();
 
-      expect(summary.validate().accepted, isTrue);
-    });
+        expect(summary.validate().accepted, isTrue);
+      },
+    );
 
-    test('sessionStopped result type is the shared analytics summary model', () {
-      final c = collector();
-      c.sessionStarted();
+    test(
+      'sessionStopped result type is the shared analytics summary model',
+      () {
+        final c = collector();
+        c.sessionStarted();
 
-      expect(c.sessionStopped(), isA<AiroStreamingSessionSummary>());
-    });
+        expect(c.sessionStopped(), isA<AiroStreamingSessionSummary>());
+      },
+    );
   });
 }

@@ -44,7 +44,11 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: SizedBox(width: 900, height: 600, child: VideoPlayerWidget()),
+              body: SizedBox(
+                width: 900,
+                height: 600,
+                child: VideoPlayerWidget(),
+              ),
             ),
           ),
         ),

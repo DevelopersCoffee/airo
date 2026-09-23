@@ -15,9 +15,7 @@ final channelLibraryMergerProvider =
 /// Exact `id`/`streamUrl` merge: channels sharing either key are folded
 /// into one entry with the union of their stream sources, languages,
 /// alt names, and categories.
-List<IPTVChannel> mergeChannelLibraries(
-  Iterable<List<IPTVChannel>> libraries,
-) {
+List<IPTVChannel> mergeChannelLibraries(Iterable<List<IPTVChannel>> libraries) {
   final channelsById = <String, IPTVChannel>{};
   final channelIdByStreamUrl = <String, String>{};
 

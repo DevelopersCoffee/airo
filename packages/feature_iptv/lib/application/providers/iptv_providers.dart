@@ -1016,21 +1016,21 @@ final isChannelNotForMeProvider = Provider.family<bool, String>((
 /// A plain callable rather than a FutureProvider.family: a family instance
 /// caches its first result, so a second toggle of the same channel would
 /// silently no-op.
-final channelNotForMeTogglerProvider = Provider<Future<void> Function(String)>(
-  (ref) {
-    return (channelId) async {
-      final storage = ref.read(favoriteChannelsStorageProvider);
-      final isNowNotForMe = !await storage.isNotForMe(channelId);
-      if (isNowNotForMe) {
-        await storage.setNotForMe(channelId);
-      } else {
-        await storage.clearPreference(channelId);
-      }
-      ref.invalidate(notForMeChannelIdsProvider);
-      ref.invalidate(favoriteChannelIdsProvider);
-    };
-  },
-);
+final channelNotForMeTogglerProvider = Provider<Future<void> Function(String)>((
+  ref,
+) {
+  return (channelId) async {
+    final storage = ref.read(favoriteChannelsStorageProvider);
+    final isNowNotForMe = !await storage.isNotForMe(channelId);
+    if (isNowNotForMe) {
+      await storage.setNotForMe(channelId);
+    } else {
+      await storage.clearPreference(channelId);
+    }
+    ref.invalidate(notForMeChannelIdsProvider);
+    ref.invalidate(favoriteChannelIdsProvider);
+  };
+});
 
 /// Coordinator for CV-017's favorites-survive-reimport behavior.
 final favoriteReimportCoordinatorProvider =

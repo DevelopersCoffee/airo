@@ -498,72 +498,69 @@ void main() {
       },
     );
 
-    test(
-      'merges Stalker and M3U simultaneously regardless of any selected '
-      'active source',
-      () async {
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final store = ContentSourceStore(PreferencesStore(prefs));
-        await store.replaceAll(const [
-          ContentSourceConfig(
-            id: 'm3u-news',
-            kind: ContentSourceKind.m3u,
-            label: 'M3U News',
-            url: 'https://example.com/news.m3u',
+    test('merges Stalker and M3U simultaneously regardless of any selected '
+        'active source', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final store = ContentSourceStore(PreferencesStore(prefs));
+      await store.replaceAll(const [
+        ContentSourceConfig(
+          id: 'm3u-news',
+          kind: ContentSourceKind.m3u,
+          label: 'M3U News',
+          url: 'https://example.com/news.m3u',
+        ),
+        ContentSourceConfig(
+          id: 'stalker-home',
+          kind: ContentSourceKind.stalker,
+          label: 'Home Portal',
+          url: 'https://portal.example.com',
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+        ),
+      ]);
+      await store.setActiveSourceId('stalker-home');
+      final m3uParser = _FakeSourceParser(
+        prefs: prefs,
+        sourceId: 'm3u-news',
+        channels: const [
+          IPTVChannel(
+            id: 'm3u-only',
+            name: 'M3U Only',
+            streamUrl: 'https://example.com/m3u.m3u8',
           ),
-          ContentSourceConfig(
-            id: 'stalker-home',
-            kind: ContentSourceKind.stalker,
-            label: 'Home Portal',
-            url: 'https://portal.example.com',
-            macAddress: 'AA:BB:CC:DD:EE:FF',
+        ],
+      );
+      final sourceContainer = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+          m3uSourceParserFactoryProvider.overrideWithValue((_) => m3uParser),
+          stalkerSourceLoaderProvider.overrideWithValue(
+            (_) async => const [
+              IPTVChannel(
+                id: 'stalker-home-7',
+                name: 'Portal Only',
+                streamUrl: 'https://example.com/portal.m3u8',
+              ),
+            ],
           ),
-        ]);
-        await store.setActiveSourceId('stalker-home');
-        final m3uParser = _FakeSourceParser(
-          prefs: prefs,
-          sourceId: 'm3u-news',
-          channels: const [
-            IPTVChannel(
-              id: 'm3u-only',
-              name: 'M3U Only',
-              streamUrl: 'https://example.com/m3u.m3u8',
-            ),
-          ],
-        );
-        final sourceContainer = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            secureStoreProvider.overrideWithValue(InMemorySecureStore()),
-            m3uSourceParserFactoryProvider.overrideWithValue((_) => m3uParser),
-            stalkerSourceLoaderProvider.overrideWithValue(
-              (_) async => const [
-                IPTVChannel(
-                  id: 'stalker-home-7',
-                  name: 'Portal Only',
-                  streamUrl: 'https://example.com/portal.m3u8',
-                ),
-              ],
-            ),
-          ],
-        );
-        addTearDown(sourceContainer.dispose);
+        ],
+      );
+      addTearDown(sourceContainer.dispose);
 
-        // An active source is set (legacy VOD selection state) but Live TV
-        // must ignore it and show both sources merged. Every configured
-        // source is now watched unconditionally (including
-        // configuredXtreamChannelsProvider, which needs secureStoreProvider
-        // even when no Xtream sources are configured), so the container
-        // must override it too.
-        expect(
-          (await sourceContainer.read(
-            iptvChannelsProvider.future,
-          )).map((channel) => channel.id),
-          containsAll(['stalker-home-7', 'm3u-only']),
-        );
-      },
-    );
+      // An active source is set (legacy VOD selection state) but Live TV
+      // must ignore it and show both sources merged. Every configured
+      // source is now watched unconditionally (including
+      // configuredXtreamChannelsProvider, which needs secureStoreProvider
+      // even when no Xtream sources are configured), so the container
+      // must override it too.
+      expect(
+        (await sourceContainer.read(
+          iptvChannelsProvider.future,
+        )).map((channel) => channel.id),
+        containsAll(['stalker-home-7', 'm3u-only']),
+      );
+    });
 
     test(
       'loads multiple M3U sources, merges duplicate channels, and isolates failure',
@@ -665,55 +662,52 @@ void main() {
       },
     );
 
-    test(
-      'configuredStalkerChannelsProvider loads every configured Stalker '
-      'source and isolates a failing one',
-      () async {
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final store = ContentSourceStore(PreferencesStore(prefs));
-        await store.replaceAll(const [
-          ContentSourceConfig(
-            id: 'stalker-home',
-            kind: ContentSourceKind.stalker,
-            label: 'Home Portal',
-            url: 'https://portal.example.com',
-            macAddress: 'AA:BB:CC:DD:EE:FF',
-          ),
-          ContentSourceConfig(
-            id: 'stalker-dead',
-            kind: ContentSourceKind.stalker,
-            label: 'Dead Portal',
-            url: 'https://dead.example.com',
-            macAddress: '11:22:33:44:55:66',
-          ),
-        ]);
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            stalkerSourceLoaderProvider.overrideWithValue((config) async {
-              if (config.id == 'stalker-dead') {
-                throw StateError('portal unreachable');
-              }
-              return const [
-                IPTVChannel(
-                  id: 'stalker-home-7',
-                  name: 'Portal Only',
-                  streamUrl: 'https://example.com/portal.m3u8',
-                ),
-              ];
-            }),
-          ],
-        );
-        addTearDown(container.dispose);
+    test('configuredStalkerChannelsProvider loads every configured Stalker '
+        'source and isolates a failing one', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final store = ContentSourceStore(PreferencesStore(prefs));
+      await store.replaceAll(const [
+        ContentSourceConfig(
+          id: 'stalker-home',
+          kind: ContentSourceKind.stalker,
+          label: 'Home Portal',
+          url: 'https://portal.example.com',
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+        ),
+        ContentSourceConfig(
+          id: 'stalker-dead',
+          kind: ContentSourceKind.stalker,
+          label: 'Dead Portal',
+          url: 'https://dead.example.com',
+          macAddress: '11:22:33:44:55:66',
+        ),
+      ]);
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          stalkerSourceLoaderProvider.overrideWithValue((config) async {
+            if (config.id == 'stalker-dead') {
+              throw StateError('portal unreachable');
+            }
+            return const [
+              IPTVChannel(
+                id: 'stalker-home-7',
+                name: 'Portal Only',
+                streamUrl: 'https://example.com/portal.m3u8',
+              ),
+            ];
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
 
-        final channels = await container.read(
-          configuredStalkerChannelsProvider.future,
-        );
+      final channels = await container.read(
+        configuredStalkerChannelsProvider.future,
+      );
 
-        expect(channels.map((c) => c.id), ['stalker-home-7']);
-      },
-    );
+      expect(channels.map((c) => c.id), ['stalker-home-7']);
+    });
   });
 
   group('channelFavoriteTogglerProvider', () {

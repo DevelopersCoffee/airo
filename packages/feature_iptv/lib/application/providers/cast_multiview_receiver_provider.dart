@@ -22,26 +22,25 @@ final multiviewCastReceiverTransportProvider =
 /// provider is what actually starts the bridge — see [AiroTvShell]'s
 /// `ref.watch(castMultiviewReceiverBridgeProvider)`, which does so for as
 /// long as the TV shell is mounted.
-final castMultiviewReceiverBridgeProvider = Provider<CastMultiviewReceiverBridge>((
-  ref,
-) {
-  final bridge = CastMultiviewReceiverBridge(
-    transport: ref.watch(multiviewCastReceiverTransportProvider),
-    controller: ref.watch(multiviewProvider.notifier),
-    resolveChannel: (channelId) {
-      final channels = ref.read(iptvChannelsProvider).value ?? const [];
-      for (final channel in channels) {
-        if (channel.id == channelId) return channel;
-      }
-      return null;
-    },
-  );
-  bridge.start();
-  ref.onDispose(() {
-    // Bridge.dispose() is async (cancels stream subscriptions) but disposal
-    // itself is fire-and-forget — nothing awaits a provider's onDispose.
-    // ignore: discarded_futures
-    bridge.dispose();
-  });
-  return bridge;
-});
+final castMultiviewReceiverBridgeProvider =
+    Provider<CastMultiviewReceiverBridge>((ref) {
+      final bridge = CastMultiviewReceiverBridge(
+        transport: ref.watch(multiviewCastReceiverTransportProvider),
+        controller: ref.watch(multiviewProvider.notifier),
+        resolveChannel: (channelId) {
+          final channels = ref.read(iptvChannelsProvider).value ?? const [];
+          for (final channel in channels) {
+            if (channel.id == channelId) return channel;
+          }
+          return null;
+        },
+      );
+      bridge.start();
+      ref.onDispose(() {
+        // Bridge.dispose() is async (cancels stream subscriptions) but disposal
+        // itself is fire-and-forget — nothing awaits a provider's onDispose.
+        // ignore: discarded_futures
+        bridge.dispose();
+      });
+      return bridge;
+    });

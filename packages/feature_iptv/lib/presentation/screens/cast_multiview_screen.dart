@@ -427,8 +427,9 @@ class _CastMultiviewLayoutEditorSheetState
                           return channelsAsync.maybeWhen(
                             error: (error, _) =>
                                 Text('Could not load channels: $error'),
-                            orElse: () =>
-                                const Center(child: CircularProgressIndicator()),
+                            orElse: () => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                           );
                         }
                         final available = searchIndex.filterAndSort(

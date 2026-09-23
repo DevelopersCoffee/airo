@@ -16,11 +16,14 @@ import 'multiview_cast_transport.dart';
 /// there's no reusable third-party plugin for it. Dev/test only — the
 /// receiver app (F353F9C7) is unpublished, reachable only from a
 /// registered test device.
-class AiroCastReceiverMultiviewTransport implements MultiviewCastReceiverTransport {
+class AiroCastReceiverMultiviewTransport
+    implements MultiviewCastReceiverTransport {
   AiroCastReceiverMultiviewTransport({MethodChannel? channel})
     : _channel =
           channel ??
-          const MethodChannel('com.developerscoffee.airo/cast_multiview_receiver') {
+          const MethodChannel(
+            'com.developerscoffee.airo/cast_multiview_receiver',
+          ) {
     _channel.setMethodCallHandler(_handleMethodCall);
   }
 
