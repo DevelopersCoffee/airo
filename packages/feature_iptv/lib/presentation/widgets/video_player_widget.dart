@@ -22,6 +22,7 @@ import '../../application/providers/dead_link_report_provider.dart';
 import '../../application/providers/iptv_ad_placements.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/recently_watched_recorder.dart';
+import '../../application/providers/sleep_timer_provider.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
 import '../../domain/vod_resume_coordinator.dart';
 import 'playback_diagnostic_overlay.dart';
@@ -2317,7 +2318,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       if (channel?.group.trim().isNotEmpty ?? false) channel!.group,
       state.currentQuality.label,
     ].join(' · ');
-    return TvTransportBar(
+    final remaining = ref.watch(sleepTimerRemainingProvider);
+    final bar = TvTransportBar(
       channelName: channel?.name ?? '',
       detailLine: detailLine,
       isLive: state.isLiveStream,
@@ -2325,6 +2327,43 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       onKeyEvent: _handleTvTransportKey,
       onDroppedKeys: _onTvTransportOverflow,
       actions: _buildTvTransportButtons(context, service, state),
+    );
+    if (remaining <= 0) return bar;
+
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TvFocusable(
+          key: const ValueKey('iptv-tv-sleep-timer-chip'),
+          onFocus: _startHideControlsTimer,
+          onSelect: () =>
+              ref.read(sleepTimerRemainingProvider.notifier).cancel(),
+          semanticLabel: 'Sleep in $remaining min, cancel',
+          semanticButton: true,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.92,
+              ),
+              borderRadius: BorderRadius.circular(AiroSpacing.radiusSm),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AiroSpacing.md,
+                vertical: AiroSpacing.sm,
+              ),
+              child: Text(
+                'Sleep in $remaining min',
+                style: AiroTypography.labelLarge.copyWith(
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ),
+        ),
+        bar,
+      ],
     );
   }
 

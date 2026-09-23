@@ -19,6 +19,7 @@ class TvPlaybackSection extends ConsumerWidget {
     final current = ref.watch(videoAspectRatioProvider);
     final extraSections = ref.watch(playbackSettingsExtraSectionsProvider);
     final resumeEnabled = ref.watch(resumeLastChannelEnabledProvider);
+    final remaining = ref.watch(sleepTimerRemainingProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return ListView(
@@ -81,6 +82,55 @@ class TvPlaybackSection extends ConsumerWidget {
             ),
           ),
         ),
+        const SizedBox(height: 24),
+        Text(
+          'Sleep timer',
+          style: TextStyle(color: colorScheme.primary, fontSize: 16),
+        ),
+        Text(
+          'Stop playback and return to Library after this time.',
+          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        for (final minutes in [0, 15, 30, 45, 60])
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: TvFocusable(
+              key: ValueKey('playback-sleep-timer-$minutes'),
+              onSelect: () {
+                if (minutes == 0) {
+                  ref.read(sleepTimerRemainingProvider.notifier).cancel();
+                } else {
+                  ref
+                      .read(sleepTimerRemainingProvider.notifier)
+                      .setMinutes(minutes);
+                }
+              },
+              semanticLabel: minutes == 0
+                  ? 'Sleep timer off'
+                  : 'Sleep timer $minutes minutes',
+              semanticButton: true,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        minutes == 0 ? 'Off' : '$minutes minutes',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    if ((remaining == 0 && minutes == 0) ||
+                        remaining == minutes)
+                      Icon(Icons.check, color: colorScheme.primary),
+                  ],
+                ),
+              ),
+            ),
+          ),
         if (extraSections.isNotEmpty) const SizedBox(height: 24),
         ...extraSections,
       ],
