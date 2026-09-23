@@ -60,6 +60,9 @@ void main() {
     expect(find.text('IPTV'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('Choose your visual theme'), findsOneWidget);
+    expect(find.text('Accessibility'), findsOneWidget);
+    expect(find.text('Text size and captions'), findsOneWidget);
+    expect(find.text('Privacy'), findsNothing);
     expect(find.text('Airo Cyber'), findsNothing);
     expect(find.text('Airo Classic'), findsNothing);
     expect(find.text('Bedtime Mode'), findsNothing);
@@ -107,6 +110,9 @@ void main() {
     expect(find.text('More Airo Apps'), findsNothing);
     expect(find.text('Airo TV'), findsNothing);
     expect(find.text('Airo Mind portability'), findsNothing);
+    expect(find.text('Accessibility'), findsOneWidget);
+    expect(find.text('Privacy'), findsOneWidget);
+    expect(find.text('Audio Settings'), findsNothing);
   });
 
   testWidgets('country settings picker updates the global country filter', (
@@ -246,4 +252,66 @@ void main() {
     expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
     expect(find.text('Airo Classic'), findsNothing);
   });
+
+  testWidgets('tapping Accessibility pushes the accessibility screen', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('Accessibility'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'Accessibility'), findsOneWidget);
+    expect(find.byType(Switch), findsOneWidget);
+    expect(find.text('Standard'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Aika Stream compact hub Privacy reaches delete with Cancel focused',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+            iptvChannelsProvider.overrideWith((ref) async => channels),
+          ],
+          child: const MaterialApp(
+            home: SettingsHubScreen(shellId: ShellId.tv),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Privacy'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(AppBar, 'Privacy'), findsOneWidget);
+      expect(find.text('Share streaming quality data'), findsNothing);
+      expect(find.text('Delete local data'), findsOneWidget);
+
+      await tester.tap(find.text('Delete local data'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete local data?'), findsOneWidget);
+      final cancel = tester.widget<TvFocusable>(
+        find.ancestor(
+          of: find.widgetWithText(TextButton, 'Cancel'),
+          matching: find.byType(TvFocusable),
+        ),
+      );
+      expect(cancel.autofocus, isTrue);
+      final delete = tester.widget<TvFocusable>(
+        find.ancestor(
+          of: find.widgetWithText(TextButton, 'Delete'),
+          matching: find.byType(TvFocusable),
+        ),
+      );
+      expect(delete.autofocus, isFalse);
+    },
+  );
 }

@@ -102,4 +102,25 @@ void main() {
     expect(find.text('Injected playback setting'), findsOneWidget);
     expect(find.text('Fit (letterboxed)'), findsOneWidget);
   });
+
+  testWidgets('does not mount ChannelGridDensitySection on TV playback', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: Scaffold(body: TvPlaybackSection())),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Channel grid'), findsNothing);
+    expect(
+      find.text('How many channel tiles fit on one row in grid view.'),
+      findsNothing,
+    );
+  });
 }
