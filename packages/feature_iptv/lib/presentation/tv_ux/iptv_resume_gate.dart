@@ -11,16 +11,27 @@ import 'package:platform_player/platform_player.dart';
 import 'iptv_resume_splash.dart';
 
 class IptvResumeGate extends ConsumerStatefulWidget {
-  const IptvResumeGate({super.key, required this.child, this.enabled = true});
+  const IptvResumeGate({
+    super.key,
+    required this.child,
+    this.enabled = true,
+    this.holdUntilTerminal = false,
+    this.onEnterWatch,
+  });
 
   final Widget child;
   final bool enabled;
+  final bool holdUntilTerminal;
+  final VoidCallback? onEnterWatch;
 
   @override
   ConsumerState<IptvResumeGate> createState() => _IptvResumeGateState();
 }
 
 class _IptvResumeGateState extends ConsumerState<IptvResumeGate> {
+  var _skippedBeforeDone = false;
+  var _enterWatchOffered = false;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +42,12 @@ class _IptvResumeGateState extends ConsumerState<IptvResumeGate> {
         ref.read(resumeLastChannelControllerProvider.notifier).attemptResume(),
       );
     });
+  }
+
+  bool _isTerminal(ResumeStatus status) {
+    return status == ResumeStatus.noTarget ||
+        status == ResumeStatus.failed ||
+        status == ResumeStatus.done;
   }
 
   @override
@@ -48,6 +65,14 @@ class _IptvResumeGateState extends ConsumerState<IptvResumeGate> {
             resumeStatus == ResumeStatus.tuning ||
             resumeStatus == ResumeStatus.done);
 
+    if (widget.holdUntilTerminal &&
+        !splashCompleted &&
+        _isTerminal(resumeStatus)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _markSplashCompleted();
+      });
+    }
+
     if (!showSplash) return widget.child;
 
     return Stack(
@@ -57,18 +82,41 @@ class _IptvResumeGateState extends ConsumerState<IptvResumeGate> {
         IptvResumeSplash(
           playbackReady: playbackReady,
           onFinished: _markSplashCompleted,
+          onSkipped: widget.holdUntilTerminal ? _onSkipped : null,
         ),
       ],
     );
   }
 
+  void _onSkipped() {
+    _skippedBeforeDone = true;
+    if (!mounted) return;
+    if (ref.read(resumeSplashCompletedProvider)) return;
+    ref.read(resumeSplashCompletedProvider.notifier).state = true;
+  }
+
   void _markSplashCompleted() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final completed = ref.read(resumeSplashCompletedProvider);
-      if (completed) return;
+      final status = ref.read(resumeLastChannelControllerProvider);
+      if (widget.holdUntilTerminal &&
+          (status == ResumeStatus.idle || status == ResumeStatus.tuning)) {
+        return;
+      }
+      if (ref.read(resumeSplashCompletedProvider)) {
+        _offerEnterWatchIfDone(status);
+        return;
+      }
       ref.read(resumeSplashCompletedProvider.notifier).state = true;
+      _offerEnterWatchIfDone(status);
     });
+  }
+
+  void _offerEnterWatchIfDone(ResumeStatus status) {
+    if (_skippedBeforeDone || _enterWatchOffered) return;
+    if (status != ResumeStatus.done) return;
+    _enterWatchOffered = true;
+    widget.onEnterWatch?.call();
   }
 }
 

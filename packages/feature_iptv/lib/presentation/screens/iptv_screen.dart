@@ -10,6 +10,7 @@ import '../../application/iptv_deep_link.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/resume_last_channel_preference.dart';
 import '../../application/providers/multiview_provider.dart'
     show multiviewDecoderBudgetProvider, multiviewProvider, MultiviewState;
 import '../../application/wakelock_playback_coordinator.dart';
@@ -956,6 +957,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       _syncLocalPlaybackWithCast,
     );
     final isFullscreen = ref.watch(isFullscreenModeProvider);
+    final resumeEnabled = ref.watch(resumeLastChannelEnabledProvider);
+    final resumeGateEnabled =
+        widget.effectiveDeepLinkChannelId == null && resumeEnabled;
     final isPlaying = ref.watch(
       streamingStateProvider.select((async) => async.value?.isPlaying == true),
     );
@@ -1112,10 +1116,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       }
       // MultiView sessions were being silently dropped on entering
       // fullscreen: this branch previously always rendered a single-channel
-              // VideoPlayerWidget bound to the primary streaming service, which
-              // multiview_provider.dart's toggle() silences and stops the
-              // moment a MultiView session starts — so "activeChannel" itself
-              // is likely null here.
+      // VideoPlayerWidget bound to the primary streaming service, which
+      // multiview_provider.dart's toggle() silences and stops the
+      // moment a MultiView session starts — so "activeChannel" itself
+      // is likely null here.
       // Render the same MultiviewStage the browse grid uses instead,
       // whenever there is a live session to show.
       final fullscreenBody = multiview.sessions.isNotEmpty
@@ -1174,7 +1178,12 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         AiroResponsiveScaffold(
           padding: EdgeInsets.zero,
           body: IptvResumeGate(
-            enabled: widget.effectiveDeepLinkChannelId == null,
+            enabled: resumeGateEnabled,
+            holdUntilTerminal: true,
+            onEnterWatch: () {
+              if (!mounted) return;
+              ref.read(isFullscreenModeProvider.notifier).state = true;
+            },
             child: _StreamTabContent(
               key: const ValueKey('iptv-browse-grid'),
               onChannelTap: _playChannelFullscreen,
@@ -1221,7 +1230,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           ],
         ),
         body: IptvResumeGate(
-          enabled: widget.effectiveDeepLinkChannelId == null,
+          enabled: resumeGateEnabled,
           child: Stack(
             children: [
               _phoneExplorerBody(),
