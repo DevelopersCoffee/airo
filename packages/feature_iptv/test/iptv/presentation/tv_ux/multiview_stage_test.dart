@@ -519,6 +519,7 @@ void main() {
       onSplitRatioChanged: (ratio) => committed = ratio,
     );
 
+    // 24px exceeds Flutter kTouchSlop (~18) so the drag arena wins.
     await tester.drag(
       find.byKey(const ValueKey('multiview-split-handle')),
       const Offset(24, 0),
@@ -526,6 +527,108 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(committed, MultiviewSplitRatio.fifty);
+  });
+
+  testWidgets('tap on the handle does not commit a split', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    MultiviewSplitRatio? committed;
+    await pump(
+      tester,
+      sessions,
+      onSplitRatioChanged: (ratio) => committed = ratio,
+    );
+    await tester.tap(find.byKey(const ValueKey('multiview-split-handle')));
+    await tester.pumpAndSettle();
+    expect(committed, isNull);
+  });
+
+  FocusNode focusableNode(WidgetTester tester, Finder host) {
+    return tester
+        .widgetList<Focus>(
+          find.descendant(of: host, matching: find.byType(Focus)),
+        )
+        .map((focus) => focus.focusNode)
+        .whereType<FocusNode>()
+        .firstWhere((candidate) => candidate.canRequestFocus);
+  }
+
+  Future<void> focusHandle(WidgetTester tester) async {
+    final handle = find.byKey(const ValueKey('multiview-split-handle'));
+    // The handle key is on TvFocusable. Focus.maybeOf that element hits the
+    // ancestor TvInputHandler Focus (not focusable); ExcludeFocus adds a
+    // second descendant Focus. Drive the inner node that can take focus.
+    final node = focusableNode(tester, handle);
+    node.requestFocus();
+    await tester.pump();
+    expect(node.hasPrimaryFocus, isTrue);
+  }
+
+  testWidgets(
+    'Right from fifty commits seventy; further Right leaves the handle',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      final committed = <MultiviewSplitRatio>[];
+      await pump(tester, sessions, onSplitRatioChanged: committed.add);
+      await focusHandle(tester);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(committed, [MultiviewSplitRatio.seventy]);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 640,
+              height: 360,
+              child: MultiviewStage(
+                sessions: sessions,
+                featuredChannelId: sessions.first.id,
+                onPromote: (_) {},
+                splitRatio: MultiviewSplitRatio.seventy,
+                onSplitRatioChanged: committed.add,
+              ),
+            ),
+          ),
+        ),
+      );
+      await focusHandle(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(committed, [MultiviewSplitRatio.seventy]);
+      expect(
+        focusableNode(
+          tester,
+          find.byKey(const ValueKey('multiview-promote-two')),
+        ).hasPrimaryFocus,
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets('Select on the handle does not promote or swap', (tester) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    final promoted = <String>[];
+    var swapped = 0;
+    await pump(
+      tester,
+      sessions,
+      onPromote: promoted.add,
+      onSwap: (_, __) => swapped++,
+    );
+    promoted.clear();
+    await focusHandle(tester);
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(promoted, isEmpty);
+    expect(swapped, 0);
   });
 }
 
