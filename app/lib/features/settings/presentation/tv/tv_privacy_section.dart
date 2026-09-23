@@ -9,73 +9,97 @@ import '../../../../core/providers/streaming_telemetry_consent_provider.dart';
 /// QoE telemetry opt-in (F7.5, Phase 1 Task 7) and the local data-deletion
 /// path required for Play Data Safety.
 class TvPrivacySection extends ConsumerWidget {
-  const TvPrivacySection({super.key});
+  const TvPrivacySection({
+    super.key,
+    this.showTelemetry = true,
+    this.deleteFirst = false,
+  });
+
+  /// Compact Aika Stream hub hides telemetry; only `main_tv.dart` boots the
+  /// streaming logger today, so a phone toggle would persist with no live
+  /// service. The 10-foot rail keeps the consent rows.
+  final bool showTelemetry;
+
+  /// Compact hub leads with delete; the TV rail keeps telemetry first.
+  final bool deleteFirst;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final enabled = ref.watch(streamingTelemetryConsentProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Text(
-            'Share anonymous streaming quality data (buffering, startup '
-            'time, connection type) to help improve playback. Nothing is '
-            'recorded until you turn this on.',
-            style: TextStyle(color: colorScheme.onSurfaceVariant),
-          ),
+    final telemetry = <Widget>[
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Text(
+          'Share anonymous streaming quality data (buffering, startup '
+          'time, connection type) to help improve playback. Nothing is '
+          'recorded until you turn this on.',
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
-        _ConsentOption(
-          label: 'Share streaming quality data',
-          isSelected: enabled,
-          autofocus: true,
-          onSelect: () => ref
-              .read(streamingTelemetryConsentProvider.notifier)
-              .setEnabled(true),
-          colorScheme: colorScheme,
+      ),
+      _ConsentOption(
+        label: 'Share streaming quality data',
+        isSelected: enabled,
+        autofocus: true,
+        onSelect: () => ref
+            .read(streamingTelemetryConsentProvider.notifier)
+            .setEnabled(true),
+        colorScheme: colorScheme,
+      ),
+      const SizedBox(height: 8),
+      _ConsentOption(
+        label: "Don't share",
+        isSelected: !enabled,
+        autofocus: false,
+        onSelect: () => ref
+            .read(streamingTelemetryConsentProvider.notifier)
+            .setEnabled(false),
+        colorScheme: colorScheme,
+      ),
+    ];
+
+    final localData = <Widget>[
+      Text(
+        'Local data',
+        style: TextStyle(
+          color: colorScheme.onSurface,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
         ),
-        const SizedBox(height: 8),
-        _ConsentOption(
-          label: "Don't share",
-          isSelected: !enabled,
-          autofocus: false,
-          onSelect: () => ref
-              .read(streamingTelemetryConsentProvider.notifier)
-              .setEnabled(false),
-          colorScheme: colorScheme,
+      ),
+      const SizedBox(height: 8),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Text(
+          'Aika Stream does not create an account. Playlists, credentials, '
+          'favorites, and history stay on this device. Delete local data '
+          'to wipe them without uninstalling.',
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 32),
-        Text(
-          'Local data',
-          style: TextStyle(
-            color: colorScheme.onSurface,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+      ),
+      TvFocusable(
+        onSelect: () => _confirmDeleteLocalData(context, ref),
+        semanticLabel: 'Delete local data',
+        semanticButton: true,
+        child: FilledButton.tonal(
+          onPressed: () => _confirmDeleteLocalData(context, ref),
+          child: const Text('Delete local data'),
         ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Text(
-            'Aika Stream does not create an account. Playlists, credentials, '
-            'favorites, and history stay on this device. Delete local data '
-            'to wipe them without uninstalling.',
-            style: TextStyle(color: colorScheme.onSurfaceVariant),
-          ),
-        ),
-        TvFocusable(
-          onSelect: () => _confirmDeleteLocalData(context, ref),
-          semanticLabel: 'Delete local data',
-          semanticButton: true,
-          child: FilledButton.tonal(
-            onPressed: () => _confirmDeleteLocalData(context, ref),
-            child: const Text('Delete local data'),
-          ),
-        ),
+      ),
+    ];
+
+    final children = <Widget>[
+      if (deleteFirst) ...[
+        ...localData,
+        if (showTelemetry) ...[const SizedBox(height: 32), ...telemetry],
+      ] else ...[
+        if (showTelemetry) ...[...telemetry, const SizedBox(height: 32)],
+        ...localData,
       ],
-    );
+    ];
+
+    return ListView(children: children);
   }
 
   Future<void> _confirmDeleteLocalData(
@@ -93,6 +117,7 @@ class TvPrivacySection extends ConsumerWidget {
         ),
         actions: [
           TvFocusable(
+            autofocus: true,
             onSelect: () => Navigator.of(dialogContext).pop(false),
             semanticLabel: 'Cancel',
             semanticButton: true,
@@ -102,7 +127,6 @@ class TvPrivacySection extends ConsumerWidget {
             ),
           ),
           TvFocusable(
-            autofocus: true,
             onSelect: () => Navigator.of(dialogContext).pop(true),
             semanticLabel: 'Delete',
             semanticButton: true,

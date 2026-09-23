@@ -1,14 +1,31 @@
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
+import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
+
+  Widget wrapGrid(Widget child) {
+    return ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: child,
+    );
+  }
+
   const channels = [
     IPTVChannel(
       id: 'one',
@@ -28,21 +45,23 @@ void main() {
     'grid renders every channel as a tile with a compact sort trigger',
     (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 800,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: channels,
-                metadataByChannelId: {
-                  'one': ChannelBrowseMetadata(country: 'IN', language: 'en'),
-                  'two': ChannelBrowseMetadata(country: 'US', language: 'en'),
-                },
-                availabilityByChannelId: {
-                  'one': StreamAvailability.available,
-                  'two': StreamAvailability.unavailable,
-                },
+        wrapGrid(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: {
+                    'one': ChannelBrowseMetadata(country: 'IN', language: 'en'),
+                    'two': ChannelBrowseMetadata(country: 'US', language: 'en'),
+                  },
+                  availabilityByChannelId: {
+                    'one': StreamAvailability.available,
+                    'two': StreamAvailability.unavailable,
+                  },
+                ),
               ),
             ),
           ),
@@ -70,15 +89,17 @@ void main() {
     // It used to render a blank panel under the sort row.
     var cleared = 0;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: const [],
-              metadataByChannelId: const {},
-              onClearFilters: () => cleared++,
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: const [],
+                metadataByChannelId: const {},
+                onClearFilters: () => cleared++,
+              ),
             ),
           ),
         ),
@@ -97,12 +118,14 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(channels: [], metadataByChannelId: {}),
+      wrapGrid(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(channels: [], metadataByChannelId: {}),
+            ),
           ),
         ),
       ),
@@ -116,15 +139,17 @@ void main() {
   testWidgets('tapping a tile invokes onChannelSelected', (tester) async {
     IPTVChannel? tapped;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: const {},
-              onChannelSelected: (channel) => tapped = channel,
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                onChannelSelected: (channel) => tapped = channel,
+              ),
             ),
           ),
         ),
@@ -142,15 +167,17 @@ void main() {
     (tester) async {
       ChannelSortColumn? sorted;
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 800,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: channels,
-                metadataByChannelId: const {},
-                onSort: (column) => sorted = column,
+        wrapGrid(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: const {},
+                  onSort: (column) => sorted = column,
+                ),
               ),
             ),
           ),
@@ -173,15 +200,17 @@ void main() {
     'old fixed four-chip row never exposed it at all',
     (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 800,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: channels,
-                metadataByChannelId: const {},
-                onSort: (_) {},
+        wrapGrid(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: const {},
+                  onSort: (_) {},
+                ),
               ),
             ),
           ),
@@ -202,16 +231,18 @@ void main() {
     // gone now — the long-press actions sheet (tested below) is the only
     // way to reach it.
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: const {},
-              multiviewChannelIds: const {'two'},
-              onMultiviewToggle: (_) {},
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                multiviewChannelIds: const {'two'},
+                onMultiviewToggle: (_) {},
+              ),
             ),
           ),
         ),
@@ -232,19 +263,21 @@ void main() {
       IPTVChannel? multiviewToggled;
       IPTVChannel? favoriteToggled;
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 800,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: channels,
-                metadataByChannelId: const {},
-                onChannelSelected: (channel) => played = channel,
-                multiviewChannelIds: const {'one'},
-                onMultiviewToggle: (channel) => multiviewToggled = channel,
-                favoriteChannelIds: const {'two'},
-                onFavoriteToggle: (channel) => favoriteToggled = channel,
+        wrapGrid(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: const {},
+                  onChannelSelected: (channel) => played = channel,
+                  multiviewChannelIds: const {'one'},
+                  onMultiviewToggle: (channel) => multiviewToggled = channel,
+                  favoriteChannelIds: const {'two'},
+                  onFavoriteToggle: (channel) => favoriteToggled = channel,
+                ),
               ),
             ),
           ),
@@ -274,15 +307,17 @@ void main() {
       'onNotForMeToggle', (tester) async {
     IPTVChannel? notForMeToggled;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: const {},
-              onNotForMeToggle: (channel) => notForMeToggled = channel,
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                onNotForMeToggle: (channel) => notForMeToggled = channel,
+              ),
             ),
           ),
         ),
@@ -307,16 +342,18 @@ void main() {
     'the row when no callback is wired',
     (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 800,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: channels,
-                metadataByChannelId: const {},
-                notForMeChannelIds: const {'one'},
-                onNotForMeToggle: (_) {},
+        wrapGrid(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: const {},
+                  notForMeChannelIds: const {'one'},
+                  onNotForMeToggle: (_) {},
+                ),
               ),
             ),
           ),
@@ -334,14 +371,16 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: {},
+      wrapGrid(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: {},
+              ),
             ),
           ),
         ),
@@ -370,16 +409,18 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: gridChannels,
-              metadataByChannelId: const {},
-              onChannelSelected: (_) {},
-              onMultiviewToggle: (_) {},
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: gridChannels,
+                metadataByChannelId: const {},
+                onChannelSelected: (_) {},
+                onMultiviewToggle: (_) {},
+              ),
             ),
           ),
         ),
@@ -425,16 +466,18 @@ void main() {
   ) async {
     final selected = <String>[];
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: const {},
-              focusPlayDelay: const Duration(milliseconds: 1200),
-              onChannelSelected: (channel) => selected.add(channel.id),
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                focusPlayDelay: const Duration(milliseconds: 1200),
+                onChannelSelected: (channel) => selected.add(channel.id),
+              ),
             ),
           ),
         ),
@@ -465,16 +508,18 @@ void main() {
   ) async {
     final selected = <String>[];
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: const {},
-              focusPlayDelay: const Duration(milliseconds: 1200),
-              onChannelSelected: (channel) => selected.add(channel.id),
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                focusPlayDelay: const Duration(milliseconds: 1200),
+                onChannelSelected: (channel) => selected.add(channel.id),
+              ),
             ),
           ),
         ),
@@ -506,16 +551,18 @@ void main() {
   ) async {
     final selected = <String>[];
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: const {},
-              focusPlayDelay: const Duration(milliseconds: 1200),
-              onChannelSelected: (channel) => selected.add(channel.id),
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                focusPlayDelay: const Duration(milliseconds: 1200),
+                onChannelSelected: (channel) => selected.add(channel.id),
+              ),
             ),
           ),
         ),
@@ -555,17 +602,19 @@ void main() {
     var visibleIds = const <String>[];
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 900,
-            height: 260,
-            child: ChannelLibraryGrid(
-              channels: manyChannels,
-              metadataByChannelId: const {},
-              onVisibleChannelsChanged: (channels) {
-                visibleIds = channels.map((channel) => channel.id).toList();
-              },
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 900,
+              height: 260,
+              child: ChannelLibraryGrid(
+                channels: manyChannels,
+                metadataByChannelId: const {},
+                onVisibleChannelsChanged: (channels) {
+                  visibleIds = channels.map((channel) => channel.id).toList();
+                },
+              ),
             ),
           ),
         ),
@@ -589,14 +638,16 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 900,
-            height: 500,
-            child: ChannelLibraryGrid(
-              channels: manyChannels,
-              metadataByChannelId: const {},
+      wrapGrid(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 900,
+              height: 500,
+              child: ChannelLibraryGrid(
+                channels: manyChannels,
+                metadataByChannelId: const {},
+              ),
             ),
           ),
         ),
@@ -618,18 +669,20 @@ void main() {
 
   testWidgets('availability dot renders for checked channels', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: {},
-              availabilityByChannelId: {
-                'one': StreamAvailability.available,
-                'two': StreamAvailability.restricted,
-              },
+      wrapGrid(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: {},
+                availabilityByChannelId: {
+                  'one': StreamAvailability.available,
+                  'two': StreamAvailability.restricted,
+                },
+              ),
             ),
           ),
         ),
@@ -655,14 +708,16 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 1920,
-            height: 900,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: {},
+      wrapGrid(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 1920,
+              height: 900,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: {},
+              ),
             ),
           ),
         ),
@@ -680,14 +735,16 @@ void main() {
     'when no callback is supplied',
     (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 360,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: channels,
-                metadataByChannelId: {},
+        wrapGrid(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 360,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: {},
+                ),
               ),
             ),
           ),
@@ -726,16 +783,18 @@ void main() {
       ];
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 360,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: richChannels,
-                metadataByChannelId: {},
-                favoriteChannelIds: {'news-hd'},
-                viewMode: ChannelViewMode.list,
+        wrapGrid(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 360,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: richChannels,
+                  metadataByChannelId: {},
+                  favoriteChannelIds: {'news-hd'},
+                  viewMode: ChannelViewMode.list,
+                ),
               ),
             ),
           ),
@@ -768,15 +827,17 @@ void main() {
       ];
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 360,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: channelsWithArt,
-                metadataByChannelId: {},
-                showSortRow: false,
+        wrapGrid(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 360,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channelsWithArt,
+                  metadataByChannelId: {},
+                  showSortRow: false,
+                ),
               ),
             ),
           ),
@@ -799,17 +860,19 @@ void main() {
     (tester) async {
       var mode = ChannelViewMode.list;
       await tester.pumpWidget(
-        StatefulBuilder(
-          builder: (context, setState) => MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 360,
-                height: 600,
-                child: ChannelLibraryGrid(
-                  channels: channels,
-                  metadataByChannelId: {},
-                  viewMode: mode,
-                  onViewModeChanged: (next) => setState(() => mode = next),
+        wrapGrid(
+          StatefulBuilder(
+            builder: (context, setState) => MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 360,
+                  height: 600,
+                  child: ChannelLibraryGrid(
+                    channels: channels,
+                    metadataByChannelId: {},
+                    viewMode: mode,
+                    onViewModeChanged: (next) => setState(() => mode = next),
+                  ),
                 ),
               ),
             ),
@@ -842,15 +905,17 @@ void main() {
     (tester) async {
       Future<void> pumpAt(double width) {
         return tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: width,
-                height: 800,
-                child: const ChannelLibraryGrid(
-                  channels: channels,
-                  metadataByChannelId: {},
-                  viewMode: ChannelViewMode.grid,
+          wrapGrid(
+            MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: width,
+                  height: 800,
+                  child: const ChannelLibraryGrid(
+                    channels: channels,
+                    metadataByChannelId: {},
+                    viewMode: ChannelViewMode.grid,
+                  ),
                 ),
               ),
             ),
@@ -882,16 +947,18 @@ void main() {
   ) async {
     Future<void> pumpAt({required double width, required int columns}) {
       return tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: width,
-              height: 800,
-              child: ChannelLibraryGrid(
-                channels: channels,
-                metadataByChannelId: const {},
-                viewMode: ChannelViewMode.grid,
-                phoneGridColumns: columns,
+        wrapGrid(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: width,
+                height: 800,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: const {},
+                  viewMode: ChannelViewMode.grid,
+                  phoneGridColumns: columns,
+                ),
               ),
             ),
           ),
@@ -921,19 +988,21 @@ void main() {
     'and never shows the toggle',
     (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 800,
-              height: 600,
-              child: ChannelLibraryGrid(
-                channels: channels,
-                metadataByChannelId: const {},
-                viewMode: ChannelViewMode.list,
-                // Even a non-null callback must not surface a toggle here:
-                // there's no cramped single column at this width to offer
-                // an alternative to.
-                onViewModeChanged: (_) {},
+        wrapGrid(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                height: 600,
+                child: ChannelLibraryGrid(
+                  channels: channels,
+                  metadataByChannelId: const {},
+                  viewMode: ChannelViewMode.list,
+                  // Even a non-null callback must not surface a toggle here:
+                  // there's no cramped single column at this width to offer
+                  // an alternative to.
+                  onViewModeChanged: (_) {},
+                ),
               ),
             ),
           ),
@@ -962,17 +1031,19 @@ void main() {
     ];
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: manyChannels,
-              metadataByChannelId: {},
-              browseAdCard: SizedBox(
-                key: ValueKey('test-browse-ad'),
-                height: 40,
+      wrapGrid(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: manyChannels,
+                metadataByChannelId: {},
+                browseAdCard: SizedBox(
+                  key: ValueKey('test-browse-ad'),
+                  height: 40,
+                ),
               ),
             ),
           ),
@@ -986,4 +1057,61 @@ void main() {
     expect(find.byKey(const ValueKey('channel-tile-c5')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'Extra large on a TV-width grid does not overflow and scales ~1.5x',
+    (tester) async {
+      Future<(double nameHeight, double rowExtent)> metricsFor(
+        TvFontMode mode,
+      ) async {
+        SharedPreferences.setMockInitialValues({
+          tvFontModeStorageKey: mode.stableId,
+        });
+        prefs = await SharedPreferences.getInstance();
+        await tester.pumpWidget(
+          wrapGrid(
+            const MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 800,
+                  height: 600,
+                  child: ChannelLibraryGrid(
+                    channels: channels,
+                    metadataByChannelId: {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        final gridElement = tester.element(find.byType(ChannelLibraryGrid));
+        ProviderScope.containerOf(
+          gridElement,
+        ).read(tvFontModeProvider.notifier).setTvFontMode(mode);
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expect(
+          ProviderScope.containerOf(gridElement).read(tvFontModeProvider),
+          mode,
+        );
+        final scroll = tester.element(find.byType(CustomScrollView));
+        expect(MediaQuery.textScalerOf(scroll).scale(1), mode.scale);
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.text('One'),
+        );
+        final delegate =
+            gridSliver(tester).gridDelegate
+                as SliverGridDelegateWithFixedCrossAxisCount;
+        return (paragraph.size.height, delegate.mainAxisExtent!);
+      }
+
+      final standard = await metricsFor(TvFontMode.standard);
+      final extraLarge = await metricsFor(TvFontMode.extraLarge);
+      expect(extraLarge.$1 / standard.$1, closeTo(1.5, 0.1));
+      expect(extraLarge.$1 / standard.$1, isNot(closeTo(2.25, 0.1)));
+      expect(extraLarge.$2, greaterThan(standard.$2));
+      expect(standard.$2, 169);
+    },
+  );
 }

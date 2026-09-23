@@ -7,29 +7,42 @@ void main() {
     List<IptvSettingsSectionDescriptor> visibleOn(ShellId shell) =>
         iptvSettingsSections.where((s) => s.isVisibleFor(shell)).toList();
 
-    test('mobile sees theme, playback, playlistSource, epgGuideSource, '
-        'country, audio — matching settings_hub_screen.dart today', () {
+    test('mobile sees theme, accessibility, playback, playlistSource, '
+        'epgGuideSource, country, audio — and not privacy', () {
       expect(visibleOn(ShellId.mobile).map((s) => s.id).toSet(), {
         IptvSettingsSectionId.theme,
+        IptvSettingsSectionId.accessibility,
         IptvSettingsSectionId.playback,
         IptvSettingsSectionId.playlistSource,
         IptvSettingsSectionId.epgGuideSource,
         IptvSettingsSectionId.country,
         IptvSettingsSectionId.audio,
       });
+      expect(
+        visibleOn(ShellId.mobile).map((s) => s.id),
+        isNot(contains(IptvSettingsSectionId.privacy)),
+      );
     });
 
-    test('TV sees theme, playback, sources, privacy — '
-        'matching tv_settings_screen.dart today', () {
-      // Every entry here must resolve to a real section. Accessibility was
-      // listed for TV while rendering only a "Coming soon" placeholder,
-      // which on a D-pad rail is a focus stop that goes nowhere.
+    test('TV visible order is Theme, Accessibility, Playback, Country, '
+        'Sources, Privacy', () {
       expect(visibleOn(ShellId.tv).map((s) => s.id).toList(), const [
         IptvSettingsSectionId.theme,
+        IptvSettingsSectionId.accessibility,
         IptvSettingsSectionId.playback,
+        IptvSettingsSectionId.country,
         IptvSettingsSectionId.sources,
         IptvSettingsSectionId.privacy,
       ]);
+    });
+
+    test('accessibility has no redundant TV label override', () {
+      final accessibility = iptvSettingsSections.firstWhere(
+        (s) => s.id == IptvSettingsSectionId.accessibility,
+      );
+      expect(accessibility.labelFor(ShellId.tv), 'Accessibility');
+      expect(accessibility.labelFor(ShellId.mobile), 'Accessibility');
+      expect(accessibility.shellLabelOverrides, isEmpty);
     });
 
     test('theme section renders as "Appearance" on mobile and "Theme" on '
