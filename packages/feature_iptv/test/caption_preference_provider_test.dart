@@ -103,4 +103,28 @@ void main() {
     expect(pref.enabled, isTrue);
     expect(pref.languageCode, 'ja');
   });
+
+  test(
+    'apply-gate: enabled with no language does not select; enabled + eng would',
+    () {
+      // Mirrors VideoPlayerWidget._applyCaptionPreferenceIfNeeded:
+      // `if (!preference.enabled || preference.languageCode == null) return;`
+      bool wouldSelect(CaptionPreference preference) =>
+          preference.enabled && preference.languageCode != null;
+
+      expect(wouldSelect(const CaptionPreference(enabled: true)), isFalse);
+      expect(
+        wouldSelect(
+          const CaptionPreference(enabled: true, languageCode: 'eng'),
+        ),
+        isTrue,
+      );
+      expect(
+        wouldSelect(
+          const CaptionPreference(enabled: false, languageCode: 'eng'),
+        ),
+        isFalse,
+      );
+    },
+  );
 }
