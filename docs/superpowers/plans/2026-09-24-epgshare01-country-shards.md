@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-24-epgshare01-country-shards-design.md`
 
-**Repos:** Implement Tasks 1–5 in `../airo_epg` (clone if missing). Tasks 7–12 in Airo on a branch from `origin/main` (`agent/media-intelligence/epgshare01-country-shards`). Do not implement from leftover `agent/iptv/aika-stream-002-21`.
+**Repos:** Implement Tasks 1–5 in `../airo_epg` (clone if missing). Tasks 7–12 in this Airo worktree (`agent/media-intelligence/epgshare01-country-shards`, based on `origin/main`). Do not implement from leftover `agent/iptv/aika-stream-002-21`.
 
 If `../airo_epg` is missing:
 
@@ -18,7 +18,22 @@ If `../airo_epg` is missing:
 git clone https://github.com/DevelopersCoffee/airo_epg.git /Users/udaychauhan/workspace/airo_epg
 ```
 
-Work on `airo_epg` `main` (1.0.0 published). Do not mix `feat/xmltv-naive-offset` (1.1.0) into this cut.
+Airo `origin/main` already consumes timezone parse via git:
+
+```yaml
+airo_epg:
+  git:
+    url: https://github.com/DevelopersCoffee/airo_epg.git
+    ref: feat/xmltv-naive-offset
+```
+
+Country-shard work **must branch from `feat/xmltv-naive-offset`** (airo_epg 1.1.0 + `naiveOffset`), then bump to **1.2.0**. Do not start from `airo_epg` `main` (1.0.0) or Aika Stream will lose timezone ingest.
+
+```bash
+cd /Users/udaychauhan/workspace/airo_epg
+git fetch origin
+git checkout -b feat/epgshare01-country-shards origin/feat/xmltv-naive-offset
+```
 
 ---
 
@@ -570,22 +585,26 @@ at the workspace root only while Task 7 waits on pub.dev.
 **Files:**
 - Modify: `packages/platform_epg/pubspec.yaml`
 
-- [ ] **Step 1: Constraint**
+- [ ] **Step 1: Point at 1.2.0**
 
-Change `airo_epg: ^1.0.0` to `airo_epg: ^1.2.0`.
+Today the shim uses git `ref: feat/xmltv-naive-offset`. After Task 6:
+
+**Preferred:** `airo_epg: ^1.2.0` (pub.dev).
+
+**If 1.2.0 is on GitHub but not pub yet:** keep git and change `ref` to `feat/epgshare01-country-shards` (or a `v1.2.0` tag). Do not revert to `^1.0.0`.
 
 - [ ] **Step 2: Resolve**
 
 Run: `cd /Users/udaychauhan/workspace/airo && dart pub get`
 
-Expected: `airo_epg` 1.2.0 (or 1.2.x) in the lockfile.
+Expected: lockfile shows `airo_epg` 1.2.0 (pub or git).
 
 - [ ] **Step 3: Commit** (Airo repo)
 
 ```bash
 git add packages/platform_epg/pubspec.yaml pubspec.lock
 git commit -m "$(cat <<'EOF'
-chore(platform_epg): pin airo_epg 1.2.0
+chore(platform_epg): consume airo_epg 1.2.0
 
 EOF
 )"
