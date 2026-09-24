@@ -95,7 +95,7 @@ Users are responsible for supplying legally authorized IPTV playlists.
 SHA256
 
 ```text
-Aika-Stream-0.0.3-23.aab <checksum>
+Aika-Stream-0.0.3-23.aab 970fee096863000327bc0ef98d8b5eeb66137bd6e1c03699ac961d936c45fb65
 ```
 
 ## Contributors
