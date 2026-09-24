@@ -1,7 +1,10 @@
+import 'package:feature_iptv/application/providers/browse_grid_tv_peek_provider.dart';
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/guide_providers.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
+import 'package:feature_iptv/presentation/widgets/tv_mini_guide_overlay.dart';
+import 'package:platform_player/platform_player.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -18,14 +21,23 @@ Future<void> pumpApp(
   Widget app, {
   Map<String, String> nowPlaying = const {},
   SharedPreferences? prefs,
+  bool tvPeekEnabled = false,
+  TvMiniGuidePreviewFactory? previewFactory,
 }) async {
-  final preferences =
-      prefs ?? await SharedPreferences.getInstance();
+  final preferences = prefs ?? await SharedPreferences.getInstance();
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(preferences),
         browseNowPlayingByChannelIdProvider.overrideWithValue(nowPlaying),
+        if (tvPeekEnabled)
+          browseGridTvPeekEnabledProvider.overrideWith((ref) {
+            final notifier = BrowseGridTvPeekEnabledNotifier(ref);
+            notifier.state = true;
+            return notifier;
+          }),
+        if (previewFactory != null)
+          tvMiniGuidePreviewFactoryProvider.overrideWithValue(previewFactory),
       ],
       child: app,
     ),
@@ -1184,6 +1196,57 @@ void main() {
       expect(find.text('General'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'tv peek enabled: focus dwell does not auto-start Watch (CV browse PR2)',
+    (tester) async {
+      final selected = <String>[];
+      await pumpApp(
+        tester,
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                focusPlayDelay: const Duration(milliseconds: 1200),
+                onChannelSelected: (channel) => selected.add(channel.id),
+              ),
+            ),
+          ),
+        ),
+        tvPeekEnabled: true,
+        previewFactory: _NoOpPeekPreview.new,
+      );
+
+      final firstCardFocus = tester.widget<Focus>(
+        find
+            .descendant(
+              of: find.byType(MediaCard).at(0),
+              matching: find.byType(Focus),
+            )
+            .first,
+      );
+      firstCardFocus.focusNode!.requestFocus();
+      await tester.pump();
+      // Peek settle is 500ms; stay below that so no decoder starts in this
+      // test — we're only proving dwell-to-Watch is disabled.
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(selected, isEmpty);
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(selected, isEmpty);
+    },
+  );
+}
+
+/// Avoids starting buffer/live-edge timers in grid peek widget tests.
+class _NoOpPeekPreview extends VideoPlayerStreamingService {
+  _NoOpPeekPreview() : super(engine: FakeAiroPlaybackEngine(), mixWithOthers: true);
+
+  @override
+  Future<void> playChannel(IPTVChannel channel) async {}
 }
 
 class _FakePagedNotifier extends GuidePagedWindowNotifier {
