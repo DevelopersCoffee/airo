@@ -285,7 +285,7 @@ notarization are out of scope. See
 ## [Aika Stream v0.0.3] - 2026-09-24
 
 Play `0.0.3+23`. Do not reuse versionCode 22. Notes:
-[docs/release/AIRO_TV_v0.0.3.md](docs/release/AIRO_TV_v0.0.3.md).
+[docs/release/AIKA_STREAM_v0.0.3.md](docs/release/AIKA_STREAM_v0.0.3.md).
 
 ### Added
 
