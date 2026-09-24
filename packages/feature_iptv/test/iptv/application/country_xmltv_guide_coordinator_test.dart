@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_data/core_data.dart';
 import 'package:feature_iptv/application/country_xmltv_guide_coordinator.dart';
 import 'package:feature_iptv/application/xmltv_source_store.dart';
@@ -41,5 +43,23 @@ void main() {
     );
     await coordinator.sync(country: 'IN');
     expect(calls, isEmpty);
+  });
+
+  test('overlapping syncs land the later country', () async {
+    final release = Completer<void>();
+    coordinator = CountryXmltvGuideCoordinator(
+      sourceStore: store,
+      refreshCountryShard: (country) async {
+        calls.add(country);
+        if (country == 'IN') await release.future;
+      },
+    );
+    final first = coordinator.sync(country: 'IN');
+    await Future<void>.delayed(Duration.zero);
+    final second = coordinator.sync(country: 'US');
+    release.complete();
+    await first;
+    await second;
+    expect(calls.last, 'US');
   });
 }

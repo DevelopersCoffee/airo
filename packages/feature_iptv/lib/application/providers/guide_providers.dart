@@ -72,6 +72,10 @@ final countryXmltvGuideSyncProvider = Provider<void>((ref) {
             .sync(country: next)
             .catchError((Object error, StackTrace stackTrace) {
               debugPrint('[CountryXmltvGuide] sync failed for $next: $error');
+            })
+            .then((_) {
+              ref.invalidate(xmltvSourceConfigProvider);
+              ref.invalidate(guidePagedWindowProvider);
             }),
       );
     },
