@@ -104,6 +104,32 @@ void main() {
     expect(pref.languageCode, 'ja');
   });
 
+  test('persists caption text size and color', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    final notifier = container.read(captionPreferenceProvider.notifier);
+    notifier.setCaptionTextSize(CaptionTextSize.large);
+    notifier.setCaptionTextColor(CaptionTextColor.yellow);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      prefs.getString(captionPreferenceTextSizeStorageKey),
+      CaptionTextSize.large.stableId,
+    );
+    expect(
+      prefs.getString(captionPreferenceTextColorStorageKey),
+      CaptionTextColor.yellow.stableId,
+    );
+    final pref = container.read(captionPreferenceProvider);
+    expect(pref.textSize, CaptionTextSize.large);
+    expect(pref.textColor, CaptionTextColor.yellow);
+  });
+
   test(
     'apply-gate: enabled with no language does not select; enabled + eng would',
     () {

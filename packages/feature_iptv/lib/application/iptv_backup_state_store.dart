@@ -23,6 +23,8 @@ class SharedPreferencesIptvBackupSettingsStore
   static const Set<String> defaultRecognizedKeys = {
     'caption_preference_enabled',
     'caption_preference_language',
+    'caption_preference_text_size',
+    'caption_preference_text_color',
     'audio_preference_language',
     'video_aspect_ratio',
     'tv_font_mode',

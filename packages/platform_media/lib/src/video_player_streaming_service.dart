@@ -58,6 +58,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   // attachExternalSubtitle() and playChannel()).
   String? _pendingExternalSubtitleChannelId;
   AiroPlaybackExternalSubtitle? _pendingExternalSubtitle;
+  AiroPlaybackExternalSubtitle? _activeExternalSubtitle;
   int _requestCounter = 0;
 
   /// Per-channel multi-source failover session, rebuilt on every fresh
@@ -177,6 +178,11 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// nothing is open yet. See [AiroPlaybackEngine.buildView].
   Widget? buildVideoView() => _engine.buildView();
 
+  /// External subtitle opened with the current item, if any. Consumed by the
+  /// app-layer caption renderer ([PlayerCaptionOverlay] in feature_iptv).
+  AiroPlaybackExternalSubtitle? get activeExternalSubtitle =>
+      _activeExternalSubtitle;
+
   @override
   Future<void> playChannel(IPTVChannel channel) =>
       _playChannel(channel, preserveFailover: false, resetRetryCount: true);
@@ -268,6 +274,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         await _engine.setVolume(_state.isMuted ? 0 : _state.volume);
         await _engine.setPlaybackSpeed(1.0);
         await _engine.play();
+        _activeExternalSubtitle = externalSubtitles.isEmpty
+            ? null
+            : externalSubtitles.first;
         _lastWorkingSourceIdsByChannel[channel.id] = source.sourceId;
         _metricsCollector?.firstFrameRendered();
 
@@ -839,6 +848,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _audioContext.releaseFocus(AudioFocusType.video);
     _liveEdgeDetector.detach();
     await _engine.stop();
+    _activeExternalSubtitle = null;
     _finalizeMetricsSession();
     _updateState(StreamingState());
     _notifyMediaSession((delegate) => delegate.onPlaybackStopped());

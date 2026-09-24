@@ -33,6 +33,7 @@ export "application/providers/iptv_ad_placements.dart";
 export "application/providers/channel_library_merger_extension_point.dart";
 export "application/providers/recently_watched_recorder.dart";
 export "application/providers/video_aspect_ratio_provider.dart";
+export "application/caption_appearance.dart";
 export "application/providers/caption_preference_provider.dart";
 export "application/providers/audio_preference_provider.dart";
 export "application/providers/dead_link_report_provider.dart";
