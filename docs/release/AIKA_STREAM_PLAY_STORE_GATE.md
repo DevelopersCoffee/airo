@@ -36,6 +36,7 @@ not rewrite historical Aika Stream evidence under `docs/release/evidence/`.
 | Category | Video Players & Editors |
 | Content model | Media player for user-supplied M3U/M3U8 URLs only |
 | First Play dart-defines | **Unset.** Do not pass `IPTV_DATA_PLAYLIST_URL` or `IPTV_DATA_MANIFEST_URL`. Privacy currently names only user-configured XMLTV. |
+| Country XMLTV | Device fetches one EPGShare01 country gzip when Settings country is set and the user has not pasted an XMLTV URL. Never ALL_SOURCES. Privacy names country/pasted XMLTV only. |
 | Privacy Policy | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
 | Data deletion | `https://developerscoffee.github.io/airo/legal/data-deletion/` |
 | Terms | `https://developerscoffee.github.io/airo/legal/terms-conditions/` |

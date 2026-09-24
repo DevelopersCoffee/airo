@@ -389,6 +389,36 @@ void main() {
     );
     expect(tooEarly.entryForChannel('chan-1')?.current, isNull);
   });
+
+  test('refresh rejects ALL_SOURCES before download', () async {
+    await expectLater(
+      () => service.refresh(
+        'https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz',
+      ),
+      throwsA(isA<XmltvIngestBannedUrlException>()),
+    );
+    expect(await sourceStore.loadAll(), isEmpty);
+  });
+
+  test('refreshCountryShard uses IN1 as system source', () async {
+    final compressed = Uint8List.fromList(
+      gzip.encode(utf8.encode(_minimalXmltv)),
+    );
+    final gzipDio = Dio()..httpClientAdapter = _BytesXmltvAdapter(compressed);
+    final gzipService = XmltvSourceRefreshService(
+      dio: gzipDio,
+      sourceStore: sourceStore,
+      repository: repository,
+      downloadDirectoryProvider: () async => tempDir,
+    );
+    await gzipService.refreshCountryShard('IN');
+    final source = (await sourceStore.loadAll()).single;
+    expect(
+      source.url,
+      'https://epgshare01.online/epgshare01/epg_ripper_IN1.xml.gz',
+    );
+    expect(source.kind, XmltvSourceKind.system);
+  });
 }
 
 class _FakeXmltvAdapter implements HttpClientAdapter {

@@ -29,6 +29,7 @@ Airo TV uses network access to:
 - Play user-selected media streams.
 - Discover Google Cast receivers on the local network.
 - Connect to selected Cast receivers.
+- Download a programme-guide (XMLTV) file for the country the user picks in Settings, or for a guide URL the user pastes. The app does not download a world-wide guide dump.
 
 ## Chromecast Discovery
 

@@ -68,10 +68,10 @@ packages:
     dependency: transitive
     description:
       name: airo_epg
-      sha256: "3908e75b25ca7a336d2b75e73a1cd2742bf9a9cecdd3caad1e18ead7710a4db9"
+      sha256: "4185c78298ad1d6ad6dc00b422e0821b1e2e7dc510e938c0d65077c980ee2bbf"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.2.0"
   airo_haptics:
     dependency: transitive
     description:

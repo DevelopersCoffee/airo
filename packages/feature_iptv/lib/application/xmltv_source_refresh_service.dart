@@ -54,6 +54,8 @@ class XmltvSourceRefreshService {
       throw ArgumentError.value(url, 'url', message);
     }
 
+    XmltvIngestGuard.assertSafeUrl(uri);
+
     // Note: the new URL is intentionally NOT persisted here. Persisting it
     // before the download succeeds would overwrite a previously-working
     // source's config (wiping its lastRefreshedAt) with an unconfirmed one —
@@ -61,58 +63,11 @@ class XmltvSourceRefreshService {
     // no way to recover it. The URL only becomes the saved source on success
     // (below) or, in the failure path, if nothing was configured before.
 
-    final downloadDirectory = await downloadDirectoryProvider();
-    await downloadDirectory.create(recursive: true);
-    final token = DateTime.now().microsecondsSinceEpoch;
-    final downloadFile = File(
-      '${downloadDirectory.path}/xmltv_source_$token.download',
-    );
-    final guideFile = File('${downloadDirectory.path}/xmltv_source_$token.xml');
-
     try {
-      await dio.download(
+      final parsed = await _downloadAndParse(
         trimmedUrl,
-        downloadFile.path,
-        options: Options(
-          responseType: ResponseType.stream,
-          receiveTimeout: const Duration(seconds: 30),
-          validateStatus: (status) =>
-              status != null && status >= 200 && status < 300,
-        ),
+        expectedSha256: expectedSha256,
       );
-
-      if (!await downloadFile.exists() || await downloadFile.length() == 0) {
-        throw StateError('Downloaded XMLTV file was empty.');
-      }
-      if (expectedSha256 != null) {
-        final actualSha256 = await const AiroWorkerExecutor().run(
-          debugName: 'xmltv_source_checksum',
-          kind: AiroWorkerJobKind.epgRefresh,
-          computation: () => sha256.bind(downloadFile.openRead()).first,
-        );
-        if (actualSha256.toString().toLowerCase() !=
-            expectedSha256.toLowerCase()) {
-          throw StateError('Downloaded XMLTV checksum did not match manifest.');
-        }
-      }
-      if (await _isGzip(downloadFile, trimmedUrl)) {
-        await const AiroWorkerExecutor().run<void>(
-          debugName: 'xmltv_source_decompress',
-          kind: AiroWorkerJobKind.epgRefresh,
-          computation: () => gzip.decoder
-              .bind(downloadFile.openRead())
-              .pipe(guideFile.openWrite()),
-        );
-      } else {
-        await downloadFile.rename(guideFile.path);
-      }
-
-      final parsed = await XmltvCompactEpgRepository.fromXmltvFileNative(
-        path: guideFile.path,
-        ingestedAt: DateTime.now().toUtc(),
-        naiveOffset: naiveOffsetProvider(),
-      );
-
       repository.updateNamedSource(
         sourceId: 'xmltv-${kind.name}',
         priority: kind == XmltvSourceKind.user ? 0 : 1,
@@ -128,6 +83,8 @@ class XmltvSourceRefreshService {
           lastRefreshedAt: DateTime.now().toUtc(),
         ),
       );
+    } on XmltvIngestBannedUrlException {
+      rethrow;
     } catch (e) {
       await _recordFailureKeepingExistingUrl(
         trimmedUrl,
@@ -136,13 +93,6 @@ class XmltvSourceRefreshService {
         expectedSha256: expectedSha256,
       );
       rethrow;
-    } finally {
-      if (await guideFile.exists()) {
-        await guideFile.delete();
-      }
-      if (await downloadFile.exists()) {
-        await downloadFile.delete();
-      }
     }
   }
 
@@ -183,6 +133,11 @@ class XmltvSourceRefreshService {
         ),
       );
     }
+  }
+
+  Future<void> refreshCountryShard(String country) async {
+    final uri = Epgshare01CountryShard.resolve(country);
+    await refresh(uri.toString(), kind: XmltvSourceKind.system);
   }
 
   /// Refreshes whatever source is already saved in [sourceStore]. No-op if
@@ -363,6 +318,7 @@ class XmltvSourceRefreshService {
     String url, {
     String? expectedSha256,
   }) async {
+    XmltvIngestGuard.assertSafeUrl(Uri.parse(url));
     final downloadDirectory = await downloadDirectoryProvider();
     await downloadDirectory.create(recursive: true);
     final token = DateTime.now().microsecondsSinceEpoch;
@@ -376,10 +332,19 @@ class XmltvSourceRefreshService {
         downloadFile.path,
         options: Options(
           responseType: ResponseType.stream,
-          receiveTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 120),
           validateStatus: (status) =>
               status != null && status >= 200 && status < 300,
         ),
+        onReceiveProgress: (received, total) {
+          XmltvIngestGuard.assertSafeLength(compressedBytes: received);
+          if (total > 0) {
+            XmltvIngestGuard.assertSafeLength(compressedBytes: total);
+          }
+        },
+      );
+      XmltvIngestGuard.assertSafeLength(
+        compressedBytes: await downloadFile.length(),
       );
       if (!await downloadFile.exists() || await downloadFile.length() == 0) {
         throw StateError('Downloaded XMLTV file was empty.');
@@ -399,9 +364,10 @@ class XmltvSourceRefreshService {
         await const AiroWorkerExecutor().run<void>(
           debugName: 'xmltv_source_decompress',
           kind: AiroWorkerJobKind.epgRefresh,
-          computation: () => gzip.decoder
-              .bind(downloadFile.openRead())
-              .pipe(guideFile.openWrite()),
+          computation: () => XmltvIngestGuard.gunzipFile(
+            input: downloadFile,
+            output: guideFile,
+          ),
         );
       } else {
         await downloadFile.rename(guideFile.path);

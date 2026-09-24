@@ -10,10 +10,7 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
-  airo_epg:
-    git:
-      url: https://github.com/DevelopersCoffee/airo_epg.git
-      ref: feat/xmltv-naive-offset
+  airo_epg: ^1.2.0
   flutter:
     sdk: flutter
 

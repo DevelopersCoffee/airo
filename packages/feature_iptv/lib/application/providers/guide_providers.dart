@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:core_data/core_data.dart';
@@ -9,6 +10,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 
 import '../../presentation/widgets/epg_program_progress.dart';
+import '../country_xmltv_guide_coordinator.dart';
 import '../epg_channel_match_override_store.dart';
 import '../guide_window_query.dart';
 import '../mutable_xmltv_compact_epg_repository.dart';
@@ -45,6 +47,39 @@ final xmltvSourceRefreshServiceProvider = Provider<XmltvSourceRefreshService>((
     sourceStore: ref.watch(xmltvSourceStoreProvider),
     repository: ref.watch(mutableXmltvCompactEpgRepositoryProvider),
     downloadDirectoryProvider: () async => Directory.systemTemp,
+  );
+});
+
+final countryXmltvGuideCoordinatorProvider =
+    Provider<CountryXmltvGuideCoordinator>((ref) {
+      return CountryXmltvGuideCoordinator(
+        sourceStore: ref.watch(xmltvSourceStoreProvider),
+        refreshCountryShard: (country) => ref
+            .read(xmltvSourceRefreshServiceProvider)
+            .refreshCountryShard(country),
+      );
+    });
+
+/// Keep-alive: first-run prompt and Settings both write
+/// [channelFiltersProvider.country], so this is the single fetch edge.
+final countryXmltvGuideSyncProvider = Provider<void>((ref) {
+  ref.listen<String?>(
+    channelFiltersProvider.select((filters) => filters.country),
+    (previous, next) {
+      unawaited(
+        ref
+            .read(countryXmltvGuideCoordinatorProvider)
+            .sync(country: next)
+            .catchError((Object error, StackTrace stackTrace) {
+              debugPrint('[CountryXmltvGuide] sync failed for $next: $error');
+            })
+            .then((_) {
+              ref.invalidate(xmltvSourceConfigProvider);
+              ref.invalidate(guidePagedWindowProvider);
+            }),
+      );
+    },
+    fireImmediately: true,
   );
 });
 
