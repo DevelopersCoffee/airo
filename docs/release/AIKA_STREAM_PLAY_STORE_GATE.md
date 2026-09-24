@@ -110,10 +110,10 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 | Pixel-line install and smoke | v0.0.1 preview UAT; Play hard release after listing graphics + internal track |
 | First Play AAB filename | Drop `Aika-Stream-0.0.1-14.aab` (rename of CI `Airo-TV-0.0.1-Play-Store.aab`, `versionCode` **14**). Remove any draft that used version 13 first. |
 
-## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`/`24`
+## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`–`25`
 
-Play already consumed `versionCode` **18**, **19**, **20**, **21**, **22**, and **23**. The next
-Play AAB is **24** (`0.0.3+24` in `app/pubspec_tv.yaml`). Never reuse 23.
+Play already consumed `versionCode` **18**, **19**, **20**, **21**, **22**, **23**, and **24**. The next
+Play AAB is **25** (`0.0.3+25` in `app/pubspec_tv.yaml`). Never reuse 24.
 `versionName` stays `0.0.3` for this drop.
 
 Play Console rec on 19 (the only remaining production action): R8
@@ -142,8 +142,8 @@ Pixel 9:
 | Device catalog | Pixel 9 and the Sony Bravia appear as supported. If Pixel 9 is absent, form factors or screenshots are incomplete — do not cut another AAB with `leanback required=true`. |
 | Sideload vs Play | Testers must **uninstall sideloads** before installing from Play. Pixel sideload uses the upload key; Play-installed APKs use Play App Signing and will not upgrade in place (see Upgrade path above). |
 
-Cut the 0.0.3+24 AAB via `.github/workflows/aika-stream-release.yml` **after**
-this packet is green. Do not reuse versionCode 23.
+Cut the 0.0.3+25 AAB via `.github/workflows/aika-stream-release.yml` **after**
+this packet is green. Do not reuse versionCode 24.
 
 ## Out of scope this wave
 
