@@ -3,8 +3,10 @@ import 'package:platform_playlist_export/platform_playlist_export.dart';
 
 import '../iptv_backup_state_store.dart';
 import '../platform_backup_document_gateway.dart';
+import '../tv_lan_backup_document_gateway.dart';
 import 'guide_providers.dart';
 import 'iptv_providers.dart';
+import 'tv_lan_backup_providers.dart';
 
 final iptvBackupSettingsStoreProvider = Provider<IptvBackupSettingsStore>((
   ref,
@@ -42,6 +44,20 @@ final iptvBackupDocumentGatewayProvider = Provider<AiroBackupDocumentGateway>((
 ) {
   return const PlatformBackupDocumentGateway();
 });
+
+final usesTvLanBackupProvider = Provider<bool>((ref) {
+  return ref.watch(iptvBackupDocumentGatewayProvider)
+      is TvLanBackupDocumentGateway;
+});
+
+/// TV flavor override: LAN QR backup gateway bound to [tvLanBackupUiHostProvider].
+final tvLanBackupDocumentGatewayProvider = Provider<TvLanBackupDocumentGateway>(
+  (ref) {
+    return TvLanBackupDocumentGateway(
+      host: ref.watch(tvLanBackupUiHostProvider),
+    );
+  },
+);
 
 final iptvBackupDocumentControllerProvider =
     Provider<AiroBackupDocumentController>((ref) {

@@ -245,6 +245,9 @@ List<Override> buildTvProviderOverrides({
     realIptvCastControllerOverride(),
     realCastMultiviewSenderOverride(),
     realCastMultiviewReceiverOverride(),
+    iptvBackupDocumentGatewayProvider.overrideWith(
+      (ref) => ref.watch(tvLanBackupDocumentGatewayProvider),
+    ),
     iptvAdPlacementsProvider.overrideWith(
       (ref) => ref.watch(aikaIptvAdPlacementsStateProvider),
     ),

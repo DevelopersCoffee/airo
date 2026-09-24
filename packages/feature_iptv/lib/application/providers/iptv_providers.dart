@@ -485,12 +485,20 @@ class PlaylistSourcesUnavailableException implements Exception {
 /// Invalidating only [iptvChannelsProvider] replays its dependency's cached
 /// error, so a retry that touches just the merged provider looks like it did
 /// nothing. The source loaders have to be invalidated with it.
-void invalidateChannelLibraries(WidgetRef ref) {
+void invalidateLoadedChannelProviders(Ref ref) {
   ref.invalidate(configuredM3uChannelsProvider);
   ref.invalidate(configuredXtreamChannelsProvider);
   ref.invalidate(configuredStalkerChannelsProvider);
   // The runtime family caches the composed result, so leaving it alone would
   // replay its stored error and Retry would never reach the source again.
+  ref.invalidate(_runtimeChannelsProvider);
+  ref.invalidate(iptvChannelsProvider);
+}
+
+void invalidateChannelLibraries(WidgetRef ref) {
+  ref.invalidate(configuredM3uChannelsProvider);
+  ref.invalidate(configuredXtreamChannelsProvider);
+  ref.invalidate(configuredStalkerChannelsProvider);
   ref.invalidate(_runtimeChannelsProvider);
   ref.invalidate(iptvChannelsProvider);
 }
