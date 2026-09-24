@@ -67,7 +67,12 @@ final countryXmltvGuideSyncProvider = Provider<void>((ref) {
     channelFiltersProvider.select((filters) => filters.country),
     (previous, next) {
       unawaited(
-        ref.read(countryXmltvGuideCoordinatorProvider).sync(country: next),
+        ref
+            .read(countryXmltvGuideCoordinatorProvider)
+            .sync(country: next)
+            .catchError((Object error, StackTrace stackTrace) {
+              debugPrint('[CountryXmltvGuide] sync failed for $next: $error');
+            }),
       );
     },
     fireImmediately: true,
