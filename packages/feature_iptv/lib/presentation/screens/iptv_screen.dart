@@ -1761,8 +1761,7 @@ class _StreamTabContent extends ConsumerWidget {
       currentChannel: activeChannel,
       showVideoStage: !playlistSourceInInfoBar,
       focusPlayDelay:
-          playlistSourceInInfoBar &&
-              !ref.watch(browseGridTvPeekEnabledProvider)
+          playlistSourceInInfoBar && !ref.watch(browseGridTvPeekEnabledProvider)
           ? const Duration(milliseconds: 1200)
           : null,
       onChannelSelected: onChannelTap,

@@ -1243,7 +1243,8 @@ void main() {
 
 /// Avoids starting buffer/live-edge timers in grid peek widget tests.
 class _NoOpPeekPreview extends VideoPlayerStreamingService {
-  _NoOpPeekPreview() : super(engine: FakeAiroPlaybackEngine(), mixWithOthers: true);
+  _NoOpPeekPreview()
+    : super(engine: FakeAiroPlaybackEngine(), mixWithOthers: true);
 
   @override
   Future<void> playChannel(IPTVChannel channel) async {}
