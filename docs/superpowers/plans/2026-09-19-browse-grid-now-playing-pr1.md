@@ -94,23 +94,19 @@ Sequential implementation, no parallelization opportunity. Provider then subtitl
 
 ## Implementation Tasks
 
-- [ ] **T1 (P1, human: ~2h / CC: ~15min)** — `feature_iptv` — Add `browseNowPlayingByChannelIdProvider`
+- [x] **T1 (P1, human: ~2h / CC: ~15min)** — `feature_iptv` — Add `browseNowPlayingByChannelIdProvider`
   - Surfaced by: Architecture 1A
   - Files: `packages/feature_iptv/lib/application/providers/guide_providers.dart`
   - Verify: `flutter test packages/feature_iptv/test --name nowPlaying`
-- [ ] **T2 (P1, human: ~2h / CC: ~15min)** — `feature_iptv` — Consumer subtitle select on library tiles
+- [x] **T2 (P1, human: ~2h / CC: ~15min)** — `feature_iptv` — Consumer subtitle select on library tiles
   - Surfaced by: Code quality 2A
   - Files: `packages/feature_iptv/lib/presentation/tv_ux/sections/channel_library_grid.dart`
   - Verify: widget tests; no `ConsumerStatefulWidget` conversion of the grid
-- [ ] **T3 (P1, human: ~3h / CC: ~20min)** — `feature_iptv` — Provider + widget tests including no-EPG regression
+- [x] **T3 (P1, human: ~3h / CC: ~20min)** — `feature_iptv` — Provider + widget tests including no-EPG regression
   - Surfaced by: Test 3A
   - Files: `packages/feature_iptv/test/iptv/application/providers/browse_now_playing_provider_test.dart`, `packages/feature_iptv/test/iptv/presentation/tv_ux/channel_library_grid_test.dart`
   - Verify: `flutter test` those files
-- [ ] **T3 (P1, human: ~3h / CC: ~20min)** — `feature_iptv` — Provider + widget tests including no-EPG regression
-  - Surfaced by: Test 3A
-  - Files: `packages/feature_iptv/test/iptv/application/providers/browse_now_playing_provider_test.dart`, `packages/feature_iptv/test/iptv/presentation/tv_ux/channel_library_grid_test.dart`
-  - Verify: `flutter test` those files
-- [ ] **T4 (P1, human: ~1h / CC: ~10min)** — `feature_iptv` — semanticLabel includes now-title
+- [x] **T4 (P1, human: ~1h / CC: ~10min)** — `feature_iptv` — semanticLabel includes now-title
   - Surfaced by: Outside voice D8
   - Files: `packages/feature_iptv/lib/presentation/tv_ux/sections/channel_library_grid.dart`
   - Verify: widget semantics test

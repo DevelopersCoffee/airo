@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 
+import '../../presentation/widgets/epg_program_progress.dart';
 import '../epg_channel_match_override_store.dart';
 import '../guide_window_query.dart';
 import '../mutable_xmltv_compact_epg_repository.dart';
@@ -299,6 +300,45 @@ final nowTickerProvider = StreamProvider<DateTime>((ref) async* {
     (_) => DateTime.now().toUtc(),
   );
 });
+
+/// Now-playing program titles keyed by playlist [IPTVChannel.id].
+///
+/// Empty only when the paged guide [GuidePagedWindowState.window] has not
+/// landed yet. A later page failure ([GuidePagedWindowState.forwardLoadFailed])
+/// must not wipe titles already mapped from the loaded hours.
+final browseNowPlayingByChannelIdProvider = Provider<Map<String, String>>((
+  ref,
+) {
+  final window = ref.watch(guidePagedWindowProvider.select((s) => s.window));
+  if (window == null) return const {};
+  final now = ref.watch(nowTickerProvider).asData?.value;
+  if (now == null) return const {};
+  return _browseNowPlayingTitles(window: window, now: now);
+});
+
+Map<String, String> _browseNowPlayingTitles({
+  required CompactEpgWindow window,
+  required DateTime now,
+}) {
+  final titles = <String, String>{};
+  for (final entry in window.entries) {
+    CompactEpgProgram? airing;
+    for (final program in entry.programs) {
+      if (epgProgramIsAiring(
+        startsAt: program.startsAt,
+        endsAt: program.endsAt,
+        now: now,
+      )) {
+        airing = program;
+        break;
+      }
+    }
+    final title = airing?.title.trim();
+    if (title == null || title.isEmpty) continue;
+    titles[entry.channelId] = title;
+  }
+  return titles;
+}
 
 /// Independent of [channelSearchQueryProvider] (the main Live TV screen's
 /// search state) — navigating to the guide must not perturb that screen.
