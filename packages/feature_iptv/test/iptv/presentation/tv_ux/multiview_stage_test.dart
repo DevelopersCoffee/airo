@@ -417,18 +417,12 @@ void main() {
   );
 
   List<Expanded> splitExpanded(WidgetTester tester, Key layoutKey) {
-    final handle = find.descendant(
+    final panesFinder = find.descendant(
       of: find.byKey(layoutKey),
-      matching: find.byKey(const ValueKey('multiview-split-handle')),
-    );
-    final splitFinder = find.ancestor(
-      of: handle,
-      matching: find.byWidgetPredicate(
-        (widget) => widget is Row || widget is Column,
-      ),
+      matching: find.byKey(const ValueKey('multiview-split-panes')),
     );
     final panes = <Expanded>[];
-    tester.element(splitFinder.first).visitChildren((child) {
+    tester.element(panesFinder).visitChildren((child) {
       final widget = child.widget;
       if (widget is Expanded) {
         panes.add(widget);
@@ -567,6 +561,44 @@ void main() {
       find.byKey(const ValueKey('multiview-split-handle')),
     );
     expect(box.width, 24);
+  });
+
+  testWidgets('two-pane videos meet; handle overlays a hairline not a gap', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            height: 640,
+            child: MultiviewStage(
+              sessions: sessions,
+              featuredChannelId: sessions.first.id,
+              onPromote: (_) {},
+              splitRatio: MultiviewSplitRatio.fifty,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final one = tester.getRect(find.byKey(const ValueKey('player-one')));
+    final two = tester.getRect(find.byKey(const ValueKey('player-two')));
+    expect(two.left - one.right, lessThan(3));
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('multiview-split-handle')))
+          .width,
+      48,
+    );
   });
 
   testWidgets('stacked two-pane also shows the handle', (tester) async {

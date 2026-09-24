@@ -23,5 +23,5 @@ Next candidate: [`v0.0.7`](./AIRO_v0.0.7.md) (prepared, not tagged).
 | Recording | Not supported | No recording or DVR storage. |
 | AI Search | Planned | Local search is intentionally deterministic in this release. |
 | Cloud playlists | Not supported | Playlists stay local unless users load a remote URL directly. |
-| Split Screen / MultiView layouts | Supported on Android TV | One, side by side, and 2×2. Two-pane snaps 5/50/95 with an equal-power mix on the handle. User-supplied streams only. |
+| Split Screen / MultiView layouts | Supported on Android TV | One, side by side, and 2×2. Two-pane snaps 5/50/95 with an overlay hairline handle and equal-power mix. User-supplied streams only. |
 | Bundled channels | Not supported | Aika Stream does not provide IPTV content. |

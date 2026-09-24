@@ -165,22 +165,55 @@ class _MultiviewTwoPaneSplitState extends State<MultiviewTwoPaneSplit> {
         }
         final compact =
             constraints.maxWidth < 600 || constraints.maxHeight < 600;
-        final children = [
-          Expanded(flex: _firstFlex, child: widget.first),
-          _SplitHandle(
-            axis: widget.axis,
-            hitCrossAxis: compact ? 48 : 24,
-            onDragUpdate: (details) => _onDragUpdate(details, constraints),
-            onDragEnd: _onDragEnd,
-            onDragCancel: _onDragCancel,
-            onInput: _onHandleInput,
-          ),
-          Expanded(flex: _secondFlex, child: widget.second),
+        final hit = compact ? 48.0 : 24.0;
+        final firstFlex = _firstFlex;
+        final secondFlex = _secondFlex;
+        final totalFlex = firstFlex + secondFlex;
+        final splitPos = totalFlex <= 0 || extent <= 0
+            ? 0.0
+            : extent * firstFlex / totalFlex;
+        final handleStart = extent <= hit
+            ? 0.0
+            : (splitPos - hit / 2).clamp(0.0, extent - hit);
+        const panesKey = ValueKey('multiview-split-panes');
+        final panes = [
+          Expanded(flex: firstFlex, child: widget.first),
+          Expanded(flex: secondFlex, child: widget.second),
         ];
-        if (_horizontal) {
-          return Row(children: children);
-        }
-        return Column(children: children);
+        final handle = _SplitHandle(
+          axis: widget.axis,
+          hitCrossAxis: hit,
+          onDragUpdate: (details) => _onDragUpdate(details, constraints),
+          onDragEnd: _onDragEnd,
+          onDragCancel: _onDragCancel,
+          onInput: _onHandleInput,
+        );
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: _horizontal
+                  ? Row(key: panesKey, children: panes)
+                  : Column(key: panesKey, children: panes),
+            ),
+            if (_horizontal)
+              Positioned(
+                left: handleStart,
+                top: 0,
+                bottom: 0,
+                width: hit,
+                child: handle,
+              )
+            else
+              Positioned(
+                top: handleStart,
+                left: 0,
+                right: 0,
+                height: hit,
+                child: handle,
+              ),
+          ],
+        );
       },
     );
   }
@@ -263,50 +296,52 @@ class _SplitHandleState extends State<_SplitHandle> {
   }
 
   Widget _seam({required bool horizontal, required bool focused}) {
-    const hairline = 2.0;
-    const gripCross = 8.0;
-    const gripAlong = 28.0;
+    const hairline = 1.0;
+    const gripCross = 6.0;
+    const gripAlong = 24.0;
     final hit = widget.hitCrossAxis;
     return SizedBox(
       width: horizontal ? hit : double.infinity,
       height: horizontal ? double.infinity : hit,
-      child: Align(
-        child: FractionallySizedBox(
-          widthFactor: horizontal ? null : 1 / 3,
-          heightFactor: horizontal ? 1 / 3 : null,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              ColoredBox(
-                color: Colors.white.withValues(alpha: 0.28),
-                child: SizedBox(
-                  width: horizontal ? hairline : double.infinity,
-                  height: horizontal ? double.infinity : hairline,
-                ),
-              ),
-              Transform.scale(
-                scale: focused ? 1.05 : 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(
-                      alpha: focused ? 0.80 : 0.55,
-                    ),
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: focused
-                        ? const [
-                            BoxShadow(color: Colors.white70, blurRadius: 8),
-                          ]
-                        : null,
-                  ),
-                  child: SizedBox(
-                    width: horizontal ? gripCross : gripAlong,
-                    height: horizontal ? gripAlong : gripCross,
-                  ),
-                ),
-              ),
-            ],
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ColoredBox(
+            color: Colors.white.withValues(alpha: 0.28),
+            child: SizedBox(
+              width: horizontal ? hairline : double.infinity,
+              height: horizontal ? double.infinity : hairline,
+            ),
           ),
-        ),
+          Align(
+            child: FractionallySizedBox(
+              widthFactor: horizontal ? null : 1 / 3,
+              heightFactor: horizontal ? 1 / 3 : null,
+              child: Center(
+                child: Transform.scale(
+                  scale: focused ? 1.05 : 1,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(
+                        alpha: focused ? 0.80 : 0.55,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: focused
+                          ? const [
+                              BoxShadow(color: Colors.white70, blurRadius: 8),
+                            ]
+                          : null,
+                    ),
+                    child: SizedBox(
+                      width: horizontal ? gripCross : gripAlong,
+                      height: horizontal ? gripAlong : gripCross,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -284,7 +284,7 @@ notarization are out of scope. See
 
 ## [Aika Stream v0.0.3] - 2026-09-24
 
-Play `0.0.3+24`. Do not reuse versionCode 23. Notes:
+Play `0.0.3+25`. Do not reuse versionCode 24. Notes:
 [docs/release/AIKA_STREAM_v0.0.3.md](docs/release/AIKA_STREAM_v0.0.3.md).
 
 ### Added
@@ -292,12 +292,16 @@ Play `0.0.3+24`. Do not reuse versionCode 23. Notes:
 - Country picker loads one country programme-guide gzip via published `airo_epg` 1.2.0.
 - Two-pane MultiView snaps 5/50/95 with an 80dp min pane.
 - Equal-power DJ mix follows the split bar; system volume is unchanged.
-- Compact hosts keep a 48dp handle hit; TV uses a 24dp short hairline grip.
+- Compact hosts keep a 48dp handle hit; TV uses a 24dp hit. Both overlay a 1dp hairline so videos meet.
 
 ### Changed
 
 - Two-pane tile volume slider is hidden so the bar is the only mix control.
 - Cast mute-all stays silent in two-pane instead of remixing.
+
+### Fixed
+
+- Two-pane split handle no longer leaves a 24/48dp black gutter between videos.
 
 ## [Airo TV v0.0.2] - 2026-07-14
 

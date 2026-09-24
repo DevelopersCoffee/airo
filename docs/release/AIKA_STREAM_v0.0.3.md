@@ -12,11 +12,11 @@ streams with the bar.
   phone never gets an 18px sliver.
 - Dragging the handle crossfades the two videos with equal-power gains.
   System volume does not change.
-- Compact (either axis under 600dp) uses a **48dp** full-seam hit; TV and
-  tablet landscape use **24dp**. Paint is a 2dp hairline plus an 8×28
-  stadium in the middle third.
+- Compact (either axis under 600dp) uses a **48dp** overlay hit; TV and
+  tablet landscape use **24dp**. Videos meet. Paint is a 1dp hairline plus
+  a 6×24 stadium grip.
 - Resume the last live channel on launch (already on Internal 22).
-- Play `versionName` **0.0.3**, `versionCode` **24**. Do not reuse 23.
+- Play `versionName` **0.0.3**, `versionCode` **25**. Do not reuse 24.
 
 ## New Features
 
@@ -51,6 +51,8 @@ streams with the bar.
 ## Bug Fixes
 
 - Two-pane `muteAll()` no longer unmutes tiles on the next pool sync.
+- Two-pane split no longer reserves a 24/48dp black gutter between videos.
+  The handle overlays a 1dp hairline; the fat hit stays invisible.
 
 ## Performance
 
@@ -59,7 +61,7 @@ streams with the bar.
 
 ## Developer Changes
 
-- `app/pubspec_tv.yaml` is `0.0.3+24`. Sync the TV package-info stub with
+- `app/pubspec_tv.yaml` is `0.0.3+25`. Sync the TV package-info stub with
   `scripts/aika_stream_version.sh --sync-stub`.
 - Design: `docs/superpowers/specs/2026-09-24-epgshare01-country-shards-design.md`
   and `docs/superpowers/specs/2026-09-24-multiview-dj-split-design.md`.
@@ -85,8 +87,8 @@ Play — Play App Signing will not upgrade a sideload in place.
 
 ### Play Store
 
-Drop `Aika-Stream-0.0.3-24.aab` on Internal testing, then promote.
-Testers on Play 23 upgrade in place. Never reuse versionCode 23.
+Drop `Aika-Stream-0.0.3-25.aab` on Internal testing, then Production.
+Testers on Play 24 upgrade in place. Never reuse versionCode 24.
 
 ## Legal Notice
 

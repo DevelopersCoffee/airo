@@ -70,6 +70,10 @@ Paste into Play Console → Internal testing → Release notes. Keep under 500
 characters. Do not claim bundled channels or Aika Stream Pro.
 
 ```text
+0.0.3 (25)
+• Two-pane live split no longer paints a fat black divider
+• Videos meet; drag still uses a 48dp (phone) / 24dp (TV) hit
+
 0.0.3 (24)
 • Guide loads a country programme file when you pick a country
 • World-size guide URLs are rejected before they can crash the app
