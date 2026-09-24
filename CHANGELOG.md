@@ -284,11 +284,12 @@ notarization are out of scope. See
 
 ## [Aika Stream v0.0.3] - 2026-09-24
 
-Play `0.0.3+23`. Do not reuse versionCode 22. Notes:
+Play `0.0.3+24`. Do not reuse versionCode 23. Notes:
 [docs/release/AIKA_STREAM_v0.0.3.md](docs/release/AIKA_STREAM_v0.0.3.md).
 
 ### Added
 
+- Country picker loads one country programme-guide gzip via published `airo_epg` 1.2.0.
 - Two-pane MultiView snaps 5/50/95 with an 80dp min pane.
 - Equal-power DJ mix follows the split bar; system volume is unchanged.
 - Compact hosts keep a 48dp handle hit; TV uses a 24dp short hairline grip.

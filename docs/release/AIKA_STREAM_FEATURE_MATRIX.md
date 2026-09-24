@@ -13,7 +13,7 @@ Next candidate: [`v0.0.7`](./AIRO_v0.0.7.md) (prepared, not tagged).
 | Chromecast controls | Supported | Discovery, play, pause, stop, reload, new session, volume. |
 | Haptic feedback | Phone/tablet + Cast remote | Semantic play/pause, channel step, favorite, error, Cast connect/volume. TV silent. |
 | Favorites | Supported | Mark/unmark channels from browse and player flows; stored locally. |
-| XMLTV guide | Supported | User-configured XMLTV sources only; no bundled guide feed. |
+| XMLTV guide | Supported | User-pasted XMLTV wins. Otherwise a Settings/browse country pick downloads one country gzip. World dumps are rejected. |
 | Smart playlists and canonical channels | Supported | Local filtering and canonical identity matching help preserve personal organization across imports. |
 | Provider add-flows | Supported | User-authorized Xtream, Stalker, Jellyfin, and M3U sources. |
 | Unified live playlist merge | Under qualification | M3U, Xtream, and Stalker live sources merge into one browse list in 0.0.7; device evidence is still being gathered. |
