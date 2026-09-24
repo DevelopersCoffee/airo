@@ -246,6 +246,7 @@ class SettingsHubScreen extends ConsumerWidget {
                         ),
                         body: const TvPrivacySection(
                           showTelemetry: false,
+                          showAdsPersonalization: true,
                           deleteFirst: true,
                         ),
                       ),

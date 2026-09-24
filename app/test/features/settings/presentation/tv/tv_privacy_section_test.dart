@@ -83,6 +83,31 @@ void main() {
     expect(find.text('Local data deleted'), findsOneWidget);
   });
 
+  testWidgets('showAdsPersonalization: true shows ads toggle', (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: TvPrivacySection(
+              showTelemetry: false,
+              showAdsPersonalization: true,
+              deleteFirst: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Personalized ads'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsOneWidget);
+  });
+
   testWidgets('showTelemetry: false hides consent rows', (tester) async {
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(

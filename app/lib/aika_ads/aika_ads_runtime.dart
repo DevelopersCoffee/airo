@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import 'aika_ads.dart';
 import 'aika_browse_native_ad_card.dart';
+import 'aika_pause_native_ad_card.dart';
 
 /// Starts empty so leanback never reserves a fifth tile. Phone browse ads
 /// are armed as soon as the SDK is ready.
@@ -32,7 +33,7 @@ IptvAdPlacements aikaIptvAdPlacements({
     case AiroDeviceFormFactor.tablet:
       return const IptvAdPlacements(
         browseCard: AikaBrowseNativeAdCard(),
-        pauseCard: AikaNativeAdCard(placement: AikaAdPlacement.pause),
+        pauseCard: AikaPauseNativeAdCard(),
       );
     case AiroDeviceFormFactor.tv:
     case AiroDeviceFormFactor.desktop:

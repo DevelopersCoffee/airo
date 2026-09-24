@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/providers/ads_personalization_consent_provider.dart';
 import 'aika_ads.dart';
 import 'aika_ads_runtime.dart';
 
@@ -25,6 +26,7 @@ class _AikaAdsGateState extends ConsumerState<AikaAdsGate> {
   }
 
   Future<void> _arm() async {
+    ref.read(adsPersonalizationConsentProvider);
     final formFactor = await detectAikaAdFormFactor();
     await AikaAdManager.instance.initialize(formFactor: formFactor);
     if (!mounted) return;
