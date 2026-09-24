@@ -5,6 +5,8 @@ import 'package:platform_playlist_export/platform_playlist_export.dart';
 import '../../application/providers/backup_providers.dart';
 import '../../application/providers/guide_providers.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/tv_lan_backup_providers.dart';
+import '../../application/widget_tv_lan_backup_ui_host.dart';
 
 class BackupRestoreSection extends ConsumerStatefulWidget {
   const BackupRestoreSection({super.key});
@@ -16,6 +18,29 @@ class BackupRestoreSection extends ConsumerStatefulWidget {
 
 class _BackupRestoreSectionState extends ConsumerState<BackupRestoreSection> {
   bool _busy = false;
+  var _tvLanHostBound = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ref.read(usesTvLanBackupProvider)) return;
+      ref
+          .read(tvLanBackupUiHostProvider.notifier)
+          .bind(WidgetTvLanBackupUiHost(context));
+      _tvLanHostBound = true;
+    });
+  }
+
+  @override
+  void deactivate() {
+    if (_tvLanHostBound) {
+      ref.read(tvLanBackupUiHostProvider.notifier).unbind();
+      _tvLanHostBound = false;
+    }
+    super.deactivate();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,30 +95,49 @@ class _BackupRestoreSectionState extends ConsumerState<BackupRestoreSection> {
   }
 
   Future<void> _save() async {
+    final usesTvLan = ref.read(usesTvLanBackupProvider);
     final saved = await ref
         .read(iptvBackupDocumentControllerProvider)
         .saveBackup();
     // Never claim a write that did not happen: on TV `file_picker` is
     // stubbed, so this always comes back false and the old unconditional
     // success message sent users away believing they had a backup.
-    _announce(saved ? 'Backup file saved.' : 'No backup file was saved.');
+    _announce(
+      saved
+          ? (usesTvLan ? 'Backup ready on your phone.' : 'Backup file saved.')
+          : (usesTvLan
+                ? 'Could not start backup transfer.'
+                : 'No backup file was saved.'),
+    );
   }
 
   Future<void> _share() async {
+    final usesTvLan = ref.read(usesTvLanBackupProvider);
     final shared = await ref
         .read(iptvBackupDocumentControllerProvider)
         .shareBackup();
     // The share sheet is its own confirmation when it works; only the
     // silent-failure case needs saying out loud.
-    if (!shared) _announce('The backup was not shared.');
+    if (!shared) {
+      _announce(
+        usesTvLan
+            ? 'Could not start backup transfer.'
+            : 'The backup was not shared.',
+      );
+      return;
+    }
+    if (usesTvLan) _announce('Backup ready on your phone.');
   }
 
   Future<void> _import() async {
+    final usesTvLan = ref.read(usesTvLanBackupProvider);
     final preview = await ref
         .read(iptvBackupDocumentControllerProvider)
         .pickAndPreview();
     if (preview == null) {
-      _announce('No backup file was selected.');
+      _announce(
+        usesTvLan ? 'No backup was uploaded.' : 'No backup file was selected.',
+      );
       return;
     }
     if (!mounted) return;

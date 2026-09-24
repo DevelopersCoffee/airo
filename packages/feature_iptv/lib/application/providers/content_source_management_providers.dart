@@ -350,7 +350,7 @@ final updateContentSourceStreamHeadersProvider = FutureProvider.autoDispose
           );
         });
         ref.invalidate(configuredContentSourcesProvider);
-        invalidateChannelLibraries(ref);
+        invalidateLoadedChannelProviders(ref);
       } finally {
         keepAlive.close();
       }
