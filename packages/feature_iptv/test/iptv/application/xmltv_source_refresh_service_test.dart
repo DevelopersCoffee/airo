@@ -155,104 +155,94 @@ void main() {
     expect(source.expectedSha256, sha256.convert(compressed).toString());
   });
 
-  test(
-    'refreshSystemGuidesForCountries fetches only the requested guide_XX '
-    'shards, never guide_ALL or epg.xml.gz',
-    () async {
-      final adapter = _MultiCountryManifestAdapter({
-        'IN': utf8.encode(
-          _minimalXmltv.replaceAll('chan-1', 'MTV.in'),
+  test('refreshSystemGuidesForCountries fetches only the requested guide_XX '
+      'shards, never guide_ALL or epg.xml.gz', () async {
+    final adapter = _MultiCountryManifestAdapter({
+      'IN': utf8.encode(_minimalXmltv.replaceAll('chan-1', 'MTV.in')),
+      'US': utf8.encode(_minimalXmltv.replaceAll('chan-1', 'World.us')),
+      'FR': utf8.encode(_minimalXmltv.replaceAll('chan-1', 'TF1.fr')),
+    });
+    final manifestDio = Dio()..httpClientAdapter = adapter;
+    final manifestService = XmltvSourceRefreshService(
+      dio: manifestDio,
+      sourceStore: sourceStore,
+      repository: repository,
+      downloadDirectoryProvider: () async => tempDir,
+    );
+
+    await manifestService.refreshSystemGuidesForCountries(
+      manifestUrl: 'https://data.example/current/manifest.json',
+      countries: {'in', 'us'},
+    );
+
+    final now = DateTime.utc(2026, 7, 17, 12, 10);
+    final inSlice = await repository.loadCurrentNext(
+      channelIds: const ['MTV.in'],
+      now: now,
+    );
+    final usSlice = await repository.loadCurrentNext(
+      channelIds: const ['World.us'],
+      now: now,
+    );
+    expect(inSlice.entryForChannel('MTV.in')?.current?.title, 'Test Program');
+    expect(usSlice.entryForChannel('World.us')?.current?.title, 'Test Program');
+
+    expect(
+      adapter.requestedPaths,
+      everyElement(
+        anyOf(
+          contains('manifest.json'),
+          contains('guide_IN.xml.gz'),
+          contains('guide_US.xml.gz'),
         ),
-        'US': utf8.encode(
-          _minimalXmltv.replaceAll('chan-1', 'World.us'),
-        ),
-        'FR': utf8.encode(_minimalXmltv.replaceAll('chan-1', 'TF1.fr')),
-      });
-      final manifestDio = Dio()..httpClientAdapter = adapter;
-      final manifestService = XmltvSourceRefreshService(
-        dio: manifestDio,
-        sourceStore: sourceStore,
-        repository: repository,
-        downloadDirectoryProvider: () async => tempDir,
-      );
+      ),
+    );
+    expect(
+      adapter.requestedPaths.any((path) => path.contains('guide_FR')),
+      isFalse,
+    );
+    expect(
+      adapter.requestedPaths.any((path) => path.contains('guide_ALL')),
+      isFalse,
+    );
+    expect(
+      adapter.requestedPaths.any((path) => path.contains('epg.xml.gz')),
+      isFalse,
+    );
 
-      await manifestService.refreshSystemGuidesForCountries(
-        manifestUrl: 'https://data.example/current/manifest.json',
-        countries: {'in', 'us'},
-      );
+    final source = (await sourceStore.loadAll()).single;
+    expect(source.kind, XmltvSourceKind.system);
+  });
 
-      final now = DateTime.utc(2026, 7, 17, 12, 10);
-      final inSlice = await repository.loadCurrentNext(
-        channelIds: const ['MTV.in'],
-        now: now,
-      );
-      final usSlice = await repository.loadCurrentNext(
-        channelIds: const ['World.us'],
-        now: now,
-      );
-      expect(inSlice.entryForChannel('MTV.in')?.current?.title, 'Test Program');
-      expect(usSlice.entryForChannel('World.us')?.current?.title, 'Test Program');
+  test('refreshSystemGuidesForCountries skips a country missing from the '
+      'manifest without failing the others', () async {
+    final adapter = _MultiCountryManifestAdapter({
+      'IN': utf8.encode(_minimalXmltv.replaceAll('chan-1', 'MTV.in')),
+    });
+    final manifestDio = Dio()..httpClientAdapter = adapter;
+    final manifestService = XmltvSourceRefreshService(
+      dio: manifestDio,
+      sourceStore: sourceStore,
+      repository: repository,
+      downloadDirectoryProvider: () async => tempDir,
+    );
 
-      expect(
-        adapter.requestedPaths,
-        everyElement(
-          anyOf(
-            contains('manifest.json'),
-            contains('guide_IN.xml.gz'),
-            contains('guide_US.xml.gz'),
-          ),
-        ),
-      );
-      expect(
-        adapter.requestedPaths.any((path) => path.contains('guide_FR')),
-        isFalse,
-      );
-      expect(
-        adapter.requestedPaths.any((path) => path.contains('guide_ALL')),
-        isFalse,
-      );
-      expect(
-        adapter.requestedPaths.any((path) => path.contains('epg.xml.gz')),
-        isFalse,
-      );
+    await manifestService.refreshSystemGuidesForCountries(
+      manifestUrl: 'https://data.example/current/manifest.json',
+      countries: {'IN', 'ZZ'},
+    );
 
-      final source = (await sourceStore.loadAll()).single;
-      expect(source.kind, XmltvSourceKind.system);
-    },
-  );
-
-  test(
-    'refreshSystemGuidesForCountries skips a country missing from the '
-    'manifest without failing the others',
-    () async {
-      final adapter = _MultiCountryManifestAdapter({
-        'IN': utf8.encode(_minimalXmltv.replaceAll('chan-1', 'MTV.in')),
-      });
-      final manifestDio = Dio()..httpClientAdapter = adapter;
-      final manifestService = XmltvSourceRefreshService(
-        dio: manifestDio,
-        sourceStore: sourceStore,
-        repository: repository,
-        downloadDirectoryProvider: () async => tempDir,
-      );
-
-      await manifestService.refreshSystemGuidesForCountries(
-        manifestUrl: 'https://data.example/current/manifest.json',
-        countries: {'IN', 'ZZ'},
-      );
-
-      final now = DateTime.utc(2026, 7, 17, 12, 10);
-      final inSlice = await repository.loadCurrentNext(
-        channelIds: const ['MTV.in'],
-        now: now,
-      );
-      expect(inSlice.entryForChannel('MTV.in')?.current?.title, 'Test Program');
-      expect(
-        adapter.requestedPaths.any((path) => path.contains('guide_ZZ')),
-        isFalse,
-      );
-    },
-  );
+    final now = DateTime.utc(2026, 7, 17, 12, 10);
+    final inSlice = await repository.loadCurrentNext(
+      channelIds: const ['MTV.in'],
+      now: now,
+    );
+    expect(inSlice.entryForChannel('MTV.in')?.current?.title, 'Test Program');
+    expect(
+      adapter.requestedPaths.any((path) => path.contains('guide_ZZ')),
+      isFalse,
+    );
+  });
 
   test(
     'refresh with an invalid URL records an error, does not touch the repository',
@@ -365,6 +355,40 @@ void main() {
       expect(config?.lastError, isNotNull);
     },
   );
+
+  test('refresh parses naked stamps with the injected device offset', () async {
+    const nakedXmltv = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<tv>
+  <channel id="chan-1"><display-name>Channel 1</display-name></channel>
+  <programme start="20260717120000" stop="20260717123000" channel="chan-1">
+    <title>Local Noon</title>
+  </programme>
+</tv>
+''';
+    final dio = Dio()..httpClientAdapter = _FakeXmltvAdapter(nakedXmltv);
+    final offsetService = XmltvSourceRefreshService(
+      dio: dio,
+      sourceStore: sourceStore,
+      repository: repository,
+      downloadDirectoryProvider: () async => tempDir,
+      naiveOffsetProvider: () => const Duration(hours: 5, minutes: 30),
+    );
+
+    await offsetService.refresh('https://example.com/guide.xml');
+
+    final slice = await repository.loadCurrentNext(
+      channelIds: ['chan-1'],
+      now: DateTime.utc(2026, 7, 17, 6, 40),
+    );
+    expect(slice.entryForChannel('chan-1')?.current?.title, 'Local Noon');
+
+    final tooEarly = await repository.loadCurrentNext(
+      channelIds: ['chan-1'],
+      now: DateTime.utc(2026, 7, 17, 12, 10),
+    );
+    expect(tooEarly.entryForChannel('chan-1')?.current, isNull);
+  });
 }
 
 class _FakeXmltvAdapter implements HttpClientAdapter {

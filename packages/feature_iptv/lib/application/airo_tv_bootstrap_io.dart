@@ -111,6 +111,8 @@ Future<Duration?> warmAiroTvDebugDefaultEpgCache(
 
     final stopwatch = Stopwatch()..start();
     final now = (clock ?? DateTime.now)().toUtc();
+    // Isolate.run can report UTC; capture the parent-isolate zone first.
+    final naiveOffset = DateTime.now().timeZoneOffset;
     final snapshot = await workerExecutor.run<CompactEpgSlice>(
       debugName: 'airo_tv_debug_epg_warmup',
       kind: AiroWorkerJobKind.epgRefresh,
@@ -118,6 +120,7 @@ Future<Duration?> warmAiroTvDebugDefaultEpgCache(
         xmltvPath: guideFile.path,
         now: now,
         channels: channels,
+        naiveOffset: naiveOffset,
       ),
     );
     await repository.saveSnapshot(snapshot);
@@ -199,6 +202,7 @@ Future<CompactEpgSlice> _buildAiroTvCompactEpgSnapshot({
   required String xmltvPath,
   required DateTime now,
   required List<IPTVChannel> channels,
+  required Duration naiveOffset,
 }) async {
   final aliasesByChannel = {
     for (final channel in channels) channel.id: _xmltvGuideAliasesFor(channel),
@@ -219,6 +223,7 @@ Future<CompactEpgSlice> _buildAiroTvCompactEpgSnapshot({
         now: now,
         sourceRef: CompactEpgSourceRef.redacted('debug-tv-epg'),
         channelNamesById: channelNamesByGuideId,
+        naiveOffset: naiveOffset,
       );
   final guideSlice = await guideRepository.loadCurrentNext(
     channelIds: guideChannelIds,

@@ -20,12 +20,15 @@ class XmltvSourceRefreshService {
     required this.sourceStore,
     required this.repository,
     required this.downloadDirectoryProvider,
-  });
+    Duration Function()? naiveOffsetProvider,
+  }) : naiveOffsetProvider =
+           naiveOffsetProvider ?? (() => DateTime.now().timeZoneOffset);
 
   final Dio dio;
   final XmltvSourceStore sourceStore;
   final MutableXmltvCompactEpgRepository repository;
   final Future<Directory> Function() downloadDirectoryProvider;
+  final Duration Function() naiveOffsetProvider;
 
   /// Downloads [url], parses it, and updates [repository]. Throws
   /// [ArgumentError] for an invalid URL (after recording the error to
@@ -107,6 +110,7 @@ class XmltvSourceRefreshService {
       final parsed = await XmltvCompactEpgRepository.fromXmltvFileNative(
         path: guideFile.path,
         ingestedAt: DateTime.now().toUtc(),
+        naiveOffset: naiveOffsetProvider(),
       );
 
       repository.updateNamedSource(
@@ -405,6 +409,7 @@ class XmltvSourceRefreshService {
       return await XmltvCompactEpgRepository.fromXmltvFileNative(
         path: guideFile.path,
         ingestedAt: DateTime.now().toUtc(),
+        naiveOffset: naiveOffsetProvider(),
       );
     } finally {
       if (await guideFile.exists()) {
