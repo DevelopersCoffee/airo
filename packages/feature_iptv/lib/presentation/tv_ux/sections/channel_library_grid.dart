@@ -7,9 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
+import '../../../application/providers/browse_grid_tv_peek_provider.dart';
 import '../../../application/providers/channel_filters_provider.dart';
 import '../../../application/providers/guide_providers.dart';
+import '../../../application/providers/iptv_cast_providers.dart';
 import '../../../application/providers/tv_font_mode_provider.dart';
+import '../../widgets/tv_mini_guide_overlay.dart';
+import '../browse_grid_tv_peek_controller.dart';
 
 const _cardWidth = 155.0;
 // _ChannelTile builds MediaCard without a `variant`, so it always renders at
@@ -200,7 +204,9 @@ class ChannelLibraryGrid extends ConsumerStatefulWidget {
 
 class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
   late final ScrollController _scrollController;
+  late final BrowseGridTvPeekController _peekController;
   String _lastVisibleSignature = '';
+  String _lastChannelSignature = '';
   int _lastColumnCount = 1;
   double _lastRowExtent = _cardHeight;
   double _lastRowSpacing = _gridSpacing;
@@ -211,6 +217,10 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(_reportVisibleChannels);
+    _peekController = BrowseGridTvPeekController(
+      previewFactory: () => ref.read(tvMiniGuidePreviewFactoryProvider)(),
+    );
+    _lastChannelSignature = _channelSignature;
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _reportVisibleChannels(),
     );
@@ -219,6 +229,11 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
   @override
   void didUpdateWidget(covariant ChannelLibraryGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final signature = _channelSignature;
+    if (signature != _lastChannelSignature) {
+      _lastChannelSignature = signature;
+      _peekController.onLibrarySignatureChanged();
+    }
     if (!identical(oldWidget.channels, widget.channels)) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _reportVisibleChannels(force: true),
@@ -228,10 +243,30 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
 
   @override
   void dispose() {
+    _peekController.dispose();
     _scrollController
       ..removeListener(_reportVisibleChannels)
       ..dispose();
     super.dispose();
+  }
+
+  String get _channelSignature =>
+      widget.channels.map((channel) => channel.id).join('|');
+
+  void _handleTilePeekFocus(IPTVChannel channel, LayerLink anchorLink) {
+    if (channel.isAudioOnly || channel.streamUrl.isEmpty) return;
+    _peekController.onTileFocused(channel, anchorLink);
+    if (mounted) setState(() {});
+  }
+
+  void _handleTilePeekUnfocus() {
+    _peekController.onTileUnfocused();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _selectChannelWithPeekRelease(IPTVChannel channel) async {
+    await _peekController.releaseBeforePlay();
+    widget.onChannelSelected?.call(channel);
   }
 
   static const _browseAdIndex = 4;
@@ -252,6 +287,7 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
     required double rowSpacing,
     required bool usePhoneList,
     required bool usePhoneGrid,
+    required bool tvPeekEnabled,
   }) {
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -269,8 +305,13 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
               channel: channel,
               metadata: widget.metadataByChannelId[channel.id],
               availability: widget.availabilityByChannelId[channel.id],
-              onSelected: widget.onChannelSelected,
-              focusPlayDelay: widget.focusPlayDelay,
+              onSelected: tvPeekEnabled ? null : widget.onChannelSelected,
+              onSelectWithPeekRelease: tvPeekEnabled
+                  ? _selectChannelWithPeekRelease
+                  : null,
+              focusPlayDelay: tvPeekEnabled ? null : widget.focusPlayDelay,
+              onPeekFocus: tvPeekEnabled ? _handleTilePeekFocus : null,
+              onPeekUnfocus: tvPeekEnabled ? _handleTilePeekUnfocus : null,
               inMultiview: widget.multiviewChannelIds.contains(channel.id),
               onMultiviewToggle: widget.onMultiviewToggle,
               isFavorite: widget.favoriteChannelIds.contains(channel.id),
@@ -390,7 +431,17 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
               (_) => _reportVisibleChannels(force: true),
             );
           }
-          return CustomScrollView(
+          final peekFlag = ref.watch(browseGridTvPeekEnabledProvider);
+          final isCasting = ref.watch(
+            iptvCastProvider.select((state) => state.isCasting),
+          );
+          final tvPeekEnabled =
+              peekFlag &&
+              browseGridTvPeekAllowedOnPlatform(isPhoneWidth: isPhone) &&
+              !isCasting &&
+              !usePhoneList &&
+              !usePhoneGrid;
+          final scrollView = CustomScrollView(
             controller: _scrollController,
             key: const PageStorageKey<String>('airo-tv-channel-library-scroll'),
             physics: const AlwaysScrollableScrollPhysics(),
@@ -435,6 +486,7 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
                     rowSpacing: rowSpacing,
                     usePhoneList: usePhoneList,
                     usePhoneGrid: usePhoneGrid,
+                    tvPeekEnabled: tvPeekEnabled,
                   ),
                 ),
                 if (_adIndex >= 0)
@@ -469,6 +521,7 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
                       rowSpacing: rowSpacing,
                       usePhoneList: usePhoneList,
                       usePhoneGrid: usePhoneGrid,
+                      tvPeekEnabled: tvPeekEnabled,
                     ),
                   ),
                 if (widget.floatingNavScrollClearance > 0)
@@ -480,6 +533,43 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
                     ),
                   ),
               ],
+            ],
+          );
+          if (!tvPeekEnabled || _peekController.anchorLink == null) {
+            return scrollView;
+          }
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              scrollView,
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CompositedTransformFollower(
+                    link: _peekController.anchorLink!,
+                    showWhenUnlinked: false,
+                    targetAnchor: Alignment.topCenter,
+                    followerAnchor: Alignment.topCenter,
+                    child: SizedBox(
+                      height: 104,
+                      width: _cardWidth,
+                      child: _peekController.previewView != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: _peekController.previewView,
+                            )
+                          : _peekController.isStartingPreview
+                          ? const Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -833,7 +923,10 @@ class _ChannelTile extends StatefulWidget {
     required this.metadata,
     required this.availability,
     this.onSelected,
+    this.onSelectWithPeekRelease,
     this.focusPlayDelay,
+    this.onPeekFocus,
+    this.onPeekUnfocus,
     required this.inMultiview,
     this.onMultiviewToggle,
     required this.isFavorite,
@@ -849,7 +942,10 @@ class _ChannelTile extends StatefulWidget {
   final ChannelBrowseMetadata? metadata;
   final StreamAvailability? availability;
   final ValueChanged<IPTVChannel>? onSelected;
+  final Future<void> Function(IPTVChannel channel)? onSelectWithPeekRelease;
   final Duration? focusPlayDelay;
+  final void Function(IPTVChannel channel, LayerLink anchorLink)? onPeekFocus;
+  final VoidCallback? onPeekUnfocus;
   final bool inMultiview;
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
   final bool isFavorite;
@@ -875,13 +971,15 @@ class _ChannelTile extends StatefulWidget {
 
 class _ChannelTileState extends State<_ChannelTile> {
   Timer? _focusPlayTimer;
+  final LayerLink _peekAnchorLink = LayerLink();
 
   @override
   void didUpdateWidget(covariant _ChannelTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.channel.id != widget.channel.id ||
         oldWidget.focusPlayDelay != widget.focusPlayDelay ||
-        oldWidget.onSelected != widget.onSelected) {
+        oldWidget.onSelected != widget.onSelected ||
+        oldWidget.onSelectWithPeekRelease != widget.onSelectWithPeekRelease) {
       _cancelFocusPlay();
     }
   }
@@ -909,13 +1007,28 @@ class _ChannelTileState extends State<_ChannelTile> {
     _focusPlayTimer = null;
   }
 
+  void _handleFocus() {
+    _scheduleFocusPlay();
+    widget.onPeekFocus?.call(widget.channel, _peekAnchorLink);
+  }
+
+  void _handleUnfocus() {
+    _cancelFocusPlay();
+    widget.onPeekUnfocus?.call();
+  }
+
   void _selectNow() {
     _cancelFocusPlay();
+    if (widget.onSelectWithPeekRelease != null) {
+      unawaited(widget.onSelectWithPeekRelease!(widget.channel));
+      return;
+    }
     widget.onSelected?.call(widget.channel);
   }
 
   bool get _hasActions =>
       widget.onSelected != null ||
+      widget.onSelectWithPeekRelease != null ||
       widget.onMultiviewToggle != null ||
       widget.onFavoriteToggle != null ||
       widget.onNotForMeToggle != null;
@@ -926,7 +1039,9 @@ class _ChannelTileState extends State<_ChannelTile> {
       useSafeArea: true,
       builder: (sheetContext) => _ChannelActionsSheet(
         channel: widget.channel,
-        onPlay: widget.onSelected == null ? null : _selectNow,
+        onPlay: widget.onSelected == null && widget.onSelectWithPeekRelease == null
+            ? null
+            : _selectNow,
         inMultiview: widget.inMultiview,
         onMultiviewToggle: widget.onMultiviewToggle == null
             ? null
@@ -986,10 +1101,12 @@ class _ChannelTileState extends State<_ChannelTile> {
                 ? null
                 : () => widget.onFavoriteToggle!(widget.channel),
             favoriteKey: ValueKey('channel-favorite-${widget.channel.id}'),
-            onTap: widget.onSelected == null ? null : _selectNow,
+            onTap: widget.onSelected == null && widget.onSelectWithPeekRelease == null
+                ? null
+                : _selectNow,
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
-            onFocus: _scheduleFocusPlay,
-            onUnfocus: _cancelFocusPlay,
+            onFocus: _handleFocus,
+            onUnfocus: _handleUnfocus,
           );
         } else if (widget.compactGrid) {
           card = _CompactGridMediaCard(
@@ -998,10 +1115,12 @@ class _ChannelTileState extends State<_ChannelTile> {
             semanticLabel: semanticLabel,
             logoUrl: widget.channel.effectiveLogoUrl,
             initials: _initialsFor(widget.channel.name),
-            onTap: widget.onSelected == null ? null : _selectNow,
+            onTap: widget.onSelected == null && widget.onSelectWithPeekRelease == null
+                ? null
+                : _selectNow,
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
-            onFocus: _scheduleFocusPlay,
-            onUnfocus: _cancelFocusPlay,
+            onFocus: _handleFocus,
+            onUnfocus: _handleUnfocus,
           );
         } else {
           final mediaCard = MediaCard(
@@ -1009,19 +1128,25 @@ class _ChannelTileState extends State<_ChannelTile> {
             subtitle: subtitle,
             logoUrl: widget.channel.effectiveLogoUrl,
             initials: _initialsFor(widget.channel.name),
-            onTap: widget.onSelected == null ? null : _selectNow,
+            onTap: widget.onSelected == null && widget.onSelectWithPeekRelease == null
+                ? null
+                : _selectNow,
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
-            onFocus: _scheduleFocusPlay,
-            onUnfocus: _cancelFocusPlay,
+            onFocus: _handleFocus,
+            onUnfocus: _handleUnfocus,
           );
           card = nowTitle == null
               ? mediaCard
               : Semantics(label: semanticLabel, child: mediaCard);
         }
 
+        final cardWithPeekAnchor = widget.onPeekFocus == null
+            ? card
+            : CompositedTransformTarget(link: _peekAnchorLink, child: card);
+
         return Stack(
           children: [
-            card,
+            cardWithPeekAnchor,
             Positioned(
               top: 7,
               left: 7,

@@ -23,6 +23,7 @@ export "application/providers/iptv_cast_prompt_providers.dart";
 export "application/iptv_deep_link.dart";
 export "application/channel_share.dart";
 export "application/providers/content_source_management_providers.dart";
+export "application/providers/browse_grid_tv_peek_provider.dart";
 export "application/providers/guide_providers.dart";
 export "application/providers/epg_catalog_provider.dart";
 export "application/providers/local_iptv_search_providers.dart";

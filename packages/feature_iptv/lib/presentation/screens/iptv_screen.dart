@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../application/iptv_deep_link.dart';
 import '../../application/player_backgrounding_coordinator.dart';
+import '../../application/providers/browse_grid_tv_peek_provider.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/resume_last_channel_preference.dart';
@@ -1759,7 +1760,9 @@ class _StreamTabContent extends ConsumerWidget {
       enrichMetadata: true,
       currentChannel: activeChannel,
       showVideoStage: !playlistSourceInInfoBar,
-      focusPlayDelay: playlistSourceInInfoBar
+      focusPlayDelay:
+          playlistSourceInInfoBar &&
+              !ref.watch(browseGridTvPeekEnabledProvider)
           ? const Duration(milliseconds: 1200)
           : null,
       onChannelSelected: onChannelTap,

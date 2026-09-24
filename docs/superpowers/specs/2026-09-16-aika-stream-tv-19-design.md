@@ -93,6 +93,8 @@ Return to a channel → create a new Watch session
 
 Implement at player lifecycle, not only `Back`. Tear down Exo/media-session/`AudioService` so Android does not keep a ghost audio focus. Mini Guide preview is a second, muted, control-free surface that must never outlive the overlay.
 
+**Library browse amendment (2026-09-24):** `ChannelLibraryGrid` may hold one muted peek session — the same class as Mini Guide (control-free, `mixWithOthers: true`), behind `browseGridTvPeekEnabled` (default off). It is not a destination-owned Watch session. Leave Library, open Watch, Cast, or Mini Guide → stop and dispose the library peek. Library peek and Mini Guide preview must never coexist.
+
 **Do not** keep `/live` mounted under destination overlays.
 
 ## Destinations
