@@ -19,9 +19,10 @@ class InitializationStatus {
 }
 
 class AdRequest {
-  const AdRequest({this.extras});
+  const AdRequest({this.extras, this.nonPersonalizedAds});
 
   final Map<String, String>? extras;
+  final bool? nonPersonalizedAds;
 }
 
 class LoadAdError {

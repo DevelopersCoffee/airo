@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/aika_stream_local_data_deletion.dart';
+import '../../../../core/providers/ads_personalization_consent_provider.dart';
 import '../../../../core/providers/streaming_telemetry_consent_provider.dart';
 
 /// Privacy settings for the TV settings screen (CV-022): the streaming
@@ -12,6 +13,7 @@ class TvPrivacySection extends ConsumerWidget {
   const TvPrivacySection({
     super.key,
     this.showTelemetry = true,
+    this.showAdsPersonalization = false,
     this.deleteFirst = false,
   });
 
@@ -20,12 +22,16 @@ class TvPrivacySection extends ConsumerWidget {
   /// service. The 10-foot rail keeps the consent rows.
   final bool showTelemetry;
 
+  /// Phone Aika Stream compact hub only. Ads run on phone/tablet, not TV.
+  final bool showAdsPersonalization;
+
   /// Compact hub leads with delete; the TV rail keeps telemetry first.
   final bool deleteFirst;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final enabled = ref.watch(streamingTelemetryConsentProvider);
+    final adsPersonalized = ref.watch(adsPersonalizationConsentProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     final telemetry = <Widget>[
@@ -56,6 +62,36 @@ class TvPrivacySection extends ConsumerWidget {
             .read(streamingTelemetryConsentProvider.notifier)
             .setEnabled(false),
         colorScheme: colorScheme,
+      ),
+    ];
+
+    final adsPersonalization = <Widget>[
+      Text(
+        'Ads',
+        style: TextStyle(
+          color: colorScheme.onSurface,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          'Aika Stream shows optional native ads on phone and tablet. '
+          'Turn off personalized ads to request generic ads only.',
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
+        ),
+      ),
+      SwitchListTile(
+        title: const Text('Personalized ads'),
+        subtitle: const Text(
+          'Uses your device advertising ID for more relevant ads',
+        ),
+        value: adsPersonalized,
+        onChanged: (value) => ref
+            .read(adsPersonalizationConsentProvider.notifier)
+            .setEnabled(value),
       ),
     ];
 
@@ -92,10 +128,18 @@ class TvPrivacySection extends ConsumerWidget {
     final children = <Widget>[
       if (deleteFirst) ...[
         ...localData,
+        if (showAdsPersonalization) ...[
+          const SizedBox(height: 32),
+          ...adsPersonalization,
+        ],
         if (showTelemetry) ...[const SizedBox(height: 32), ...telemetry],
       ] else ...[
         if (showTelemetry) ...[...telemetry, const SizedBox(height: 32)],
         ...localData,
+        if (showAdsPersonalization) ...[
+          const SizedBox(height: 32),
+          ...adsPersonalization,
+        ],
       ],
     ];
 
