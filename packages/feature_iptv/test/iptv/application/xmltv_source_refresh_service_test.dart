@@ -355,6 +355,40 @@ void main() {
       expect(config?.lastError, isNotNull);
     },
   );
+
+  test('refresh parses naked stamps with the injected device offset', () async {
+    const nakedXmltv = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<tv>
+  <channel id="chan-1"><display-name>Channel 1</display-name></channel>
+  <programme start="20260717120000" stop="20260717123000" channel="chan-1">
+    <title>Local Noon</title>
+  </programme>
+</tv>
+''';
+    final dio = Dio()..httpClientAdapter = _FakeXmltvAdapter(nakedXmltv);
+    final offsetService = XmltvSourceRefreshService(
+      dio: dio,
+      sourceStore: sourceStore,
+      repository: repository,
+      downloadDirectoryProvider: () async => tempDir,
+      naiveOffsetProvider: () => const Duration(hours: 5, minutes: 30),
+    );
+
+    await offsetService.refresh('https://example.com/guide.xml');
+
+    final slice = await repository.loadCurrentNext(
+      channelIds: ['chan-1'],
+      now: DateTime.utc(2026, 7, 17, 6, 40),
+    );
+    expect(slice.entryForChannel('chan-1')?.current?.title, 'Local Noon');
+
+    final tooEarly = await repository.loadCurrentNext(
+      channelIds: ['chan-1'],
+      now: DateTime.utc(2026, 7, 17, 12, 10),
+    );
+    expect(tooEarly.entryForChannel('chan-1')?.current, isNull);
+  });
 }
 
 class _FakeXmltvAdapter implements HttpClientAdapter {

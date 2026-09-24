@@ -499,13 +499,13 @@ fn finish_current_next_programme(
         return;
     };
 
-    let Some(start_epoch_seconds) = parse_xmltv_timestamp_epoch_seconds(&start) else {
+    let Some(start_epoch_seconds) = parse_xmltv_timestamp_epoch_seconds(&start, 0) else {
         stats.invalid_timestamp_count += 1;
         return;
     };
     let stop_epoch_seconds = match programme.stop.as_deref() {
         Some(stop) => {
-            let Some(stop_epoch_seconds) = parse_xmltv_timestamp_epoch_seconds(stop) else {
+            let Some(stop_epoch_seconds) = parse_xmltv_timestamp_epoch_seconds(stop, 0) else {
                 stats.invalid_timestamp_count += 1;
                 return;
             };
@@ -546,7 +546,7 @@ fn finish_current_next_programme(
     }
 }
 
-fn parse_xmltv_timestamp_epoch_seconds(value: &str) -> Option<i64> {
+fn parse_xmltv_timestamp_epoch_seconds(value: &str, naive_offset_seconds: i64) -> Option<i64> {
     let value = value.trim();
     if value.len() < 14 {
         return None;
@@ -584,6 +584,8 @@ fn parse_xmltv_timestamp_epoch_seconds(value: &str) -> Option<i64> {
         } else {
             epoch_seconds + offset_seconds
         };
+    } else if naive_offset_seconds != 0 {
+        epoch_seconds -= naive_offset_seconds;
     }
 
     Some(epoch_seconds)
@@ -785,7 +787,7 @@ mod tests {
 
     #[test]
     fn parses_current_next_for_requested_channels_only() {
-        let now = parse_xmltv_timestamp_epoch_seconds("20260715093000 +0000").unwrap();
+        let now = parse_xmltv_timestamp_epoch_seconds("20260715093000 +0000", 0).unwrap();
         let result = parse_xmltv_current_next_str(
             r#"<tv>
   <programme channel="ignored" start="20260715090000 +0000" stop="20260715100000 +0000"><title>Ignored</title></programme>
@@ -822,7 +824,7 @@ mod tests {
 
     #[test]
     fn current_next_uses_default_duration_and_timezone_offsets() {
-        let now = parse_xmltv_timestamp_epoch_seconds("20260715090000 +0000").unwrap();
+        let now = parse_xmltv_timestamp_epoch_seconds("20260715090000 +0000", 0).unwrap();
         let result = parse_xmltv_current_next_str(
             r#"<tv>
   <programme channel="news" start="20260715143000 +0530"><title>Current Offset</title></programme>
@@ -847,7 +849,7 @@ mod tests {
 
     #[test]
     fn current_next_rejects_invalid_timestamps() {
-        let now = parse_xmltv_timestamp_epoch_seconds("20260715090000 +0000").unwrap();
+        let now = parse_xmltv_timestamp_epoch_seconds("20260715090000 +0000", 0).unwrap();
         let result = parse_xmltv_current_next_str(
             r#"<tv>
   <programme channel="news" start="not-a-time"><title>Bad Start</title></programme>
@@ -867,5 +869,17 @@ mod tests {
         );
         assert_eq!(result.stats.invalid_timestamp_count, 2);
         assert_eq!(result.stats.matched_programme_count, 1);
+    }
+
+    #[test]
+    fn naked_stamp_subtracts_naive_offset_tagged_ignores_it() {
+        let ist = 5 * 3600 + 30 * 60;
+        let naked = parse_xmltv_timestamp_epoch_seconds("20260715090000", ist).unwrap();
+        let utc_0330 = parse_xmltv_timestamp_epoch_seconds("20260715033000 +0000", 0).unwrap();
+        assert_eq!(naked, utc_0330);
+
+        let tagged = parse_xmltv_timestamp_epoch_seconds("20260715090000 +0000", ist).unwrap();
+        let utc_0900 = parse_xmltv_timestamp_epoch_seconds("20260715090000 +0000", 0).unwrap();
+        assert_eq!(tagged, utc_0900);
     }
 }
