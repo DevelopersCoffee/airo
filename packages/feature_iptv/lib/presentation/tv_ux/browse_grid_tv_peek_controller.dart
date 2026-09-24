@@ -10,9 +10,8 @@ import '../widgets/tv_mini_guide_overlay.dart';
 /// One muted preview decoder for the TV library grid — same session class as
 /// [TvMiniGuideOverlay], owned by [ChannelLibraryGrid] instead of Watch.
 class BrowseGridTvPeekController {
-  BrowseGridTvPeekController({
-    required TvMiniGuidePreviewFactory previewFactory,
-  }) : _previewFactory = previewFactory;
+  BrowseGridTvPeekController({required TvMiniGuidePreviewFactory previewFactory})
+    : _previewFactory = previewFactory;
 
   static const settleDuration = Duration(milliseconds: 500);
   static const firstFrameTimeout = Duration(seconds: 4);

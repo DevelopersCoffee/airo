@@ -562,9 +562,7 @@ class _ChannelLibraryGridState extends ConsumerState<ChannelLibraryGrid> {
                               child: SizedBox(
                                 width: 22,
                                 height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
+                                child: CircularProgressIndicator(strokeWidth: 2),
                               ),
                             )
                           : const SizedBox.shrink(),
@@ -1041,8 +1039,7 @@ class _ChannelTileState extends State<_ChannelTile> {
       useSafeArea: true,
       builder: (sheetContext) => _ChannelActionsSheet(
         channel: widget.channel,
-        onPlay:
-            widget.onSelected == null && widget.onSelectWithPeekRelease == null
+        onPlay: widget.onSelected == null && widget.onSelectWithPeekRelease == null
             ? null
             : _selectNow,
         inMultiview: widget.inMultiview,
@@ -1104,9 +1101,7 @@ class _ChannelTileState extends State<_ChannelTile> {
                 ? null
                 : () => widget.onFavoriteToggle!(widget.channel),
             favoriteKey: ValueKey('channel-favorite-${widget.channel.id}'),
-            onTap:
-                widget.onSelected == null &&
-                    widget.onSelectWithPeekRelease == null
+            onTap: widget.onSelected == null && widget.onSelectWithPeekRelease == null
                 ? null
                 : _selectNow,
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
@@ -1120,9 +1115,7 @@ class _ChannelTileState extends State<_ChannelTile> {
             semanticLabel: semanticLabel,
             logoUrl: widget.channel.effectiveLogoUrl,
             initials: _initialsFor(widget.channel.name),
-            onTap:
-                widget.onSelected == null &&
-                    widget.onSelectWithPeekRelease == null
+            onTap: widget.onSelected == null && widget.onSelectWithPeekRelease == null
                 ? null
                 : _selectNow,
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
@@ -1135,9 +1128,7 @@ class _ChannelTileState extends State<_ChannelTile> {
             subtitle: subtitle,
             logoUrl: widget.channel.effectiveLogoUrl,
             initials: _initialsFor(widget.channel.name),
-            onTap:
-                widget.onSelected == null &&
-                    widget.onSelectWithPeekRelease == null
+            onTap: widget.onSelected == null && widget.onSelectWithPeekRelease == null
                 ? null
                 : _selectNow,
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
