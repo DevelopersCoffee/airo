@@ -13,6 +13,7 @@ import 'package:platform_streams/platform_streams.dart';
 
 import '../../application/providers/cast_multiview_receiver_provider.dart';
 import '../../application/providers/channel_filters_provider.dart';
+import '../../application/providers/guide_providers.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/connectivity_provider.dart';
 import '../../application/providers/control_row_visibility_provider.dart';
@@ -155,6 +156,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   @override
   Widget build(BuildContext context) {
     final filters = ref.watch(channelFiltersProvider);
+    ref.watch(countryXmltvGuideSyncProvider);
     final metadata = widget.enrichMetadata
         ? ref.watch(channelBrowseMetadataProvider).value ??
               widget.metadataByChannelId
