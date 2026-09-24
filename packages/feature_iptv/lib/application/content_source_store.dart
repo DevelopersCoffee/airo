@@ -20,6 +20,8 @@ class ContentSourceConfig extends Equatable {
     this.accountStatus,
     this.accountExpiresAt,
     this.maxConnections,
+    this.streamUserAgent,
+    this.streamReferrer,
   });
 
   final String id;
@@ -30,6 +32,12 @@ class ContentSourceConfig extends Equatable {
   final String? accountStatus;
   final DateTime? accountExpiresAt;
   final int? maxConnections;
+
+  /// Default HTTP User-Agent for streams from this source (M3U/Xtream/Stalker).
+  final String? streamUserAgent;
+
+  /// Default HTTP Referer for streams from this source.
+  final String? streamReferrer;
 
   factory ContentSourceConfig.fromJson(Map<String, dynamic> json) {
     return ContentSourceConfig(
@@ -45,6 +53,8 @@ class ContentSourceConfig extends Equatable {
           ? null
           : DateTime.parse(json['accountExpiresAt'] as String).toUtc(),
       maxConnections: json['maxConnections'] as int?,
+      streamUserAgent: json['streamUserAgent'] as String?,
+      streamReferrer: json['streamReferrer'] as String?,
     );
   }
 
@@ -58,7 +68,33 @@ class ContentSourceConfig extends Equatable {
     if (accountExpiresAt != null)
       'accountExpiresAt': accountExpiresAt!.toUtc().toIso8601String(),
     if (maxConnections != null) 'maxConnections': maxConnections,
+    if (streamUserAgent != null) 'streamUserAgent': streamUserAgent,
+    if (streamReferrer != null) 'streamReferrer': streamReferrer,
   };
+
+  ContentSourceConfig copyWith({
+    String? streamUserAgent,
+    String? streamReferrer,
+    bool clearStreamUserAgent = false,
+    bool clearStreamReferrer = false,
+  }) {
+    return ContentSourceConfig(
+      id: id,
+      kind: kind,
+      label: label,
+      url: url,
+      macAddress: macAddress,
+      accountStatus: accountStatus,
+      accountExpiresAt: accountExpiresAt,
+      maxConnections: maxConnections,
+      streamUserAgent: clearStreamUserAgent
+          ? null
+          : (streamUserAgent ?? this.streamUserAgent),
+      streamReferrer: clearStreamReferrer
+          ? null
+          : (streamReferrer ?? this.streamReferrer),
+    );
+  }
 
   /// Builds the concrete [ContentSource] this config describes. Xtream and
   /// Jellyfin sources' credentials are NOT included here — the returned
@@ -103,6 +139,8 @@ class ContentSourceConfig extends Equatable {
     accountStatus,
     accountExpiresAt,
     maxConnections,
+    streamUserAgent,
+    streamReferrer,
   ];
 }
 
@@ -138,6 +176,17 @@ class ContentSourceStore {
   Future<void> remove(String id) async {
     final all = await getAll();
     all.removeWhere((c) => c.id == id);
+    await _save(all);
+  }
+
+  Future<void> update(
+    String id,
+    ContentSourceConfig Function(ContentSourceConfig) transform,
+  ) async {
+    final all = await getAll();
+    final index = all.indexWhere((config) => config.id == id);
+    if (index < 0) return;
+    all[index] = transform(all[index]);
     await _save(all);
   }
 

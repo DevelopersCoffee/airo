@@ -17,6 +17,7 @@ import 'package:platform_device_profile/platform_device_profile.dart';
 import "package:platform_playlist/platform_playlist.dart";
 import "package:platform_playlist_import/platform_playlist_import.dart";
 import '../content_source_store.dart';
+import '../source_stream_headers.dart';
 import '../mutable_xmltv_compact_epg_repository.dart';
 import '../../domain/favorite_reimport_coordinator.dart';
 import '../../domain/channel_region_availability.dart';
@@ -431,7 +432,12 @@ Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
       final outcome = await parser.fetchPlaylistOutcome(
         forceRefresh: forceRefresh,
       );
-      channels.addAll(outcome.channels);
+      channels.addAll(
+        applySourceStreamHeadersToAll(
+          channels: outcome.channels,
+          source: config,
+        ),
+      );
       if (outcome.sourceUnavailable) {
         // The parser reports an unreachable source rather than throwing, so
         // count it here or a dead source reads as an empty one.
@@ -536,11 +542,12 @@ Future<List<IPTVChannel>> _loadConfiguredXtreamChannels(
         healthTracker: healthTracker,
         sourceId: config.id,
       );
+      final loaded = await XtreamContentSourceAdapter(
+        client,
+        sourceId: config.id,
+      ).loadChannels();
       channels.addAll(
-        await XtreamContentSourceAdapter(
-          client,
-          sourceId: config.id,
-        ).loadChannels(),
+        applySourceStreamHeadersToAll(channels: loaded, source: config),
       );
       if (epgRepository is MutableXmltvCompactEpgRepository) {
         final prefix = '${config.id}-';
@@ -587,7 +594,10 @@ final configuredStalkerChannelsProvider = FutureProvider<List<IPTVChannel>>((
   var failedSources = 0;
   for (final config in stalkerConfigs) {
     try {
-      channels.addAll(await loader(config));
+      final loaded = await loader(config);
+      channels.addAll(
+        applySourceStreamHeadersToAll(channels: loaded, source: config),
+      );
     } catch (_) {
       // Stalker portal URLs and MAC addresses are not secrets by
       // themselves, but keep diagnostics coarse for consistency with

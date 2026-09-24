@@ -27,6 +27,41 @@ void main() {
     expect(await store.getActiveSourceId(), isNull);
   });
 
+  test('stream header fields round-trip through JSON', () async {
+    const config = ContentSourceConfig(
+      id: 'm3u-headers',
+      kind: ContentSourceKind.m3u,
+      label: 'Headers',
+      url: 'https://example.com/playlist.m3u',
+      streamUserAgent: 'Mozilla/5.0',
+      streamReferrer: 'https://portal.example/',
+    );
+
+    await store.add(config);
+    final all = await store.getAll();
+
+    expect(all.single.streamUserAgent, 'Mozilla/5.0');
+    expect(all.single.streamReferrer, 'https://portal.example/');
+  });
+
+  test('update replaces stream headers on an existing source', () async {
+    const config = ContentSourceConfig(
+      id: 'm3u-1',
+      kind: ContentSourceKind.m3u,
+      label: 'My Playlist',
+      url: 'https://example.com/playlist.m3u',
+    );
+    await store.add(config);
+
+    await store.update(
+      'm3u-1',
+      (existing) => existing.copyWith(streamUserAgent: 'Airo-TV'),
+    );
+
+    final updated = await store.getAll();
+    expect(updated.single.streamUserAgent, 'Airo-TV');
+  });
+
   test('add then getAll round-trips an M3U config', () async {
     const config = ContentSourceConfig(
       id: 'm3u-1',
