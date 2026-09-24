@@ -3,6 +3,7 @@ import 'package:feature_iptv/application/providers/channel_filters_provider.dart
 import 'package:feature_iptv/application/providers/channel_auto_scan_providers.dart';
 import 'package:feature_iptv/application/providers/connectivity_provider.dart';
 import 'package:feature_iptv/application/providers/control_row_visibility_provider.dart';
+import 'package:feature_iptv/application/providers/guide_providers.dart';
 import 'package:feature_iptv/application/providers/hotbar_channels_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/multiview_provider.dart';
@@ -66,6 +67,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
         streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
         isOnlineProvider.overrideWith((ref) => Stream.value(isOnline)),
         if (streamingState != null)
@@ -107,6 +109,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
         streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
       ],
     );
@@ -666,6 +669,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
           streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
           isOnlineProvider.overrideWith((ref) => Stream.value(true)),
         ],
@@ -736,6 +740,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
           streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
           isOnlineProvider.overrideWith((ref) => Stream.value(true)),
           multiviewProvider.overrideWith((ref) => controller),
@@ -809,6 +814,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
           streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
           isOnlineProvider.overrideWith((ref) => Stream.value(true)),
           multiviewProvider.overrideWith((ref) => controller),
@@ -887,6 +893,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
         streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
       ],
     );
@@ -930,6 +937,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
         streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
         isOnlineProvider.overrideWith((ref) => Stream.value(false)),
         connectivityServiceProvider.overrideWithValue(
@@ -980,6 +988,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
           streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
           isOnlineProvider.overrideWith((ref) => Stream.value(false)),
           connectivityServiceProvider.overrideWithValue(
@@ -1028,6 +1037,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          browseNowPlayingByChannelIdProvider.overrideWithValue(const {}),
           streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
           isOnlineProvider.overrideWith((ref) => Stream.value(false)),
           connectivityServiceProvider.overrideWithValue(

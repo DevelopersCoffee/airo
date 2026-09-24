@@ -8,6 +8,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
 import '../../../application/providers/channel_filters_provider.dart';
+import '../../../application/providers/guide_providers.dart';
 import '../../../application/providers/tv_font_mode_provider.dart';
 
 const _cardWidth = 155.0;
@@ -944,17 +945,37 @@ class _ChannelTileState extends State<_ChannelTile> {
 
   @override
   Widget build(BuildContext context) {
-    final country = effectiveChannelCountry(widget.channel, widget.metadata);
-    final languages = effectiveChannelLanguages(
-      widget.channel,
-      widget.metadata,
-    );
-    final subtitle = _subtitleFor(country, languages);
+    return Consumer(
+      builder: (context, ref, _) {
+        final nowTitle = ref.watch(
+          browseNowPlayingByChannelIdProvider.select(
+            (map) => map[widget.channel.id],
+          ),
+        );
+        final country = effectiveChannelCountry(
+          widget.channel,
+          widget.metadata,
+        );
+        final languages = effectiveChannelLanguages(
+          widget.channel,
+          widget.metadata,
+        );
+        final fallback = _subtitleFor(country, languages);
+        final subtitle = nowTitle ?? fallback;
+        final semanticLabel = nowTitle == null
+            ? widget.channel.name
+            : '${widget.channel.name}, $nowTitle';
 
-    final card = widget.horizontal
-        ? _HorizontalMediaCard(
+        final Widget card;
+        if (widget.horizontal) {
+          card = _HorizontalMediaCard(
             name: widget.channel.name,
             subtitle: subtitle,
+            semanticLabel: widget.channel.isAudioOnly
+                ? semanticLabel
+                : nowTitle == null
+                ? '$semanticLabel, live'
+                : semanticLabel,
             logoUrl: widget.channel.effectiveLogoUrl,
             initials: _initialsFor(widget.channel.name),
             isLive: !widget.channel.isAudioOnly,
@@ -969,19 +990,21 @@ class _ChannelTileState extends State<_ChannelTile> {
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
             onFocus: _scheduleFocusPlay,
             onUnfocus: _cancelFocusPlay,
-          )
-        : widget.compactGrid
-        ? _CompactGridMediaCard(
+          );
+        } else if (widget.compactGrid) {
+          card = _CompactGridMediaCard(
             name: widget.channel.name,
             subtitle: widget.compactGridShowSubtitle ? subtitle : null,
+            semanticLabel: semanticLabel,
             logoUrl: widget.channel.effectiveLogoUrl,
             initials: _initialsFor(widget.channel.name),
             onTap: widget.onSelected == null ? null : _selectNow,
             onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
             onFocus: _scheduleFocusPlay,
             onUnfocus: _cancelFocusPlay,
-          )
-        : MediaCard(
+          );
+        } else {
+          final mediaCard = MediaCard(
             name: widget.channel.name,
             subtitle: subtitle,
             logoUrl: widget.channel.effectiveLogoUrl,
@@ -991,16 +1014,22 @@ class _ChannelTileState extends State<_ChannelTile> {
             onFocus: _scheduleFocusPlay,
             onUnfocus: _cancelFocusPlay,
           );
+          card = nowTitle == null
+              ? mediaCard
+              : Semantics(label: semanticLabel, child: mediaCard);
+        }
 
-    return Stack(
-      children: [
-        card,
-        Positioned(
-          top: 7,
-          left: 7,
-          child: _AvailabilityDot(availability: widget.availability),
-        ),
-      ],
+        return Stack(
+          children: [
+            card,
+            Positioned(
+              top: 7,
+              left: 7,
+              child: _AvailabilityDot(availability: widget.availability),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1043,6 +1072,7 @@ class _CompactGridMediaCard extends StatelessWidget {
     required this.name,
     required this.initials,
     this.subtitle,
+    this.semanticLabel,
     this.logoUrl,
     this.onTap,
     this.onLongPress,
@@ -1053,6 +1083,7 @@ class _CompactGridMediaCard extends StatelessWidget {
   final String name;
   final String initials;
   final String? subtitle;
+  final String? semanticLabel;
   final String? logoUrl;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
@@ -1069,7 +1100,7 @@ class _CompactGridMediaCard extends StatelessWidget {
       onFocus: onFocus,
       onUnfocus: onUnfocus,
       borderRadius: 10,
-      semanticLabel: name,
+      semanticLabel: semanticLabel ?? name,
       semanticHint: 'Press OK to play channel',
       semanticButton: true,
       child: GestureDetector(
@@ -1156,6 +1187,7 @@ class _HorizontalMediaCard extends StatelessWidget {
     required this.name,
     required this.initials,
     this.subtitle,
+    this.semanticLabel,
     this.logoUrl,
     this.isLive = false,
     this.isAudio = false,
@@ -1172,6 +1204,7 @@ class _HorizontalMediaCard extends StatelessWidget {
   final String name;
   final String initials;
   final String? subtitle;
+  final String? semanticLabel;
   final String? logoUrl;
   final bool isLive;
   final bool isAudio;
@@ -1194,7 +1227,7 @@ class _HorizontalMediaCard extends StatelessWidget {
       onFocus: onFocus,
       onUnfocus: onUnfocus,
       borderRadius: 16,
-      semanticLabel: isLive ? '$name, live' : name,
+      semanticLabel: semanticLabel ?? (isLive ? '$name, live' : name),
       semanticHint: 'Press OK to play channel',
       semanticButton: true,
       child: GestureDetector(
