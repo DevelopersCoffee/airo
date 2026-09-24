@@ -49,7 +49,8 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         dioProvider.overrideWithValue(
-          Dio()..httpClientAdapter = _CatalogAdapter('not found', statusCode: 404),
+          Dio()
+            ..httpClientAdapter = _CatalogAdapter('not found', statusCode: 404),
         ),
         epgCatalogManifestUrlProvider.overrideWithValue(
           'https://example.com/iptv-data/manifest.json',
@@ -61,20 +62,24 @@ void main() {
     expect(await container.read(epgCatalogProvider.future), isEmpty);
   });
 
-  test('degrades to an empty list when no manifest URL is configured', () async {
-    final container = ProviderContainer(
-      overrides: [epgCatalogManifestUrlProvider.overrideWithValue('')],
-    );
-    addTearDown(container.dispose);
+  test(
+    'degrades to an empty list when no manifest URL is configured',
+    () async {
+      final container = ProviderContainer(
+        overrides: [epgCatalogManifestUrlProvider.overrideWithValue('')],
+      );
+      addTearDown(container.dispose);
 
-    expect(await container.read(epgCatalogProvider.future), isEmpty);
-  });
+      expect(await container.read(epgCatalogProvider.future), isEmpty);
+    },
+  );
 
   test('degrades to an empty list on malformed JSON response', () async {
     final container = ProviderContainer(
       overrides: [
         dioProvider.overrideWithValue(
-          Dio()..httpClientAdapter = _CatalogAdapter('not json', statusCode: 200),
+          Dio()
+            ..httpClientAdapter = _CatalogAdapter('not json', statusCode: 200),
         ),
         epgCatalogManifestUrlProvider.overrideWithValue(
           'https://example.com/iptv-data/manifest.json',

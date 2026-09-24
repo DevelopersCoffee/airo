@@ -8,6 +8,7 @@ Documentation for Airo releases and version history.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [Aika Stream v0.0.3](./AIKA_STREAM_v0.0.3.md) | 2026-09-24 | Two-pane 5/50/95 DJ split, premium handle, Play `0.0.3+23` |
 | [Airo v0.0.7](./AIRO_v0.0.7.md) | prepared | TV BACK fix, playlist merge, Coins AI; Mind under qualification |
 | [Airo v0.0.6](./AIRO_v0.0.6.md) | 2026-08-04 | Aggregate TV / full / Coins / macOS TV wave |
 | [Aika Stream v0.0.5](./AIRO_TV_v0.0.5.md) | 2026-07-22 | Product target consolidation, TV controls, filters, channel warmup |
@@ -64,6 +65,7 @@ Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 
 | Document | Description |
 |----------|-------------|
+| [Aika Stream v0.0.3](./AIKA_STREAM_v0.0.3.md) | Two-pane 5/50/95 DJ split, equal-power mix, Play `0.0.3+23` |
 | [Airo v0.0.7](./AIRO_v0.0.7.md) | Next candidate: TV BACK, playlist merge, Coins AI; prepared, not tagged |
 | [Airo v0.0.6](./AIRO_v0.0.6.md) | Aggregate TV / full / Coins / macOS TV stable wave |
 | [Aika Stream v0.0.5](./AIRO_TV_v0.0.5.md) | Product target consolidation, TV controls, filters, channel warmup |

@@ -63,22 +63,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
-  testWidgets(
-    'phone-sized viewport shows a compact fullscreen button',
-    (tester) async {
-      await pumpPlayer(tester);
+  testWidgets('phone-sized viewport shows a compact fullscreen button', (
+    tester,
+  ) async {
+    await pumpPlayer(tester);
 
-      expect(
-        find.byKey(const ValueKey('iptv-player-fullscreen-button-compact')),
-        findsOneWidget,
-      );
-      // The expanded layout's own button must not also render.
-      expect(
-        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
-        findsNothing,
-      );
-    },
-  );
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button-compact')),
+      findsOneWidget,
+    );
+    // The expanded layout's own button must not also render.
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      findsNothing,
+    );
+  });
 
   testWidgets(
     'tapping the compact fullscreen button flips the icon/tooltip and '
@@ -101,15 +100,14 @@ void main() {
     },
   );
 
-  testWidgets(
-    'showFullscreenButton: false suppresses the compact button too',
-    (tester) async {
-      await pumpPlayer(tester, showFullscreenButton: false);
+  testWidgets('showFullscreenButton: false suppresses the compact button too', (
+    tester,
+  ) async {
+    await pumpPlayer(tester, showFullscreenButton: false);
 
-      expect(
-        find.byKey(const ValueKey('iptv-player-fullscreen-button-compact')),
-        findsNothing,
-      );
-    },
-  );
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button-compact')),
+      findsNothing,
+    );
+  });
 }

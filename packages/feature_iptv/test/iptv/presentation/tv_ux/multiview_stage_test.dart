@@ -29,13 +29,16 @@ void main() {
     VoidCallback? onEmptySlotTap,
     MultiviewSplitRatio splitRatio = MultiviewSplitRatio.fifty,
     ValueChanged<MultiviewSplitRatio>? onSplitRatioChanged,
+    void Function(double fraction, double extent)? onSplitMixPreview,
+    double width = 640,
+    double height = 360,
   }) {
     return tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: SizedBox(
-            width: 640,
-            height: 360,
+            width: width,
+            height: height,
             child: MultiviewStage(
               sessions: sessions,
               featuredChannelId: sessions.first.id,
@@ -46,6 +49,7 @@ void main() {
               onEmptySlotTap: onEmptySlotTap,
               splitRatio: splitRatio,
               onSplitRatioChanged: onSplitRatioChanged,
+              onSplitMixPreview: onSplitMixPreview,
             ),
           ),
         ),
@@ -233,11 +237,29 @@ void main() {
     expect(sessions.last.selectedQuality, isNull);
   });
 
+  testWidgets('two-pane tile menu has no per-tile volume slider', (
+    tester,
+  ) async {
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('multiview-controls-one')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('multiview-volume-one')), findsNothing);
+  });
+
   testWidgets(
     'tile menu volume slider sets that tile volume independent of the '
     'other tile (manual mix, not the pool single-audible default)',
     (tester) async {
-      final sessions = [session('one'), session('two')];
+      final sessions = [session('one'), session('two'), session('three')];
       addTearDown(() => Future.wait(sessions.map((item) => item.close())));
       await pump(tester, sessions);
 
@@ -435,19 +457,116 @@ void main() {
     expect(panes[1].flex, 1);
   });
 
-  testWidgets('seventy stop paints flex 7/3 on the horizontal split', (
+  testWidgets('five stop paints 80dp floor flex at 360px width', (
     tester,
   ) async {
     final sessions = [session('one'), session('two')];
     addTearDown(() => Future.wait(sessions.map((item) => item.close())));
-    await pump(tester, sessions, splitRatio: MultiviewSplitRatio.seventy);
+    await pump(
+      tester,
+      sessions,
+      splitRatio: MultiviewSplitRatio.five,
+      width: 360,
+    );
 
+    final expectedFirst = (80 / 360 * 1000).round();
     final panes = splitExpanded(
       tester,
       const ValueKey('multiview-layout-split'),
     );
-    expect(panes[0].flex, 7);
-    expect(panes[1].flex, 3);
+    expect(
+      panes[0].flex,
+      inInclusiveRange(expectedFirst - 1, expectedFirst + 1),
+    );
+    expect(panes[1].flex, 1000 - panes[0].flex);
+  });
+
+  testWidgets('ninetyFive stop paints effective max flex at 1600px width', (
+    tester,
+  ) async {
+    const width = 1600.0;
+    tester.view.physicalSize = const Size(width, 360);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(
+      tester,
+      sessions,
+      splitRatio: MultiviewSplitRatio.ninetyFive,
+      width: width,
+    );
+
+    final expectedMin = (effectiveMultiviewSplitMin(width) * 1000).round();
+    final expectedMax = 1000 - expectedMin;
+    final panes = splitExpanded(
+      tester,
+      const ValueKey('multiview-layout-split'),
+    );
+    expect(panes[0].flex, expectedMax);
+    expect(panes[1].flex, expectedMin);
+  });
+
+  testWidgets('compact host uses a 48dp split hit sliver', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            height: 640,
+            child: MultiviewStage(
+              sessions: sessions,
+              featuredChannelId: sessions.first.id,
+              onPromote: (_) {},
+              splitRatio: MultiviewSplitRatio.fifty,
+            ),
+          ),
+        ),
+      ),
+    );
+    final box = tester.getSize(
+      find.byKey(const ValueKey('multiview-split-handle')),
+    );
+    expect(box.width, 48);
+  });
+
+  testWidgets('1920 host uses a 24dp split hit sliver', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sessions = [session('one'), session('two')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 1920,
+            height: 1080,
+            child: MultiviewStage(
+              sessions: sessions,
+              featuredChannelId: sessions.first.id,
+              onPromote: (_) {},
+              splitRatio: MultiviewSplitRatio.fifty,
+            ),
+          ),
+        ),
+      ),
+    );
+    final box = tester.getSize(
+      find.byKey(const ValueKey('multiview-split-handle')),
+    );
+    expect(box.width, 24);
   });
 
   testWidgets('stacked two-pane also shows the handle', (tester) async {
@@ -490,7 +609,7 @@ void main() {
     expect(Focus.maybeOf(handleContext)?.hasPrimaryFocus, isNot(true));
   });
 
-  testWidgets('drag toward the left edge snaps to thirty', (tester) async {
+  testWidgets('drag toward the left edge snaps to five', (tester) async {
     final sessions = [session('one'), session('two')];
     addTearDown(() => Future.wait(sessions.map((item) => item.close())));
     MultiviewSplitRatio? committed;
@@ -506,7 +625,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(committed, MultiviewSplitRatio.thirty);
+    expect(committed, MultiviewSplitRatio.five);
   });
 
   testWidgets('drag that stays near center snaps to fifty', (tester) async {
@@ -528,6 +647,43 @@ void main() {
 
     expect(committed, MultiviewSplitRatio.fifty);
   });
+
+  testWidgets(
+    'dragging the handle previews mix once per frame and not after up',
+    (tester) async {
+      final sessions = [session('one'), session('two')];
+      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+      final previews = <(double, double)>[];
+      MultiviewSplitRatio? committed;
+      await pump(
+        tester,
+        sessions,
+        onSplitRatioChanged: (ratio) => committed = ratio,
+        onSplitMixPreview: (fraction, extent) =>
+            previews.add((fraction, extent)),
+      );
+
+      final handle = find.byKey(const ValueKey('multiview-split-handle'));
+      final gesture = await tester.startGesture(tester.getCenter(handle));
+      // DragStartBehavior.start consumes the slop-winning move as onStart,
+      // so a second move is required before onUpdate / mix preview fires.
+      await gesture.moveBy(const Offset(-20, 0));
+      await gesture.moveBy(const Offset(-80, 0));
+      await tester.pump(); // flush the scheduled frame callback
+      expect(previews, isNotEmpty);
+      expect(previews.last.$1, inInclusiveRange(0.0, 1.0));
+      expect(previews.last.$2, greaterThan(0));
+      final countAtHold = previews.length;
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(committed, isNotNull);
+      expect(
+        previews.length,
+        countAtHold,
+      ); // cancel on end; no post-up mix apply
+    },
+  );
 
   testWidgets('tap on the handle does not commit a split', (tester) async {
     final sessions = [session('one'), session('two')];
@@ -565,7 +721,7 @@ void main() {
   }
 
   testWidgets(
-    'Right from fifty commits seventy; further Right leaves the handle',
+    'Right from fifty commits ninetyFive; further Right leaves the handle',
     (tester) async {
       final sessions = [session('one'), session('two')];
       addTearDown(() => Future.wait(sessions.map((item) => item.close())));
@@ -575,19 +731,19 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
-      expect(committed, [MultiviewSplitRatio.seventy]);
+      expect(committed, [MultiviewSplitRatio.ninetyFive]);
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: SizedBox(
-              width: 640,
+              width: 1600,
               height: 360,
               child: MultiviewStage(
                 sessions: sessions,
                 featuredChannelId: sessions.first.id,
                 onPromote: (_) {},
-                splitRatio: MultiviewSplitRatio.seventy,
+                splitRatio: MultiviewSplitRatio.ninetyFive,
                 onSplitRatioChanged: committed.add,
               ),
             ),
@@ -598,7 +754,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
 
-      expect(committed, [MultiviewSplitRatio.seventy]);
+      expect(committed, [MultiviewSplitRatio.ninetyFive]);
       expect(
         focusableNode(
           tester,

@@ -1,2 +1,5 @@
 export 'package:feature_iptv_core/feature_iptv_core.dart'
-    show IptvDestinationId, IptvNavigationDestination, iptvNavigationDestinations;
+    show
+        IptvDestinationId,
+        IptvNavigationDestination,
+        iptvNavigationDestinations;

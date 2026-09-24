@@ -19,6 +19,7 @@ class MultiviewStage extends StatelessWidget {
     this.onEmptySlotTap,
     this.splitRatio = MultiviewSplitRatio.fifty,
     this.onSplitRatioChanged,
+    this.onSplitMixPreview,
   });
 
   final List<IptvMultiviewSession> sessions;
@@ -40,6 +41,7 @@ class MultiviewStage extends StatelessWidget {
 
   final MultiviewSplitRatio splitRatio;
   final ValueChanged<MultiviewSplitRatio>? onSplitRatioChanged;
+  final void Function(double fraction, double extent)? onSplitMixPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +69,7 @@ class MultiviewStage extends StatelessWidget {
         onSwap: onSwap,
         featuredChannelId: featuredChannelId,
         onDismiss: onDismiss,
+        allowVolumeSlider: !kind.isTwoPane,
       );
     }
 
@@ -81,6 +84,7 @@ class MultiviewStage extends StatelessWidget {
           axis: Axis.horizontal,
           ratio: splitRatio,
           onSplitRatioChanged: onSplitRatioChanged,
+          onSplitMixPreview: onSplitMixPreview,
           first: cell(0),
           second: cell(1),
         ),
@@ -91,6 +95,7 @@ class MultiviewStage extends StatelessWidget {
           axis: Axis.vertical,
           ratio: splitRatio,
           onSplitRatioChanged: onSplitRatioChanged,
+          onSplitMixPreview: onSplitMixPreview,
           first: cell(0),
           second: cell(1),
         ),
@@ -220,6 +225,7 @@ class _PromotableSurface extends StatefulWidget {
     required this.onPromote,
     required this.onSwap,
     required this.featuredChannelId,
+    required this.allowVolumeSlider,
     this.onDismiss,
   });
 
@@ -228,6 +234,7 @@ class _PromotableSurface extends StatefulWidget {
   final ValueChanged<String> onPromote;
   final void Function(String firstId, String secondId)? onSwap;
   final String? featuredChannelId;
+  final bool allowVolumeSlider;
 
   /// Removes this tile from MultiView. Null hides the dismiss control.
   final ValueChanged<String>? onDismiss;
@@ -263,8 +270,12 @@ class _PromotableSurfaceState extends State<_PromotableSurface> {
               widget.onSwap == null
           ? null
           : () => widget.onSwap?.call(widget.featuredChannelId!, session.id),
-      onSecondaryAction: () =>
-          _showTileControls(context, session, onDismiss: widget.onDismiss),
+      onSecondaryAction: () => _showTileControls(
+        context,
+        session,
+        onDismiss: widget.onDismiss,
+        allowVolumeSlider: widget.allowVolumeSlider,
+      ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => widget.onPromote(session.id),
@@ -329,6 +340,7 @@ Future<void> _showTileControls(
   BuildContext context,
   IptvMultiviewSession session, {
   ValueChanged<String>? onDismiss,
+  bool allowVolumeSlider = true,
 }) {
   return showDialog<void>(
     context: context,
@@ -347,34 +359,37 @@ Future<void> _showTileControls(
           key: ValueKey('multiview-controls-${session.id}'),
           title: Text('${session.channel.name} controls'),
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(24, 4, 24, 4),
-              child: Text('Volume'),
-            ),
-            // Sets this tile's volume directly, independent of which tile
-            // the pool currently treats as "featured" -- lets a viewer mix
-            // in a second stream's audio at a partial level instead of the
-            // pool's default one-audible-tile-at-a-time routing. The next
-            // promote/add/remove resets every tile back to that default,
-            // overwriting this (see AiroMultiviewSession's doc comment).
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  Icon(
-                    state.volume <= 0 ? Icons.volume_off : Icons.volume_up,
-                    size: 20,
-                  ),
-                  Expanded(
-                    child: Slider(
-                      key: ValueKey('multiview-volume-${session.id}'),
-                      value: state.volume.clamp(0.0, 1.0),
-                      onChanged: (value) => session.setVolume(value),
-                    ),
-                  ),
-                ],
+            if (allowVolumeSlider) ...[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(24, 4, 24, 4),
+                child: Text('Volume'),
               ),
-            ),
+              // Sets this tile's volume directly, independent of which tile
+              // the pool currently treats as "featured" -- lets a viewer mix
+              // in a second stream's audio at a partial level instead of the
+              // pool's default one-audible-tile-at-a-time routing. The next
+              // promote/add/remove resets every tile back to that default,
+              // overwriting this (see AiroMultiviewSession's doc comment).
+              // Two-pane hides this fader: the split handle drives the mix.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Icon(
+                      state.volume <= 0 ? Icons.volume_off : Icons.volume_up,
+                      size: 20,
+                    ),
+                    Expanded(
+                      child: Slider(
+                        key: ValueKey('multiview-volume-${session.id}'),
+                        value: state.volume.clamp(0.0, 1.0),
+                        onChanged: (value) => session.setVolume(value),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const Padding(
               padding: EdgeInsets.fromLTRB(24, 4, 24, 4),
               child: Text('Audio track'),

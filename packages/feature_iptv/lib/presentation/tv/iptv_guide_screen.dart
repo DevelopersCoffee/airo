@@ -384,10 +384,9 @@ class _GuideFilterChips extends ConsumerWidget {
               child: FilterChip(
                 label: Text(category),
                 selected: selectedCategory == category,
-                onSelected: (selected) => ref
-                        .read(guideCategoryFilterProvider.notifier)
-                        .state =
-                    selected ? category : null,
+                onSelected: (selected) =>
+                    ref.read(guideCategoryFilterProvider.notifier).state =
+                        selected ? category : null,
               ),
             ),
         ],

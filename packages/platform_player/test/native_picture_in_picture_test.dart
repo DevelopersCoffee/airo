@@ -65,16 +65,18 @@ void main() {
     expect(await AiroNativePictureInPicture.requestEnter(), isFalse);
   });
 
-  test('setAutoEnterEnabled forwards the enabled flag to the platform',
-      () async {
-    await AiroNativePictureInPicture.setAutoEnterEnabled(true);
-    expect(calls.single.method, 'setAutoEnterEnabled');
-    expect(calls.single.arguments, {'enabled': true});
+  test(
+    'setAutoEnterEnabled forwards the enabled flag to the platform',
+    () async {
+      await AiroNativePictureInPicture.setAutoEnterEnabled(true);
+      expect(calls.single.method, 'setAutoEnterEnabled');
+      expect(calls.single.arguments, {'enabled': true});
 
-    calls.clear();
-    await AiroNativePictureInPicture.setAutoEnterEnabled(false);
-    expect(calls.single.arguments, {'enabled': false});
-  });
+      calls.clear();
+      await AiroNativePictureInPicture.setAutoEnterEnabled(false);
+      expect(calls.single.arguments, {'enabled': false});
+    },
+  );
 
   test('setAutoEnterEnabled no-ops when platform impl is missing', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

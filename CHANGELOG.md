@@ -282,6 +282,22 @@ notarization are out of scope. See
 
 - Phone-media LAN server no longer torn down while the receiver is paused.
 
+## [Aika Stream v0.0.3] - 2026-09-24
+
+Play `0.0.3+23`. Do not reuse versionCode 22. Notes:
+[docs/release/AIKA_STREAM_v0.0.3.md](docs/release/AIKA_STREAM_v0.0.3.md).
+
+### Added
+
+- Two-pane MultiView snaps 5/50/95 with an 80dp min pane.
+- Equal-power DJ mix follows the split bar; system volume is unchanged.
+- Compact hosts keep a 48dp handle hit; TV uses a 24dp short hairline grip.
+
+### Changed
+
+- Two-pane tile volume slider is hidden so the bar is the only mix control.
+- Cast mute-all stays silent in two-pane instead of remixing.
+
 ## [Airo TV v0.0.2] - 2026-07-14
 
 ### Added
@@ -309,6 +325,7 @@ notarization are out of scope. See
 - Android TV package `io.airo.app.tv`.
 - IPTV playlist import, search, playback, Cast controls, and Play Store readiness notes.
 
+[Aika Stream v0.0.3]: https://github.com/DevelopersCoffee/airo/compare/aika-stream-v0.0.2...aika-stream-v0.0.3
 [Airo TV v0.0.5]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.4...airo-tv-v0.0.5
 [Airo TV v0.0.4]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.3...airo-tv-v0.0.4
 [Airo TV v0.0.4-rc.1]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.3...airo-tv-v0.0.4-rc.1

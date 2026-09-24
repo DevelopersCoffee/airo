@@ -60,26 +60,29 @@ void main() {
       });
     });
 
-    test('an onCommand call decodes and surfaces on the commands stream', () async {
-      final transport = AiroCastReceiverMultiviewTransport();
-      final future = transport.commands.first;
+    test(
+      'an onCommand call decodes and surfaces on the commands stream',
+      () async {
+        final transport = AiroCastReceiverMultiviewTransport();
+        final future = transport.commands.first;
 
-      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .handlePlatformMessage(
-            channel.name,
-            channel.codec.encodeMethodCall(
-              MethodCall('onCommand', {
-                'message': jsonEncode(
-                  const MultiviewPromoteCommand(slotId: 'yrf-music').toJson(),
-                ),
-              }),
-            ),
-            (_) {},
-          );
+        await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .handlePlatformMessage(
+              channel.name,
+              channel.codec.encodeMethodCall(
+                MethodCall('onCommand', {
+                  'message': jsonEncode(
+                    const MultiviewPromoteCommand(slotId: 'yrf-music').toJson(),
+                  ),
+                }),
+              ),
+              (_) {},
+            );
 
-      final command = await future;
-      expect(command, const MultiviewPromoteCommand(slotId: 'yrf-music'));
-    });
+        final command = await future;
+        expect(command, const MultiviewPromoteCommand(slotId: 'yrf-music'));
+      },
+    );
 
     test('ignores a malformed onCommand payload instead of throwing', () async {
       final transport = AiroCastReceiverMultiviewTransport();
