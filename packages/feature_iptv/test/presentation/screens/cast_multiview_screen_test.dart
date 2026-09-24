@@ -207,35 +207,34 @@ void main() {
     expect(receivedCommands, [const MultiviewMuteAllCommand()]);
   });
 
-  testWidgets(
-    'Mute all is disabled once every tile is already unfeatured',
-    (tester) async {
-      final link = FakeMultiviewCastLink();
-      addTearDown(link.dispose);
+  testWidgets('Mute all is disabled once every tile is already unfeatured', (
+    tester,
+  ) async {
+    final link = FakeMultiviewCastLink();
+    addTearDown(link.dispose);
 
-      await pump(tester, transport: link.sender);
-      await tester.pump();
-      await link.receiver.publishState(
-        const MultiviewCastState(
-          capacity: 2,
-          slots: [
-            MultiviewCastSlot(
-              slotId: 'aajtak-hd',
-              channelId: 'aajtak-hd',
-              channelName: 'Aaj Tak HD',
-              featured: false,
-            ),
-          ],
-        ),
-      );
-      await tester.pump();
+    await pump(tester, transport: link.sender);
+    await tester.pump();
+    await link.receiver.publishState(
+      const MultiviewCastState(
+        capacity: 2,
+        slots: [
+          MultiviewCastSlot(
+            slotId: 'aajtak-hd',
+            channelId: 'aajtak-hd',
+            channelName: 'Aaj Tak HD',
+            featured: false,
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
 
-      final button = tester.widget<TextButton>(
-        find.byKey(const ValueKey('cast-multiview-mute-all')),
-      );
-      expect(button.onPressed, isNull);
-    },
-  );
+    final button = tester.widget<TextButton>(
+      find.byKey(const ValueKey('cast-multiview-mute-all')),
+    );
+    expect(button.onPressed, isNull);
+  });
 
   testWidgets('creating a layout saves it and it shows up in the list', (
     tester,
@@ -262,9 +261,7 @@ void main() {
     // button stays disabled" test below already uses).
     tester
         .widget<CheckboxListTile>(
-          find.byKey(
-            const ValueKey('cast-multiview-channel-option-aajtak-hd'),
-          ),
+          find.byKey(const ValueKey('cast-multiview-channel-option-aajtak-hd')),
         )
         .onChanged!(true);
     await tester.pump();

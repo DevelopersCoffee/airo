@@ -192,4 +192,3 @@ class _VoiceSearchOverlayState extends ConsumerState<VoiceSearchOverlay>
     );
   }
 }
-

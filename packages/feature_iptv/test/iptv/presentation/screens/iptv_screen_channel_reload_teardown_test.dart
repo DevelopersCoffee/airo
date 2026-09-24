@@ -38,9 +38,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          streamProbeTransportProvider.overrideWithValue(
-            _FakeProbeTransport(),
-          ),
+          streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
           channelBrowseMetadataProvider.overrideWith(
             (ref) async => const <String, ChannelBrowseMetadata>{},
           ),

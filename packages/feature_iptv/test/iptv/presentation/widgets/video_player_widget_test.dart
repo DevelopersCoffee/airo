@@ -315,27 +315,27 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-      await tester.pump();
-      expect(service.currentState.currentChannel?.id, 'news-1');
-      expect(find.text('City News Live'), findsOneWidget);
-      expect(find.text('News'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(service.currentState.currentChannel?.id, 'news-1');
+    expect(find.text('City News Live'), findsOneWidget);
+    expect(find.text('News'), findsOneWidget);
 
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(
-        FocusManager.instance.primaryFocus?.debugLabel,
-        isNot('player center control'),
-      );
-      expect(
-        find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
-        findsNothing,
-      );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      isNot('player center control'),
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-tv-transport-play-pause')),
+      findsNothing,
+    );
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-      await tester.pump();
-      expect(service.currentState.currentChannel?.id, 'movies-1');
-      expect(find.text('Cinema Prime'), findsOneWidget);
-      expect(find.text('Uncategorized'), findsNothing);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(service.currentState.currentChannel?.id, 'movies-1');
+    expect(find.text('Cinema Prime'), findsOneWidget);
+    expect(find.text('Uncategorized'), findsNothing);
 
     await service.stop();
   });

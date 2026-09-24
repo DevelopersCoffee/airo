@@ -29,7 +29,7 @@ before release.
 
 Airo TV does not require a mandatory account for the basic player flow.
 
-No hidden telemetry is documented for Airo TV v0.0.2. If analytics, crash
+No hidden telemetry is documented for Airo TV v0.0.3. If analytics, crash
 reporting, or diagnostics are added to a future public release, the privacy
 policy, release notes, and relevant settings must be updated before that release
 ships.

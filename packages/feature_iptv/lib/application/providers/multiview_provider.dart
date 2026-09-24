@@ -81,6 +81,8 @@ class MultiviewController extends StateNotifier<MultiviewState> {
   bool _primaryHeldByMultiview = false;
   IPTVChannel? _primaryChannelHeldForMultiview;
   double _primaryVolumeHeldForMultiview = 1;
+  double _lastSplitExtent = 1600;
+  int _mixGeneration = 0;
   bool _disposed = false;
 
   /// `StateNotifier.state` is protected — this is the public read a
@@ -92,6 +94,7 @@ class MultiviewController extends StateNotifier<MultiviewState> {
     if (_pool.state.contains(channel.id)) {
       await _pool.remove(channel.id);
       if (_pool.state.count == 0) await _resumePrimary();
+      _scheduleTwoPaneMix();
       return MultiviewToggleResult.removed;
     }
 
@@ -108,6 +111,7 @@ class MultiviewController extends StateNotifier<MultiviewState> {
     } else if (result == AiroMultiviewAddResult.added && firstSession) {
       await _releasePrimaryDecoder();
     }
+    _scheduleTwoPaneMix();
     return switch (result) {
       AiroMultiviewAddResult.added => MultiviewToggleResult.added,
       AiroMultiviewAddResult.capacityReached =>
@@ -140,6 +144,7 @@ class MultiviewController extends StateNotifier<MultiviewState> {
       id: newChannel.id,
       openSession: () => _sessionFactory(newChannel),
     );
+    _scheduleTwoPaneMix();
     return switch (result) {
       AiroMultiviewAddResult.added => MultiviewToggleResult.added,
       AiroMultiviewAddResult.capacityReached =>
@@ -149,16 +154,38 @@ class MultiviewController extends StateNotifier<MultiviewState> {
     };
   }
 
-  Future<void> promote(String channelId) => _pool.promote(channelId);
+  Future<void> promote(String channelId) async {
+    final twoPane = _isTwoPane;
+    await _pool.promote(channelId, routeAudio: !twoPane);
+    if (twoPane) {
+      await _applyTwoPaneMix(
+        state.splitRatio.firstFraction,
+        extent: _lastSplitExtent,
+      );
+    }
+  }
 
   /// Silences every active tile — see [AiroMultiviewPool.muteAll].
-  Future<void> muteAll() => _pool.muteAll();
+  Future<void> muteAll() async {
+    _invalidateTwoPaneMix();
+    await _pool.muteAll();
+  }
 
-  void swap(String firstChannelId, String secondChannelId) =>
-      _pool.swap(firstChannelId, secondChannelId);
+  void swap(String firstChannelId, String secondChannelId) {
+    _pool.swap(firstChannelId, secondChannelId);
+    if (_isTwoPane) {
+      unawaited(
+        _applyTwoPaneMix(
+          state.splitRatio.firstFraction,
+          extent: _lastSplitExtent,
+        ),
+      );
+    }
+  }
 
   void setLayout(MultiviewLayoutKind layout) {
     if (_disposed) return;
+    final wasTwoPane = _isTwoPane;
     state = MultiviewState(
       sessions: state.sessions,
       featuredChannelId: state.featuredChannelId,
@@ -170,15 +197,17 @@ class MultiviewController extends StateNotifier<MultiviewState> {
         current: state.splitRatio,
       ),
     );
+    if (_isTwoPane) {
+      _scheduleTwoPaneMix();
+    } else if (wasTwoPane) {
+      _invalidateTwoPaneMix();
+      unawaited(_restoreExclusiveFeaturedAudio());
+    }
   }
 
   void setSplitRatio(MultiviewSplitRatio ratio) {
     if (_disposed) return;
-    final kind = resolveMultiviewLayout(
-      preferred: state.layout,
-      sessionCount: state.sessions.length,
-    );
-    if (!kind.isTwoPane) return;
+    if (!_isTwoPane) return;
     state = MultiviewState(
       sessions: state.sessions,
       featuredChannelId: state.featuredChannelId,
@@ -186,6 +215,17 @@ class MultiviewController extends StateNotifier<MultiviewState> {
       layout: state.layout,
       splitRatio: ratio,
     );
+    unawaited(_applyTwoPaneMix(ratio.firstFraction, extent: _lastSplitExtent));
+  }
+
+  /// Live equal-power mix for a dragged split fraction.
+  Future<void> previewSplitMix(
+    double firstFraction, {
+    required double extent,
+  }) async {
+    if (_disposed || !_isTwoPane) return;
+    _lastSplitExtent = extent;
+    await _applyTwoPaneMix(firstFraction, extent: extent);
   }
 
   MultiviewSplitRatio _splitRatioFor({
@@ -203,12 +243,73 @@ class MultiviewController extends StateNotifier<MultiviewState> {
   Future<void> close() async {
     if (_disposed) return;
     _disposed = true;
+    _mixGeneration++;
     await _pool.close();
     await _resumePrimary();
   }
 
+  bool get _isTwoPane => resolveMultiviewLayout(
+    preferred: state.layout,
+    sessionCount: state.sessions.length,
+  ).isTwoPane;
+
+  bool _stillTwoPanePair(
+    IptvMultiviewSession first,
+    IptvMultiviewSession second,
+    int generation,
+  ) {
+    return !_disposed &&
+        generation == _mixGeneration &&
+        state.sessions.length == 2 &&
+        identical(state.sessions[0], first) &&
+        identical(state.sessions[1], second);
+  }
+
+  Future<void> _applyTwoPaneMix(
+    double firstFraction, {
+    required double extent,
+  }) async {
+    final generation = ++_mixGeneration;
+    if (_disposed || state.sessions.length != 2) return;
+    final first = state.sessions[0];
+    final second = state.sessions[1];
+    final gains = multiviewSplitGains(
+      firstFraction,
+      extent: extent,
+      globalVolume: _primaryVolumeHeldForMultiview,
+    );
+    if (!_stillTwoPanePair(first, second, generation)) return;
+    await first.setVolume(gains.first);
+    if (!_stillTwoPanePair(first, second, generation)) return;
+    await second.setVolume(gains.second);
+  }
+
+  void _invalidateTwoPaneMix() {
+    _mixGeneration++;
+  }
+
+  void _scheduleTwoPaneMix() {
+    if (_disposed || !_isTwoPane) return;
+    unawaited(
+      _applyTwoPaneMix(
+        state.splitRatio.firstFraction,
+        extent: _lastSplitExtent,
+      ),
+    );
+  }
+
+  Future<void> _restoreExclusiveFeaturedAudio() async {
+    final generation = _mixGeneration;
+    final featuredId = state.featuredChannelId;
+    for (final session in List<IptvMultiviewSession>.of(state.sessions)) {
+      if (_disposed || _isTwoPane || generation != _mixGeneration) return;
+      await session.setVolume(session.id == featuredId ? 1 : 0);
+    }
+  }
+
   void _syncFromPool(AiroMultiviewPoolState poolState) {
     if (_disposed) return;
+    final wasTwoPane = _isTwoPane;
     state = MultiviewState(
       sessions: List.unmodifiable(
         poolState.sessions.cast<IptvMultiviewSession>(),
@@ -222,6 +323,15 @@ class MultiviewController extends StateNotifier<MultiviewState> {
         current: state.splitRatio,
       ),
     );
+    if (_isTwoPane) {
+      if (poolState.featuredSessionId == null) {
+        _invalidateTwoPaneMix();
+        return;
+      }
+      _scheduleTwoPaneMix();
+    } else if (wasTwoPane) {
+      _invalidateTwoPaneMix();
+    }
   }
 
   Future<void> _holdPrimaryForMultiview() async {

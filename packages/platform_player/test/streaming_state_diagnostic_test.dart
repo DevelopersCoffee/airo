@@ -22,9 +22,7 @@ void main() {
     });
 
     test('clearDiagnostic removes a stale diagnostic', () {
-      final withDiagnostic = StreamingState().copyWith(
-        diagnostic: diagnostic,
-      );
+      final withDiagnostic = StreamingState().copyWith(diagnostic: diagnostic);
 
       final cleared = withDiagnostic.copyWith(clearDiagnostic: true);
 

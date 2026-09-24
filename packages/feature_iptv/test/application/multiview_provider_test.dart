@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:feature_iptv/application/multiview_split_ratio.dart';
 import 'package:feature_iptv/application/providers/multiview_provider.dart';
@@ -260,8 +261,8 @@ void main() {
       expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
       await controller.toggle(channel('one'));
       await controller.toggle(channel('two'));
-      controller.setSplitRatio(MultiviewSplitRatio.seventy);
-      expect(controller.state.splitRatio, MultiviewSplitRatio.seventy);
+      controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
+      expect(controller.state.splitRatio, MultiviewSplitRatio.ninetyFive);
     },
   );
 
@@ -275,7 +276,7 @@ void main() {
 
     await controller.toggle(channel('one'));
     await controller.toggle(channel('two'));
-    controller.setSplitRatio(MultiviewSplitRatio.seventy);
+    controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
     expect(
       await controller.toggle(channel('three')),
       MultiviewToggleResult.added,
@@ -293,13 +294,13 @@ void main() {
 
     await controller.toggle(channel('one'));
     await controller.toggle(channel('two'));
-    controller.setSplitRatio(MultiviewSplitRatio.thirty);
+    controller.setSplitRatio(MultiviewSplitRatio.five);
     controller.setLayout(MultiviewLayoutKind.spotlight);
     expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
   });
 
   test(
-    'returning to two-pane after a reset starts at fifty, not the old 70',
+    'returning to two-pane after a reset starts at fifty, not the old 95',
     () async {
       final controller = MultiviewController(
         decoderBudget: 4,
@@ -310,7 +311,7 @@ void main() {
 
       await controller.toggle(channel('one'));
       await controller.toggle(channel('two'));
-      controller.setSplitRatio(MultiviewSplitRatio.seventy);
+      controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
       controller.setLayout(MultiviewLayoutKind.quad);
       expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
       controller.setLayout(MultiviewLayoutKind.splitHorizontal);
@@ -328,9 +329,164 @@ void main() {
 
     await controller.toggle(channel('one'));
     await controller.toggle(channel('two'));
-    controller.setSplitRatio(MultiviewSplitRatio.thirty);
+    controller.setSplitRatio(MultiviewSplitRatio.five);
     controller.setLayout(MultiviewLayoutKind.splitVertical);
-    expect(controller.state.splitRatio, MultiviewSplitRatio.thirty);
+    expect(controller.state.splitRatio, MultiviewSplitRatio.five);
+  });
+
+  test('setSplitRatio on two-pane applies equal-power gains', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    expect(controller.state.sessions, hasLength(2));
+
+    controller.setSplitRatio(MultiviewSplitRatio.five);
+    await Future<void>.delayed(Duration.zero);
+    expect(sessions['one']!.volume, closeTo(0, 0.01));
+    expect(sessions['two']!.volume, closeTo(1, 0.01));
+
+    controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
+    await Future<void>.delayed(Duration.zero);
+    expect(sessions['one']!.volume, closeTo(1, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+  });
+
+  test('promote in two-pane does not mute the mixed second tile', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setSplitRatio(MultiviewSplitRatio.fifty);
+    await Future<void>.delayed(Duration.zero);
+
+    final half = math.sqrt(0.5);
+    expect(sessions['one']!.volume, closeTo(half, 0.01));
+    expect(sessions['two']!.volume, closeTo(half, 0.01));
+
+    await controller.promote('two');
+    expect(sessions['one']!.volume, closeTo(half, 0.01));
+    expect(sessions['two']!.volume, closeTo(half, 0.01));
+    expect(controller.state.featuredChannelId, 'two');
+  });
+
+  test('adding a third session restores exclusive featured audio', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setSplitRatio(MultiviewSplitRatio.fifty);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      await controller.toggle(channel('three')),
+      MultiviewToggleResult.added,
+    );
+
+    expect(sessions['one']!.volume, closeTo(1, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+    expect(sessions['three']!.volume, closeTo(0, 0.01));
+    expect(controller.state.featuredChannelId, 'one');
+  });
+
+  test('setLayout to spotlight restores exclusive featured audio', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setSplitRatio(MultiviewSplitRatio.ninetyFive);
+    await Future<void>.delayed(Duration.zero);
+    await controller.promote('two');
+    expect(sessions['one']!.volume, closeTo(1, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+    expect(controller.state.featuredChannelId, 'two');
+
+    controller.setLayout(MultiviewLayoutKind.spotlight);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.state.featuredChannelId, 'two');
+    expect(sessions['two']!.volume, closeTo(1, 0.01));
+    expect(sessions['one']!.volume, closeTo(0, 0.01));
+  });
+
+  test('setLayout back to two-pane applies the fifty mix', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 4,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setLayout(MultiviewLayoutKind.spotlight);
+    await Future<void>.delayed(Duration.zero);
+    expect(sessions['one']!.volume, closeTo(1, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
+
+    controller.setLayout(MultiviewLayoutKind.splitHorizontal);
+    await Future<void>.delayed(Duration.zero);
+
+    final half = math.sqrt(0.5);
+    expect(controller.state.splitRatio, MultiviewSplitRatio.fifty);
+    expect(sessions['one']!.volume, closeTo(half, 0.01));
+    expect(sessions['two']!.volume, closeTo(half, 0.01));
+  });
+
+  test('muteAll in two-pane keeps both volumes at zero', () async {
+    final sessions = <String, _FakeMultiviewSession>{};
+    final controller = MultiviewController(
+      decoderBudget: 2,
+      primaryService: _FakePrimaryService(),
+      sessionFactory: (item) async =>
+          sessions.putIfAbsent(item.id, () => _FakeMultiviewSession(item)),
+    );
+    addTearDown(controller.close);
+
+    await controller.toggle(channel('one'));
+    await controller.toggle(channel('two'));
+    controller.setSplitRatio(MultiviewSplitRatio.fifty);
+    await Future<void>.delayed(Duration.zero);
+    final half = math.sqrt(0.5);
+    expect(sessions['one']!.volume, closeTo(half, 0.01));
+    expect(sessions['two']!.volume, closeTo(half, 0.01));
+
+    await controller.muteAll();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.state.featuredChannelId, isNull);
+    expect(sessions['one']!.volume, closeTo(0, 0.01));
+    expect(sessions['two']!.volume, closeTo(0, 0.01));
   });
 }
 

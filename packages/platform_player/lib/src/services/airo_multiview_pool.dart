@@ -100,11 +100,11 @@ class AiroMultiviewPool {
     }
   }
 
-  Future<void> promote(String id) async {
+  Future<void> promote(String id, {bool routeAudio = true}) async {
     if (_closed || !_state.contains(id) || _state.featuredSessionId == id) {
       return;
     }
-    await _routeAudio(id);
+    if (routeAudio) await _routeAudio(id);
     _setState(
       AiroMultiviewPoolState(sessions: _state.sessions, featuredSessionId: id),
     );
@@ -119,7 +119,10 @@ class AiroMultiviewPool {
     _audioRouteTail = _audioRouteTail.then((_) => _applyMuteAll());
     await _audioRouteTail;
     _setState(
-      AiroMultiviewPoolState(sessions: _state.sessions, featuredSessionId: null),
+      AiroMultiviewPoolState(
+        sessions: _state.sessions,
+        featuredSessionId: null,
+      ),
     );
   }
 

@@ -19,7 +19,7 @@ The app may store the following on the device:
 
 ## Analytics
 
-No analytics are documented for Airo TV v0.0.2. If analytics are added in a future release, this policy must be updated before release.
+No analytics are documented for Airo TV v0.0.3. If analytics are added in a future release, this policy must be updated before release.
 
 ## Network Access
 
