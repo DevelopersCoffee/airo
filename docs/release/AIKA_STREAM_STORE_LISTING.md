@@ -70,10 +70,10 @@ Paste into Play Console → Internal testing → Release notes. Keep under 500
 characters. Do not claim bundled channels or Aika Stream Pro.
 
 ```text
-0.0.3 (23)
+0.0.3 (24)
+• Guide loads a country programme file when you pick a country
+• World-size guide URLs are rejected before they can crash the app
 • Two-pane live split snaps 5 / 50 / 95; mix follows the bar
-• Phone handle stays 48dp; TV stays a short grip
-• Resume the last live channel on launch
 
 0.0.2 (21)
 • TV remote can move across visible playback controls

@@ -1,10 +1,13 @@
 # Aika Stream v0.0.3
 
-Aika Stream v0.0.3 is the Play drop for two-pane MultiView that snaps 5/50/95,
-keeps a short premium handle, and mixes the two streams with the bar.
+Aika Stream v0.0.3 is the Play drop for country programme guides plus two-pane
+MultiView that snaps 5/50/95, keeps a short premium handle, and mixes the two
+streams with the bar.
 
 ## Highlights
 
+- Picking a country in Settings/browse loads that country's programme guide
+  instead of a world-size dump. A pasted XMLTV URL still wins.
 - Two-pane live split snaps to **5 / 50 / 95**, with an 80dp min pane so a
   phone never gets an 18px sliver.
 - Dragging the handle crossfades the two videos with equal-power gains.
@@ -13,12 +16,14 @@ keeps a short premium handle, and mixes the two streams with the bar.
   tablet landscape use **24dp**. Paint is a 2dp hairline plus an 8×28
   stadium in the middle third.
 - Resume the last live channel on launch (already on Internal 22).
-- Play `versionName` **0.0.3**, `versionCode` **23**. Do not reuse 22.
+- Play `versionName` **0.0.3**, `versionCode` **24**. Do not reuse 23.
 
 ## New Features
 
 ### IPTV
 
+- Country picker downloads one country XMLTV gzip via `airo_epg` 1.2.0.
+- World-file URLs and oversized gzips fail before inflate.
 - Two-pane MultiView mix follows pane order, not the featured tile.
 - Tile volume sliders stay in triple/quad; two-pane hides them.
 
@@ -54,9 +59,10 @@ keeps a short premium handle, and mixes the two streams with the bar.
 
 ## Developer Changes
 
-- `app/pubspec_tv.yaml` is `0.0.3+23`. Sync the TV package-info stub with
+- `app/pubspec_tv.yaml` is `0.0.3+24`. Sync the TV package-info stub with
   `scripts/aika_stream_version.sh --sync-stub`.
-- Design: `docs/superpowers/specs/2026-09-24-multiview-dj-split-design.md`.
+- Design: `docs/superpowers/specs/2026-09-24-epgshare01-country-shards-design.md`
+  and `docs/superpowers/specs/2026-09-24-multiview-dj-split-design.md`.
 
 ## Breaking Changes
 
@@ -79,8 +85,8 @@ Play — Play App Signing will not upgrade a sideload in place.
 
 ### Play Store
 
-Drop `Aika-Stream-0.0.3-23.aab` on Internal testing, then promote.
-Testers on Play 22 upgrade in place. Never reuse versionCode 22.
+Drop `Aika-Stream-0.0.3-24.aab` on Internal testing, then promote.
+Testers on Play 23 upgrade in place. Never reuse versionCode 23.
 
 ## Legal Notice
 
