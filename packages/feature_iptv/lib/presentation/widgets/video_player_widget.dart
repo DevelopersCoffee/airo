@@ -27,6 +27,7 @@ import '../../application/providers/sleep_timer_provider.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
 import '../../domain/vod_resume_coordinator.dart';
 import 'playback_diagnostic_overlay.dart';
+import 'player_caption_overlay.dart';
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
 import '../utils/web_fullscreen.dart' as web_fullscreen;
@@ -1252,6 +1253,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             color: Colors.black45,
             child: const CircularProgressIndicator(color: Colors.white),
           ),
+
+        if (!hasPlaybackError &&
+            !state.isLoading &&
+            videoView != null &&
+            state.selectedTrackIds.containsKey(AiroPlaybackTrackKind.subtitle))
+          Positioned.fill(child: PlayerCaptionOverlay(state: state)),
       ],
     );
 

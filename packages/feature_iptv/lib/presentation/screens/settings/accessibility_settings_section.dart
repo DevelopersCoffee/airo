@@ -2,6 +2,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../application/caption_appearance.dart';
 import '../../../application/providers/caption_preference_provider.dart';
 import '../../../application/providers/tv_font_mode_provider.dart';
 
@@ -99,8 +100,62 @@ class AccessibilitySettingsSection extends ConsumerWidget {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+          child: Text(
+            'Caption size and color apply to player-rendered subtitles.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        for (var index = 0; index < CaptionTextSize.values.length; index++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _SelectableOption(
+              label: _captionSizeLabel(CaptionTextSize.values[index]),
+              isSelected: captions.textSize == CaptionTextSize.values[index],
+              onSelect: () => ref
+                  .read(captionPreferenceProvider.notifier)
+                  .setCaptionTextSize(CaptionTextSize.values[index]),
+              colorScheme: colorScheme,
+            ),
+          ),
+        for (final color in CaptionTextColor.values)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _SelectableOption(
+              label: _captionColorLabel(color),
+              isSelected: captions.textColor == color,
+              onSelect: () => ref
+                  .read(captionPreferenceProvider.notifier)
+                  .setCaptionTextColor(color),
+              colorScheme: colorScheme,
+            ),
+          ),
+        _CaptionAppearancePreview(
+          key: const ValueKey('caption-appearance-preview'),
+          size: captions.textSize,
+          color: captions.textColor,
+        ),
       ],
     );
+  }
+
+  String _captionSizeLabel(CaptionTextSize size) {
+    return switch (size) {
+      CaptionTextSize.standard => 'Caption size: Standard',
+      CaptionTextSize.large => 'Caption size: Large',
+      CaptionTextSize.extraLarge => 'Caption size: Extra large',
+    };
+  }
+
+  String _captionColorLabel(CaptionTextColor color) {
+    return switch (color) {
+      CaptionTextColor.white => 'Caption color: White',
+      CaptionTextColor.yellow => 'Caption color: Yellow',
+      CaptionTextColor.cyan => 'Caption color: Cyan',
+    };
   }
 
   String _labelFor(TvFontMode mode) {
@@ -109,6 +164,41 @@ class AccessibilitySettingsSection extends ConsumerWidget {
       TvFontMode.large => 'Large',
       TvFontMode.extraLarge => 'Extra large',
     };
+  }
+}
+
+class _CaptionAppearancePreview extends StatelessWidget {
+  const _CaptionAppearancePreview({
+    super.key,
+    required this.size,
+    required this.color,
+  });
+
+  final CaptionTextSize size;
+  final CaptionTextColor color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 96,
+          child: Center(
+            child: Text(
+              'Sample subtitle text',
+              textAlign: TextAlign.center,
+              style: captionTextStyle(size: size, color: color),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

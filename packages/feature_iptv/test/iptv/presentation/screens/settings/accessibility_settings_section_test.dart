@@ -123,6 +123,26 @@ void main() {
     expect(find.textContaining('stream default'), findsNothing);
   });
 
+  testWidgets('caption appearance preview reflects saved preference', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    container.read(captionPreferenceProvider.notifier)
+      ..setCaptionTextSize(CaptionTextSize.large)
+      ..setCaptionTextColor(CaptionTextColor.yellow);
+    await pumpSection(tester, container, forTv: true);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('caption-appearance-preview')),
+      48,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Sample subtitle text'), findsOneWidget);
+    expect(container.read(captionPreferenceProvider).textSize, CaptionTextSize.large);
+    expect(container.read(captionPreferenceProvider).textColor, CaptionTextColor.yellow);
+  });
+
   testWidgets('shows saved language status when languageCode is eng', (
     tester,
   ) async {
