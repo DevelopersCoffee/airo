@@ -1313,6 +1313,191 @@ void main() {
   });
 
   testWidgets(
+    'auto-applies the preferred audio language once tracks are available (CV-016)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        audioPreferenceLanguageStorageKey: 'de',
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      final engine = FakeAiroPlaybackEngine(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'audio_en',
+            kind: AiroPlaybackTrackKind.audio,
+            label: 'English',
+            languageCode: 'en',
+          ),
+          AiroPlaybackTrackOption(
+            id: 'audio_de',
+            kind: AiroPlaybackTrackKind.audio,
+            label: 'German',
+            languageCode: 'de',
+          ),
+        ],
+      );
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+          ],
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        service.currentState.selectedTrackIds[AiroPlaybackTrackKind.audio],
+        'audio_de',
+      );
+
+      await service.stop();
+    },
+  );
+
+  testWidgets(
+    'subtitle pick persists caption language when track exposes languageCode (CV-016)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final engine = FakeAiroPlaybackEngine(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'external_sub_0',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'English',
+            languageCode: 'en',
+            isExternal: true,
+          ),
+          AiroPlaybackTrackOption(
+            id: 'external_sub_1',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'French',
+            languageCode: 'fr',
+            isExternal: true,
+          ),
+        ],
+      );
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-subtitle-menu-action')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('French'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final pref = container.read(captionPreferenceProvider);
+      expect(pref.enabled, isTrue);
+      expect(pref.languageCode, 'fr');
+      expect(prefs.getString(captionPreferenceLanguageStorageKey), 'fr');
+
+      await service.stop();
+    },
+  );
+
+  testWidgets(
+    'subtitle Off keeps the saved caption language in prefs (CV-016)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        captionPreferenceEnabledStorageKey: true,
+        captionPreferenceLanguageStorageKey: 'fr',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final engine = FakeAiroPlaybackEngine(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'external_sub_0',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'French',
+            languageCode: 'fr',
+            isExternal: true,
+          ),
+        ],
+      );
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-subtitle-menu-action')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.widgetWithText(ListTile, 'Off'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final pref = container.read(captionPreferenceProvider);
+      expect(pref.enabled, isTrue);
+      expect(pref.languageCode, 'fr');
+      expect(prefs.getString(captionPreferenceLanguageStorageKey), 'fr');
+
+      await service.stop();
+    },
+  );
+
+  testWidgets(
     'enableTouchGestures: false hides the lock button and brightness/volume gesture surface',
     (tester) async {
       await pumpPlayer(tester, enableTouchGestures: false);

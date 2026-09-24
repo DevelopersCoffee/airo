@@ -16,6 +16,7 @@ import '../../application/aika_haptics.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/channel_warmup_policy.dart';
 import '../../application/providers/aika_haptics_provider.dart';
+import '../../application/providers/audio_preference_provider.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/dead_link_report_provider.dart';
@@ -1163,6 +1164,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleVodResume(service, state);
       _applyCaptionPreferenceIfNeeded(service, state);
+      _applyAudioPreferenceIfNeeded(service, state);
       _scheduleAdjacentChannelWarmup(state);
       _reportPipSourceRectIfChanged();
     });
@@ -3117,6 +3119,27 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
   }
 
+  /// CV-016: when the user has a preferred audio language, select the first
+  /// matching track once the engine exposes the catalog.
+  void _applyAudioPreferenceIfNeeded(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final languageCode = ref.read(audioPreferenceProvider);
+    if (languageCode == null) return;
+
+    final alreadySelected = state.selectedTrackIds[AiroPlaybackTrackKind.audio];
+    for (final track in state.tracks) {
+      if (track.kind == AiroPlaybackTrackKind.audio &&
+          track.languageCode == languageCode) {
+        if (alreadySelected != track.id) {
+          service.selectTrack(kind: track.kind, trackId: track.id);
+        }
+        return;
+      }
+    }
+  }
+
   Future<void> _showTrackSelector(
     BuildContext context,
     VideoPlayerStreamingService service,
@@ -3166,8 +3189,24 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           label: track.label,
           subtitle: track.isExternal ? const Text('External') : null,
           selected: selectedTrackId == track.id,
-          onSelect: () =>
-              service.selectTrack(kind: track.kind, trackId: track.id),
+          onSelect: () {
+            final languageCode = track.languageCode;
+            if (languageCode != null) {
+              if (kind == AiroPlaybackTrackKind.subtitle) {
+                ref
+                    .read(captionPreferenceProvider.notifier)
+                    .setCaptionPreference(
+                      enabled: true,
+                      languageCode: languageCode,
+                    );
+              } else if (kind == AiroPlaybackTrackKind.audio) {
+                ref
+                    .read(audioPreferenceProvider.notifier)
+                    .setPreferredLanguage(languageCode);
+              }
+            }
+            service.selectTrack(kind: track.kind, trackId: track.id);
+          },
         ),
     ];
     final selectedIndex = options.indexWhere((option) => option.selected);
