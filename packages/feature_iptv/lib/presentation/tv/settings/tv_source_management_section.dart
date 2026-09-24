@@ -274,6 +274,137 @@ class _TvSourceManagementSectionState
     }
   }
 
+  bool _hasStreamHeaders(ContentSourceConfig config) {
+    final userAgent = config.streamUserAgent?.trim();
+    final referrer = config.streamReferrer?.trim();
+    return (userAgent != null && userAgent.isNotEmpty) ||
+        (referrer != null && referrer.isNotEmpty);
+  }
+
+  Future<void> _editStreamHeaders(ContentSourceConfig config) async {
+    final userAgentController = TextEditingController(
+      text: config.streamUserAgent ?? '',
+    );
+    final referrerController = TextEditingController(
+      text: config.streamReferrer ?? '',
+    );
+    var dialogError = '';
+
+    await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> save({required bool clear}) async {
+              try {
+                await ref.read(
+                  updateContentSourceStreamHeadersProvider((
+                    id: config.id,
+                    userAgent: clear ? null : userAgentController.text,
+                    referrer: clear ? null : referrerController.text,
+                  )).future,
+                );
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop(true);
+              } catch (error) {
+                debugPrint(
+                  'TvSourceManagementSection: update stream headers failed: $error',
+                );
+                setDialogState(() {
+                  dialogError = 'Could not save stream headers. Try again.';
+                });
+              }
+            }
+
+            return AlertDialog(
+              title: Text('Stream headers for "${config.label}"'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Default User-Agent and Referer for streams from this '
+                      'source. Channel-specific headers take precedence.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: userAgentController,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'User-Agent',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: referrerController,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      keyboardType: TextInputType.url,
+                      decoration: const InputDecoration(
+                        labelText: 'Referer',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    if (dialogError.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        dialogError,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TvFocusable(
+                  onSelect: () => Navigator.of(context).pop(false),
+                  semanticLabel: 'Cancel',
+                  semanticButton: true,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                if (_hasStreamHeaders(config))
+                  TvFocusable(
+                    onSelect: () => save(clear: true),
+                    semanticLabel: 'Clear stream headers',
+                    semanticButton: true,
+                    child: TextButton(
+                      onPressed: () => save(clear: true),
+                      child: const Text('Clear'),
+                    ),
+                  ),
+                TvFocusable(
+                  onSelect: () => save(clear: false),
+                  semanticLabel: 'Save stream headers',
+                  semanticButton: true,
+                  child: TextButton(
+                    onPressed: () => save(clear: false),
+                    child: const Text('Save'),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    userAgentController.dispose();
+    referrerController.dispose();
+  }
+
   String _urlFieldLabel() {
     switch (_kind) {
       case ContentSourceKind.m3u:
@@ -460,6 +591,13 @@ class _TvSourceManagementSectionState
                                 color: colorScheme.onSurfaceVariant,
                               ),
                             ),
+                          if (_hasStreamHeaders(config))
+                            Text(
+                              'Custom stream headers',
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           const SizedBox(height: 4),
                           _capabilityBadges(
                             context,
@@ -499,6 +637,17 @@ class _TvSourceManagementSectionState
                             ref,
                             config,
                           ),
+                          if (config.kind != ContentSourceKind.jellyfin)
+                            TvFocusable(
+                              onSelect: () => _editStreamHeaders(config),
+                              semanticLabel:
+                                  'Edit stream headers for ${config.label}',
+                              semanticButton: true,
+                              child: TextButton(
+                                onPressed: () => _editStreamHeaders(config),
+                                child: const Text('Headers'),
+                              ),
+                            ),
                           TvFocusable(
                             onSelect: () => _confirmRemove(config),
                             semanticLabel: 'Remove ${config.label}',

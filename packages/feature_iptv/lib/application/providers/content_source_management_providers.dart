@@ -327,6 +327,41 @@ final selectContentSourceProvider = FutureProvider.autoDispose
       }
     });
 
+/// Updates default stream HTTP headers for a configured source.
+final updateContentSourceStreamHeadersProvider = FutureProvider.autoDispose
+    .family<void, ({String id, String? userAgent, String? referrer})>((
+      ref,
+      args,
+    ) async {
+      final keepAlive = ref.keepAlive();
+      try {
+        await ref.read(contentSourceStoreProvider).update(args.id, (config) {
+          return ContentSourceConfig(
+            id: config.id,
+            kind: config.kind,
+            label: config.label,
+            url: config.url,
+            macAddress: config.macAddress,
+            accountStatus: config.accountStatus,
+            accountExpiresAt: config.accountExpiresAt,
+            maxConnections: config.maxConnections,
+            streamUserAgent: _normalizeOptionalHeader(args.userAgent),
+            streamReferrer: _normalizeOptionalHeader(args.referrer),
+          );
+        });
+        ref.invalidate(configuredContentSourcesProvider);
+        invalidateChannelLibraries(ref);
+      } finally {
+        keepAlive.close();
+      }
+    });
+
+String? _normalizeOptionalHeader(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) return null;
+  return trimmed;
+}
+
 class DuplicatePlaylistSourceException implements Exception {
   const DuplicatePlaylistSourceException();
 
