@@ -1050,10 +1050,20 @@ final channelNotForMeTogglerProvider = Provider<Future<void> Function(String)>((
   };
 });
 
+/// Public Play default is identity-only. airo-pro overrides this with
+/// tvg-id and normalized-name matching behind [ProFeature.importIntelligence].
+final canonicalChannelMatcherProvider = Provider<CanonicalChannelMatcher>(
+  (ref) => const CanonicalChannelMatcher(),
+);
+
 /// Coordinator for CV-017's favorites-survive-reimport behavior.
 final favoriteReimportCoordinatorProvider =
     Provider<FavoriteReimportCoordinator>(
-      (ref) => FavoriteReimportCoordinator(),
+      (ref) => FavoriteReimportCoordinator(
+        remapper: FavoriteChannelRemapper(
+          matcher: ref.watch(canonicalChannelMatcherProvider),
+        ),
+      ),
     );
 
 /// Applies [FavoriteReimportCoordinator]'s decisions to real storage: writes

@@ -20,15 +20,18 @@ import '../providers/navigation_provider.dart';
 /// providers behind them.
 List<Override> buildMainProviderOverrides({
   required SharedPreferences prefs,
-  required EpgReminderNotificationGateway epgReminderGateway,
   required ModuleRegistry moduleRegistry,
+  EpgReminderNotificationGateway? epgReminderGateway,
 }) {
   return [
     sharedPreferencesProvider.overrideWithValue(prefs),
     secureStoreProvider.overrideWithValue(SecureStoreFactory.createSecure()),
-    epgReminderNotificationGatewayProvider.overrideWithValue(
-      epgReminderGateway,
-    ),
+    // Play / public builds keep the unavailable default. airo-pro overrides
+    // this provider through createProviderOverrides().
+    if (epgReminderGateway != null)
+      epgReminderNotificationGatewayProvider.overrideWithValue(
+        epgReminderGateway,
+      ),
     realIptvCastControllerOverride(),
     realCastMultiviewSenderOverride(),
     // Navigation chrome follows composition. R05 composes Mind out of

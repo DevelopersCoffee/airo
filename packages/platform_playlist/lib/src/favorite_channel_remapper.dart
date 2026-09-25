@@ -20,7 +20,7 @@ class FavoriteRemapResult {
 /// (CV-017) when a confident match exists.
 class FavoriteChannelRemapper {
   FavoriteChannelRemapper({CanonicalChannelMatcher? matcher})
-    : _matcher = matcher ?? CanonicalChannelMatcher();
+    : _matcher = matcher ?? const CanonicalChannelMatcher();
 
   final CanonicalChannelMatcher _matcher;
 
