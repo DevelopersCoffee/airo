@@ -407,6 +407,9 @@ final iptvMultiviewSessionFactoryProvider =
         final service = VideoPlayerStreamingService(
           config: StreamingConfig.live,
           mixWithOthers: true,
+          enableMultiSourceFailover: ref.watch(
+            multiSourceFailoverEnabledProvider,
+          ),
         );
         try {
           await service.initialize();

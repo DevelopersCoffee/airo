@@ -320,10 +320,35 @@ void main() {
         engine: scripted,
         config: const StreamingConfig(retryDelay: Duration.zero),
         failoverBackoffBase: Duration.zero,
+        enableMultiSourceFailover: true,
       );
       addTearDown(svc.dispose);
       return svc;
     }
+
+    test(
+      'Play default keeps a single source even when backups exist',
+      () async {
+        final scripted = _ScriptedMultiSourceEngine({
+          urlA: const AiroPlaybackError(
+            code: AiroPlaybackErrorCode.decoderFailed,
+            operation: 'open',
+            httpStatusCode: 403,
+          ),
+        });
+        final svc = VideoPlayerStreamingService(
+          engine: scripted,
+          config: const StreamingConfig(retryDelay: Duration.zero),
+          failoverBackoffBase: Duration.zero,
+        );
+        addTearDown(svc.dispose);
+
+        await svc.playChannel(multiSourceChannel());
+
+        expect(scripted.openedUrls, [urlA]);
+        expect(svc.currentState.playbackState, PlaybackState.error);
+      },
+    );
 
     test(
       'fatal 403 on the primary source auto-fails over to the next source',

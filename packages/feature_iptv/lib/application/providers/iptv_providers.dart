@@ -203,10 +203,17 @@ final channelDataServiceProvider = Provider<ChannelDataService>((ref) {
 });
 
 /// IPTV Streaming service provider
+/// Public Play default: one source only. airo-pro overrides
+/// [multiSourceFailoverEnabledProvider].
+final multiSourceFailoverEnabledProvider = Provider<bool>((ref) => false);
+
 final iptvStreamingServiceProvider = Provider<VideoPlayerStreamingService>((
   ref,
 ) {
-  final service = VideoPlayerStreamingService(config: StreamingConfig.youtube);
+  final service = VideoPlayerStreamingService(
+    config: StreamingConfig.youtube,
+    enableMultiSourceFailover: ref.watch(multiSourceFailoverEnabledProvider),
+  );
   ref.onDispose(() => service.dispose());
   return service;
 });
