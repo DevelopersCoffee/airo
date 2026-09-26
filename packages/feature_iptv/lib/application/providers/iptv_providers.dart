@@ -203,10 +203,17 @@ final channelDataServiceProvider = Provider<ChannelDataService>((ref) {
 });
 
 /// IPTV Streaming service provider
+/// Public Play default: one source only. airo-pro overrides
+/// [multiSourceFailoverEnabledProvider].
+final multiSourceFailoverEnabledProvider = Provider<bool>((ref) => false);
+
 final iptvStreamingServiceProvider = Provider<VideoPlayerStreamingService>((
   ref,
 ) {
-  final service = VideoPlayerStreamingService(config: StreamingConfig.youtube);
+  final service = VideoPlayerStreamingService(
+    config: StreamingConfig.youtube,
+    enableMultiSourceFailover: ref.watch(multiSourceFailoverEnabledProvider),
+  );
   ref.onDispose(() => service.dispose());
   return service;
 });
@@ -1050,10 +1057,20 @@ final channelNotForMeTogglerProvider = Provider<Future<void> Function(String)>((
   };
 });
 
+/// Public Play default is identity-only. airo-pro overrides this with
+/// tvg-id and normalized-name matching behind [ProFeature.importIntelligence].
+final canonicalChannelMatcherProvider = Provider<CanonicalChannelMatcher>(
+  (ref) => const CanonicalChannelMatcher(),
+);
+
 /// Coordinator for CV-017's favorites-survive-reimport behavior.
 final favoriteReimportCoordinatorProvider =
     Provider<FavoriteReimportCoordinator>(
-      (ref) => FavoriteReimportCoordinator(),
+      (ref) => FavoriteReimportCoordinator(
+        remapper: FavoriteChannelRemapper(
+          matcher: ref.watch(canonicalChannelMatcherProvider),
+        ),
+      ),
     );
 
 /// Applies [FavoriteReimportCoordinator]'s decisions to real storage: writes

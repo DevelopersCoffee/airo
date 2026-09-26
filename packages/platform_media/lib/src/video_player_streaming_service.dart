@@ -28,6 +28,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   final StreamingConfig _config;
   final AudioContextManager _audioContext;
   final Duration _failoverBackoffBase;
+
+  /// Play / public builds stay on a single source. airo-pro turns this on
+  /// via [ProFeature.multiSourceFailover].
+  final bool enableMultiSourceFailover;
   final _stateController = StreamController<StreamingState>.broadcast();
 
   StreamingState _state = StreamingState();
@@ -74,6 +78,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     LiveEdgeConfig? liveEdgeConfig,
     this._failoverBackoffBase = const Duration(milliseconds: 250),
     this.mediaSessionDelegate,
+    this.enableMultiSourceFailover = false,
     bool mixWithOthers = false,
   }) : // Public constructor label kept independent of the private field so
        // callers outside this library can pass it by name.
@@ -345,6 +350,19 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// [IPTVChannel.streamSources]; legacy artifacts fall back to streamUrl and
   /// qualityUrls.
   List<AiroFailoverSource> _failoverSourcesFor(IPTVChannel channel) {
+    if (!enableMultiSourceFailover) {
+      final preferredId = _preferredSourceId(channel);
+      for (final source in _allFailoverSourcesFor(channel)) {
+        if (source.sourceId == preferredId) {
+          return [source];
+        }
+      }
+      return _allFailoverSourcesFor(channel).take(1).toList();
+    }
+    return _allFailoverSourcesFor(channel);
+  }
+
+  List<AiroFailoverSource> _allFailoverSourcesFor(IPTVChannel channel) {
     final sources = <AiroFailoverSource>[];
     final seenUrls = <String>{};
     final rankedSources = channel.streamSources.toList()

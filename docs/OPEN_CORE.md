@@ -53,10 +53,11 @@ app/
 
 | Public (GA)                                   | Private (pro overlay)                          |
 |-----------------------------------------------|------------------------------------------------|
-| Player, playlist import, channel UI, cast     | Import intelligence (dedup, canonical match)   |
+| Player, playlist import, exact-id remaps      | Import intelligence (tvg-id + name matching)   |
 | Basic search/filter                           | Stream health verdicts / dead-link pruning     |
 | Contracts (`core_entitlements`)               | Regional ranking / Top 50 rows                 |
-| No-op bootstrap (`airo_pro_bootstrap`)        | EPG pipeline + reminders                       |
+| Single-source playback                         | Multi-source failover (`multiSourceFailoverEnabledProvider`) |
+| No-op bootstrap (`airo_pro_bootstrap`)        | EPG reminders + OS notification gateway        |
 | Rust core, perf work (milestone: v2 Perf)     | Metadata enrichment, sports desk               |
 |                                               | CDN intelligence-pack build pipeline           |
 |                                               | Billing-backed entitlements (future)           |

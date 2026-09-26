@@ -94,7 +94,6 @@ void main() {
       final container = ProviderContainer(
         overrides: buildMainProviderOverrides(
           prefs: prefs,
-          epgReminderGateway: const UnavailableEpgReminderNotificationGateway(),
           moduleRegistry: registry,
         ),
       );

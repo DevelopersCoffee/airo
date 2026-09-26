@@ -8,6 +8,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_media/platform_media.dart';
 import 'package:platform_player/platform_player.dart';
 
+import '../../application/providers/iptv_providers.dart';
 import 'channel_logo.dart';
 import 'watch_remote_contract.dart';
 
@@ -18,7 +19,10 @@ typedef TvMiniGuidePreviewFactory = VideoPlayerStreamingService Function();
 final tvMiniGuidePreviewFactoryProvider = Provider<TvMiniGuidePreviewFactory>((
   ref,
 ) {
-  return () => VideoPlayerStreamingService(mixWithOthers: true);
+  return () => VideoPlayerStreamingService(
+    mixWithOthers: true,
+    enableMultiSourceFailover: ref.watch(multiSourceFailoverEnabledProvider),
+  );
 });
 
 /// Watch Mini Guide: logos on every card, one muted preview on the focused

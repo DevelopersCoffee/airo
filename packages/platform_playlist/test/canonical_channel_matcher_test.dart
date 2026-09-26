@@ -3,53 +3,70 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 
 void main() {
-  final matcher = CanonicalChannelMatcher();
+  const matcher = CanonicalChannelMatcher();
 
   IPTVChannel channel({
     required String id,
     required String name,
+    String? streamUrl,
     int? tvgId,
     String group = 'General',
   }) {
     return IPTVChannel(
       id: id,
       name: name,
-      streamUrl: 'https://example.com/$id.m3u8',
+      streamUrl: streamUrl ?? 'https://example.com/$id.m3u8',
       group: group,
       tvgId: tvgId,
     );
   }
 
   group('CanonicalChannelMatcher', () {
-    test('matches with high confidence when tvg-id agrees', () {
+    test('matches with high confidence when channel ids agree', () {
+      final a = channel(id: 'bbc', name: 'BBC One HD');
+      final b = channel(id: 'bbc', name: 'BBC One');
+
+      final result = matcher.match(a, b);
+
+      expect(result.confidence, ChannelMatchConfidence.high);
+      expect(result.reason, 'channel_id');
+    });
+
+    test('matches with high confidence when stream URLs agree', () {
+      final a = channel(
+        id: 'a',
+        name: 'BBC One',
+        streamUrl: 'https://cdn.example/bbc.m3u8',
+      );
+      final b = channel(
+        id: 'b',
+        name: 'Renamed',
+        streamUrl: 'https://cdn.example/bbc.m3u8',
+      );
+
+      final result = matcher.match(a, b);
+
+      expect(result.confidence, ChannelMatchConfidence.high);
+      expect(result.reason, 'stream_url');
+    });
+
+    test('does not match on tvg-id alone in the public Play matcher', () {
       final a = channel(id: 'a', name: 'BBC One HD', tvgId: 101);
       final b = channel(id: 'b', name: 'Totally Different Label', tvgId: 101);
 
       final result = matcher.match(a, b);
 
-      expect(result.confidence, ChannelMatchConfidence.high);
-      expect(result.reason, 'tvg_id');
+      expect(result.confidence, ChannelMatchConfidence.none);
+      expect(result.reason, 'no_match');
     });
 
-    test('does not match on tvg-id when the ids differ', () {
-      final a = channel(id: 'a', name: 'BBC One', tvgId: 101);
-      final b = channel(id: 'b', name: 'BBC One', tvgId: 202);
-
-      final result = matcher.match(a, b);
-
-      // tvg-ids disagree -- falls through to name-based matching instead.
-      expect(result.confidence, ChannelMatchConfidence.medium);
-      expect(result.reason, 'normalized_name');
-    });
-
-    test('matches with medium confidence on normalized name alone', () {
+    test('does not match on normalized name alone in the public Play matcher', () {
       final a = channel(id: 'a', name: 'BBC One HD');
       final b = channel(id: 'b', name: 'bbc-one');
 
       final result = matcher.match(a, b);
 
-      expect(result.confidence, ChannelMatchConfidence.medium);
-      expect(result.reason, 'normalized_name');
+      expect(result.confidence, ChannelMatchConfidence.none);
     });
 
     test('does not match unrelated channels', () {
@@ -60,18 +77,6 @@ void main() {
 
       expect(result.confidence, ChannelMatchConfidence.none);
     });
-
-    test(
-      'keeps distinct regional variants separate despite a shared base name',
-      () {
-        final east = channel(id: 'a', name: 'BBC One East');
-        final west = channel(id: 'b', name: 'BBC One West');
-
-        final result = matcher.match(east, west);
-
-        expect(result.confidence, ChannelMatchConfidence.none);
-      },
-    );
   });
 
   group('ChannelNameNormalizer', () {

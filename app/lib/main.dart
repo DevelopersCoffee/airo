@@ -1,7 +1,5 @@
-import 'package:core_data/core_data.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,8 +16,6 @@ import 'core/mind/mind_registration_stub.dart'
     if (dart.library.io) 'core/mind/mind_registration.dart';
 import 'core/routing/app_router.dart';
 import 'core/startup/app_startup_tasks.dart';
-import 'package:feature_iptv/feature_iptv.dart';
-import 'features/iptv/epg_reminder_notification_gateway.dart';
 import 'features/iptv/iptv_feature_module.dart';
 import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
@@ -29,7 +25,6 @@ Future<void> main() {
   late SharedPreferences prefs;
   late ModuleRegistry moduleRegistry;
   late GoRouter router;
-  late FlutterLocalNotificationsEpgReminderGateway epgReminderGateway;
 
   return AiroBootstrap.run(
     shell: ShellId.mobile,
@@ -50,34 +45,16 @@ Future<void> main() {
       prefs = await SharedPreferences.getInstance();
       moduleRegistry = buildMainModuleRegistry();
       router = AppRouter.createRouter(moduleRegistry: moduleRegistry);
-      epgReminderGateway = FlutterLocalNotificationsEpgReminderGateway(
-        onNotificationRoute: router.go,
-      );
-      await epgReminderGateway.initialize();
 
       return ProviderScope(
         overrides: buildMainProviderOverrides(
           prefs: prefs,
-          epgReminderGateway: epgReminderGateway,
           moduleRegistry: moduleRegistry,
         ),
         child: AiroApp(router: router),
       );
     },
     afterRunApp: () {
-      AppLifecycleListener(
-        onResume: () async {
-          try {
-            await EpgReminderScheduler(
-              store: EpgReminderStore(PreferencesStore(prefs)),
-              gateway: epgReminderGateway,
-            ).pruneElapsed();
-          } catch (error) {
-            debugPrint('[EpgReminderGateway] pruneElapsed failed: $error');
-          }
-        },
-      );
-
       scheduleDeferredAuthInitialization();
       scheduleDeferredFeatureInitialization(
         initializeFeatures: moduleRegistry.initializeAll,

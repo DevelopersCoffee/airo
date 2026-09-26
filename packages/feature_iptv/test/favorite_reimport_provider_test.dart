@@ -17,17 +17,22 @@ void main() {
     );
   }
 
-  IPTVChannel channel({required String id, required String name, int? tvgId}) {
+  IPTVChannel channel({
+    required String id,
+    required String name,
+    String? streamUrl,
+    int? tvgId,
+  }) {
     return IPTVChannel(
       id: id,
       name: name,
-      streamUrl: 'https://example.com/$id.m3u8',
+      streamUrl: streamUrl ?? 'https://example.com/$id.m3u8',
       tvgId: tvgId,
     );
   }
 
   test(
-    'remaps a favorite via tvg-id and writes the new id to storage',
+    'remaps a favorite via stream URL and writes the new id to storage',
     () async {
       final container = buildContainer();
       addTearDown(container.dispose);
@@ -38,9 +43,19 @@ void main() {
       final needsReview = await applyFavoriteRemapOnReimport(
         favoriteStorage: storage,
         coordinator: FavoriteReimportCoordinator(),
-        oldChannels: [channel(id: 'a1', name: 'BBC One', tvgId: 101)],
+        oldChannels: [
+          channel(
+            id: 'a1',
+            name: 'BBC One',
+            streamUrl: 'https://cdn.example/bbc.m3u8',
+          ),
+        ],
         newChannels: [
-          channel(id: 'b9', name: 'Totally Different Label', tvgId: 101),
+          channel(
+            id: 'b9',
+            name: 'Totally Different Label',
+            streamUrl: 'https://cdn.example/bbc.m3u8',
+          ),
         ],
       );
 
@@ -51,7 +66,7 @@ void main() {
   );
 
   test(
-    'leaves storage untouched and reports a name-only match for review',
+    'drops a tvg-id or name-only match instead of surfacing review on Play',
     () async {
       final container = buildContainer();
       addTearDown(container.dispose);
@@ -62,17 +77,13 @@ void main() {
       final needsReview = await applyFavoriteRemapOnReimport(
         favoriteStorage: storage,
         coordinator: FavoriteReimportCoordinator(),
-        oldChannels: [channel(id: 'a1', name: 'BBC One HD')],
-        newChannels: [channel(id: 'b9', name: 'bbc-one')],
+        oldChannels: [channel(id: 'a1', name: 'BBC One HD', tvgId: 101)],
+        newChannels: [channel(id: 'b9', name: 'bbc-one', tvgId: 101)],
       );
 
-      expect(needsReview, hasLength(1));
-      expect(needsReview.single.oldChannel.id, 'a1');
-      expect(needsReview.single.candidate.id, 'b9');
+      expect(needsReview, isEmpty);
       final favoriteIds = await storage.getFavoriteChannelIds();
-      expect(favoriteIds, {
-        'a1',
-      }, reason: 'must not silently repoint a name-only match');
+      expect(favoriteIds, isEmpty);
     },
   );
 

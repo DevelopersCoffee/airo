@@ -11,6 +11,8 @@ final epgReminderStoreProvider = Provider<EpgReminderStore>((ref) {
   );
 });
 
+/// Default is unavailable so the public Play AAB never posts OS reminders.
+/// airo-pro overrides this via `createProviderOverrides()`.
 final epgReminderNotificationGatewayProvider =
     Provider<EpgReminderNotificationGateway>((ref) {
       return const UnavailableEpgReminderNotificationGateway();
