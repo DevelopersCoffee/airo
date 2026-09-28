@@ -503,6 +503,7 @@ jobs:
         env:
           GITHUB_ISSUE_PROXY_URL: ${{ secrets.AIRO_ISSUE_PROXY_URL }}
           GITHUB_ISSUE_PROXY_API_KEY: ${{ secrets.AIRO_ISSUE_PROXY_API_KEY }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
         run: |
           cd app
           export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
@@ -510,6 +511,7 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --dart-define=REVENUECAT_API_KEY="$REVENUECAT_API_KEY" \
             --dart-define=GITHUB_ISSUE_OWNER=DevelopersCoffee \
             --dart-define=GITHUB_ISSUE_REPO=airo \
             --dart-define=GITHUB_ISSUE_PROXY_URL="$GITHUB_ISSUE_PROXY_URL" \
@@ -526,6 +528,7 @@ jobs:
         env:
           GITHUB_ISSUE_PROXY_URL: ${{ secrets.AIRO_ISSUE_PROXY_URL }}
           GITHUB_ISSUE_PROXY_API_KEY: ${{ secrets.AIRO_ISSUE_PROXY_API_KEY }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
         run: |
           cd app
           export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
@@ -533,6 +536,7 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --dart-define=REVENUECAT_API_KEY="$REVENUECAT_API_KEY" \
             --dart-define=GITHUB_ISSUE_OWNER=DevelopersCoffee \
             --dart-define=GITHUB_ISSUE_REPO=airo \
             --dart-define=GITHUB_ISSUE_PROXY_URL="$GITHUB_ISSUE_PROXY_URL" \
@@ -547,6 +551,7 @@ jobs:
         env:
           GITHUB_ISSUE_PROXY_URL: ${{ secrets.AIRO_ISSUE_PROXY_URL }}
           GITHUB_ISSUE_PROXY_API_KEY: ${{ secrets.AIRO_ISSUE_PROXY_API_KEY }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
         run: |
           cd app
           export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
@@ -554,6 +559,7 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --dart-define=REVENUECAT_API_KEY="$REVENUECAT_API_KEY" \
             --dart-define=GITHUB_ISSUE_OWNER=DevelopersCoffee \
             --dart-define=GITHUB_ISSUE_REPO=airo \
             --dart-define=GITHUB_ISSUE_PROXY_URL="$GITHUB_ISSUE_PROXY_URL" \
@@ -569,6 +575,7 @@ jobs:
         env:
           GITHUB_ISSUE_PROXY_URL: ${{ secrets.AIRO_ISSUE_PROXY_URL }}
           GITHUB_ISSUE_PROXY_API_KEY: ${{ secrets.AIRO_ISSUE_PROXY_API_KEY }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
         run: |
           cd app
           export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
@@ -586,6 +593,7 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --dart-define=REVENUECAT_API_KEY="$REVENUECAT_API_KEY" \
             --dart-define=GITHUB_ISSUE_OWNER=DevelopersCoffee \
             --dart-define=GITHUB_ISSUE_REPO=airo \
             --dart-define=GITHUB_ISSUE_PROXY_URL="$GITHUB_ISSUE_PROXY_URL" \

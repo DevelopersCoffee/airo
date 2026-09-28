@@ -726,6 +726,7 @@ jobs:
           # fallback into a hard build failure. Leave the var unset when the
           # PAT secret isn't configured.
           GITHUB_TOKEN: ${{ secrets.AIRO_LITERTLM_TOKEN }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
         run: |
           cd app
           echo "🔨 Building ${{ matrix.platform.name }} APK..."
@@ -734,6 +735,7 @@ jobs:
             --target-platform=android-arm64 \
             --dart-define=APP_VARIANT=${{ matrix.platform.variant }} \
             --dart-define=APP_PLATFORM=${{ matrix.platform.app_platform }} \
+            --dart-define=REVENUECAT_API_KEY="$REVENUECAT_API_KEY" \
             --tree-shake-icons \
             --split-debug-info=build/debug-info-${{ matrix.platform.name }} \
             --obfuscate
