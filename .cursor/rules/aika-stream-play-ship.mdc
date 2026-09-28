@@ -1,0 +1,21 @@
+---
+description: Aika Stream Play/OBB ship invariants — never reuse versionCode, production keystore, pubspec_tv SSOT
+globs: app/pubspec_tv.yaml,docs/release/AIKA_STREAM*,docs/okf/aika-stream-play/**,scripts/build-tv.sh,scripts/aika_stream_version.sh,packages/stubs/package_info_plus_stub/**
+alwaysApply: false
+---
+
+# Aika Stream Play ship
+
+When shipping `com.developerscoffee.tv.midas`, follow
+`.agents/skills/shipping-aika-stream-play/SKILL.md` and
+`docs/okf/aika-stream-play/playbooks/shipping-play-drop.md`.
+
+## Invariants
+
+- **Never reuse a Play `versionCode`**, including codes removed from a draft. As of 2026-09-28, 21–25 are spent; do not re-upload 25.
+- **Do not bump** `app/pubspec_tv.yaml` past the live OBB unless this task is that next drop.
+- **SSOT** is `app/pubspec_tv.yaml`. Sync the stub with `scripts/aika_stream_version.sh --sync-stub`. Pass `--build-name <name> --build-number <code>` (spaces, not `=`).
+- **Production `release.keystore` only.** Kill a `build-tv.sh` run that would mint `tv-validation`.
+- **Human uploads** the AAB. Agent publishes Internal, then Production. Live means Production Latest, not in-review.
+- **Release branch** `release/aika-stream-v{versionName}` from the SHA that built that AAB, not later `main`.
+- Do not merge leftover IPTV worktrees into the Play SHA. Play dart-defines stay unset. `[skip ci]` is docs-only.

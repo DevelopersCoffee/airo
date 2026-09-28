@@ -150,6 +150,10 @@ skills-lock.json
 # Exception: bundled skills that ship with the repo (installed via scripts/skills.sh)
 !.claude/skills/android-tv-design/
 !.claude/skills/android-tv-design/**
+!.claude/skills/shipping-aika-stream-play
+!.claude/skills/shipping-aika-stream-play/
+!.agents/skills/shipping-aika-stream-play/
+!.agents/skills/shipping-aika-stream-play/**
 
 # IDE-generated workspace descriptors
 *.iml
