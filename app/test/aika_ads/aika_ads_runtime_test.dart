@@ -1,6 +1,7 @@
 import 'package:airo_app/aika_ads/aika_ads.dart';
 import 'package:airo_app/aika_ads/aika_ads_runtime.dart';
 import 'package:airo_app/aika_ads/aika_browse_native_ad_card.dart';
+import 'package:airo_app/aika_ads/aika_pause_native_ad_card.dart';
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,12 +22,15 @@ void main() {
       );
 
       expect(placements.browseCard, isA<AikaBrowseNativeAdCard>());
-      expect(placements.pauseCard, isA<AikaNativeAdCard>());
+      expect(placements.pauseCard, isA<AikaPauseNativeAdCard>());
       expect(
         (placements.browseCard! as AikaBrowseNativeAdCard).isLeanback,
         isFalse,
       );
-      expect((placements.pauseCard! as AikaNativeAdCard).isLeanback, isFalse);
+      expect(
+        (placements.pauseCard! as AikaPauseNativeAdCard).isLeanback,
+        isFalse,
+      );
     });
   });
 
