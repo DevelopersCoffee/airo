@@ -22,6 +22,7 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | [0024](0024-reliability-checkpoints-prefs-tier.md) | Reliability checkpoint metadata uses the Prefs tier | Accepted | 2026-08-22 |
 | [0025](0025-streaming-speech-engine-boundary.md) | `SpeechEngine` gains a streaming session, and stays PCM-pure | Proposed | 2026-08-22 |
 | [0026](0026-m3u-parser-extraction.md) | Extract the M3U parser into a standalone, publishable package | Proposed | 2026-09-10 |
+| [0027](0027-accountless-airo-license-sdk.md) | Accountless license SDK is public; hosted commerce stays overlay | Accepted | 2026-09-28 |
 
 ## Creating a New ADR
 
