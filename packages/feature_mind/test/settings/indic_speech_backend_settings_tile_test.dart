@@ -1,4 +1,6 @@
+import 'package:core_entitlements/core_entitlements.dart';
 import 'package:feature_mind/src/settings/indic_speech_backend_settings_tile.dart';
+import 'package:feature_mind/src/settings/mind_entitlements_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,8 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   Future<void> pumpTile(WidgetTester tester) async {
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
+      ProviderScope(
+        overrides: [
+          mindEntitlementsProvider.overrideWithValue(
+            const LaunchPromoEntitlements(),
+          ),
+        ],
+        child: const MaterialApp(
           home: Scaffold(body: IndicSpeechBackendSettingsTile()),
         ),
       ),

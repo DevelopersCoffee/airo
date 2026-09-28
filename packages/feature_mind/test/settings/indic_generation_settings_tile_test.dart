@@ -11,8 +11,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   Future<void> pumpTile(WidgetTester tester) async {
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(home: Scaffold(body: IndicGenerationSettingsTile())),
+      ProviderScope(
+        overrides: [
+          mindEntitlementsProvider.overrideWithValue(
+            const LaunchPromoEntitlements(),
+          ),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: IndicGenerationSettingsTile()),
+        ),
       ),
     );
     await tester.pumpAndSettle();

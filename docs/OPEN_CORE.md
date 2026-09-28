@@ -19,10 +19,11 @@ premium engineering that may be monetized later.
    `pubspec_overrides.yaml` — the same mechanism this repo already uses for
    `packages/stubs`. There are no long-lived forked edits of public files, so
    upstream merges stay near-conflict-free.
-4. **Pro is free for now.** The only entitlement policy shipped here is
-   `LaunchPromoEntitlements` (everything enabled). When charging begins, the
-   overlay swaps in a billing-backed `Entitlements` implementation; no public
-   call site changes.
+4. **Play denies Pro; the overlay decides when to unlock.** Public
+   `createEntitlements()` returns `NoEntitlements`. The overlay may return
+   `LaunchPromoEntitlements` during a promo, then a billing-backed
+   `Entitlements` implementation when charging begins. Public call sites stay
+   on `createEntitlements()` / `isEnabled`.
 
 ## How the seam works
 
@@ -42,7 +43,8 @@ app/
 ```
 
 - App startup calls `createEntitlements()` and `registerProModules(registry)`
-  unconditionally. In this repo those are no-ops beyond the launch promo.
+  unconditionally. In this repo entitlements deny all Pro features and
+  `registerProModules` is empty.
 - `airo-pro` is a mirror of this repo plus a `packages_pro/` directory and a
   one-line `pubspec_overrides.yaml` in `app/` pointing `airo_pro_bootstrap`
   at the real implementation.
