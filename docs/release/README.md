@@ -34,6 +34,7 @@ Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 - [Airo v0.0.7 Notes](./AIRO_v0.0.7.md)
 - [Aika Stream Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
 - [Aika Stream Feature Matrix](./AIKA_STREAM_FEATURE_MATRIX.md)
+- [Aika Stream Play ship (OKF)](../okf/aika-stream-play/index.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
 - [Download Aika Stream APK](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk)
 - [Verify direct APK downloads](../../VERIFY_DOWNLOAD.md)

@@ -64,6 +64,7 @@ a `commit-msg` hook rejects the rest (`make install-hooks`).
 | Deciding who must review | [docs/agents/COUNCIL.md](docs/agents/COUNCIL.md) — module ownership, decision matrix, `module.yaml` schema |
 | Branching, worktrees, CI spend, closing issues | [docs/agents/WORKFLOW.md](docs/agents/WORKFLOW.md) |
 | Public site or release copy | `.agents/skills/airo-release-branding/SKILL.md` |
+| Shipping Aika Stream to Play | `.agents/skills/shipping-aika-stream-play/SKILL.md` — OKF bundle `docs/okf/aika-stream-play/` |
 | Running Airo TV locally | `.claude/skills/run-airo-tv/SKILL.md` |
 | TV / leanback UI | `.claude/skills/android-tv-design/SKILL.md` |
 | Any screen that spans phone, tablet, TV, or web | [docs/ui/RESPONSIVE_STANDARDS.md](docs/ui/RESPONSIVE_STANDARDS.md) |
