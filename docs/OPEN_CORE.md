@@ -20,10 +20,20 @@ premium engineering that may be monetized later.
    `packages/stubs`. There are no long-lived forked edits of public files, so
    upstream merges stay near-conflict-free.
 4. **Play denies Pro; the overlay decides when to unlock.** Public
-   `createEntitlements()` returns `NoEntitlements`. The overlay may return
-   `LaunchPromoEntitlements` during a promo, then a billing-backed
-   `Entitlements` implementation when charging begins. Public call sites stay
-   on `createEntitlements()` / `isEnabled`.
+   `createEntitlements()` returns `NoEntitlements`. Overlay builds may grant
+   Pro after a **hosted** license (RevenueCat + Airo License API) or, for
+   CI/dev only, `AIRO_PRO_LICENSE=true`. That dart-define must never ship as
+   a Play/production bypass. Public call sites stay on
+   `createEntitlements()` / `isEnabled`.
+5. **Play OSS is local-first.** The open-source app does not register
+   installations with the hosted License API and does not link RevenueCat.
+   Anonymous installation analytics may be added later only after a privacy
+   and Play Data Safety review.
+6. **License contracts are public; commerce is not.** `packages/airo_license`
+   is the reusable SDK (models, cache, `PurchaseProvider` port,
+   `LocalLicenseClient`). It must not import `core_auth`, purchase SDKs, or
+   Supabase. Hosted API, pairing, device management, and checkout live in
+   `airo-pro` and private `airo-license-api`.
 
 ## How the seam works
 
@@ -31,27 +41,28 @@ premium engineering that may be monetized later.
 public repo (this)                     private overlay (airo-pro)
 ──────────────────                     ──────────────────────────
 core_entitlements                      packages_pro/airo_pro_bootstrap
-  ProFeature enum                        real createEntitlements()
+  ProFeature enum                        license-backed createEntitlements()
   Entitlements interface                 registers real ProModules
-  ProModule / ProModuleRegistry        packages_pro/pro_import_intelligence
-airo_pro_bootstrap (no-op stub)        packages_pro/pro_epg_reminders
-  createEntitlements()                 ... (one package per ProFeature)
-  registerProModules() {}
-app/
-  calls createEntitlements() +
-  registerProModules() at startup
+airo_license (local-first SDK)         RevenueCat adapter (future)
+  LocalLicenseClient                   hosted LicenseClient (future)
+  UnavailablePurchaseProvider          pairing / device management UI
+airo_pro_bootstrap (deny-all)          packages_pro/pro_*
+app/                                   private airo-license-api
+  prepareProEntitlements() +           (Postgres, webhooks — not this repo)
+  createEntitlements()
 ```
 
 - App startup calls `prepareProEntitlements()`, then
   `createEntitlements()` and `registerProModules(registry)`. In this repo
   entitlements deny all Pro features and `registerProModules` is empty.
-  Overlay builds enable Pro only after a stored license (or
-  `AIRO_PRO_LICENSE=true` for development).
+  Overlay builds enable Pro only after a verified license policy — not
+  because the public SDK called a network.
 - `airo-pro` is a mirror of this repo plus a `packages_pro/` directory and a
   one-line `pubspec_overrides.yaml` in `app/` pointing `airo_pro_bootstrap`
   at the real implementation.
 - `airo-pro` syncs from this repo by merging `upstream/main` (scripted in the
   overlay repo). Because the overlay is additive-only, merges are mechanical.
+- `core_auth` remains login/session identity. It is not the license system.
 
 ## What belongs where
 
@@ -59,10 +70,11 @@ app/
 |-----------------------------------------------|------------------------------------------------|
 | Player, playlist import, exact-id remaps      | Import intelligence (tvg-id + name matching)   |
 | Basic search/filter                           | Stream health verdicts / dead-link pruning     |
-| Contracts (`core_entitlements`)               | Regional ranking / Top 50 rows                 |
-| Single-source playback                         | Multi-source failover (`multiSourceFailoverEnabledProvider`) |
+| Single-source playback                         | Multi-source failover                          |
+| Contracts (`core_entitlements`, `airo_license`) | Hosted License API + RevenueCat |
 | No-op bootstrap (`airo_pro_bootstrap`)        | EPG reminders + OS notification gateway        |
 | Rust core, perf work (milestone: v2 Perf)     | Metadata enrichment, sports desk               |
+| Static Play “Free / Open Source” license line | Pairing, restore, device management UI         |
 |                                               | CDN intelligence-pack build pipeline           |
 |                                               | Billing-backed entitlements (future)           |
 
@@ -72,7 +84,8 @@ is overlay.
 
 ## Adding a new pro feature
 
-1. Add a `ProFeature` value (stable id is permanent) in `core_entitlements`.
+1. Add a `ProFeature` value (stable id is permanent) in `core_entitlements`
+   **and** the matching string in `AikaLicenseCapabilities`.
    Freeze the stable-id list in `packages/core_entitlements/test/goldens/pro_feature_stable_ids.dart`; any rename or renumber requires an explicit compatibility decision.
 2. If the public UI needs a hook (an empty row slot, a settings entry), land
    it here behind `entitlements.isEnabled(...)`.

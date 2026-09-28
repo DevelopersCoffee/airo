@@ -37,11 +37,11 @@ The following categories are safe and recommended for global publication:
 * **Low-Level Native Engine Crates**: Rust data structures, binary parsers, FFI primitives.
 * **Security Primitives**: Field-level AES encryption, key rotation managers, platform keychain wrappers (without Airo business models).
 * **Native Platform Adapters**: OS Calendar service abstractions, background file download progress engines.
-* **Concurrency & Isolate Utilities**: `runOffMain<T>()` isolate execution wrappers, timeline performance tracing, CPU task schedulers.
+* **Licensing contracts (no commerce SDKs)**: accountless installation identity, capability maps, purchase *ports* (`packages/airo_license`). Must stay free of RevenueCat, Supabase, and personal identity.
 
 ### 🔒 PRIVATE (Airo Application Only)
 The following components must ALWAYS remain confidential and internal to Airo:
-* **Commercial Entitlement Logic**: `airo_pro_bootstrap` seam, Pro feature licensing, subscription validation.
+* **Commercial entitlement *implementations***: `airo_pro_bootstrap` overlay swap, RevenueCat, hosted License API, webhook secrets, checkout/restore/pairing UI, Aika SKU mapping. Public `airo_license` holds contracts and a local-first mock client only.
 * **Proprietary Prompts & Fine-Tuning**: Meeting summary system prompts, AI persona instructions, proprietary RAG workflows.
 * **User Data & Credentials**: Private production database schemas, OAuth client secrets, internal server URLs.
 * **Airo Application Journeys**: Product onboarding, user profile management, commercial checkout flows, branded theme tokens.
