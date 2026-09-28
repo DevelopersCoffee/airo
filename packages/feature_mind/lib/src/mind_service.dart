@@ -143,7 +143,7 @@ class MindService {
     String meetingContextId = '',
     SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
     rust.SpeechLanguage defaultSpeechLanguage = rust.SpeechLanguage.englishOnly,
-    Entitlements entitlements = const LaunchPromoEntitlements(),
+    Entitlements entitlements = const NoEntitlements(),
   }) : _recorderOverride = recorder,
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),

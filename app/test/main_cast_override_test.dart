@@ -49,25 +49,28 @@ void main() {
     );
   });
 
-  test('public Play overrides leave EPG reminder notifications unavailable', () async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+  test(
+    'public Play overrides leave EPG reminder notifications unavailable',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
 
-    final container = ProviderContainer(
-      overrides: buildMainProviderOverrides(
-        prefs: prefs,
-        moduleRegistry: buildMainModuleRegistry(),
-      ),
-    );
-    addTearDown(container.dispose);
+      final container = ProviderContainer(
+        overrides: buildMainProviderOverrides(
+          prefs: prefs,
+          moduleRegistry: buildMainModuleRegistry(),
+        ),
+      );
+      addTearDown(container.dispose);
 
-    expect(
-      container.read(epgReminderNotificationGatewayProvider),
-      isA<UnavailableEpgReminderNotificationGateway>(),
-    );
-    expect(
-      container.read(epgReminderNotificationGatewayProvider).isAvailable,
-      isFalse,
-    );
-  });
+      expect(
+        container.read(epgReminderNotificationGatewayProvider),
+        isA<UnavailableEpgReminderNotificationGateway>(),
+      );
+      expect(
+        container.read(epgReminderNotificationGatewayProvider).isAvailable,
+        isFalse,
+      );
+    },
+  );
 }

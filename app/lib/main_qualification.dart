@@ -6,6 +6,7 @@
 /// ```
 library;
 
+import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -36,6 +37,7 @@ void main() {
     ),
     composeApp: () async {
       prefs = await SharedPreferences.getInstance();
+      await pro_bootstrap.prepareProEntitlements();
       await _seedDefaultPlaylist(prefs);
       registry = buildQualificationModuleRegistry();
 

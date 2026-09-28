@@ -119,6 +119,7 @@ void main() {
 
       // Initialize SharedPreferences for IPTV caching
       prefs = await SharedPreferences.getInstance();
+      await pro_bootstrap.prepareProEntitlements();
 
       // Phase 1 streaming telemetry (F7.1/F7.5) -- opt-in only, nothing
       // recorded until the user grants it in Settings. Constructed with

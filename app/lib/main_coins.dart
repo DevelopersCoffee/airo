@@ -26,6 +26,7 @@
 /// ```
 library;
 
+import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
@@ -33,6 +34,7 @@ import 'package:feature_coin/feature_coin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/coins/coins_standalone_home.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
@@ -60,7 +62,9 @@ void main() {
           'pubspec_coins.yaml carries no firebase_core dependency; '
           'the standalone vault has no auth surface today',
     ),
-    composeApp: () {
+    composeApp: () async {
+      await SharedPreferences.getInstance();
+      await pro_bootstrap.prepareProEntitlements();
       registry = buildCoinsModuleRegistry();
       return AiroCoinsApp(registry: registry);
     },

@@ -79,8 +79,8 @@ class MeetingScreen extends StatefulWidget {
   /// enrollment before the transcript document is saved (#504).
   final String? audioPath;
 
-  /// Pro / launch-promo seam: when false, IR MoM review is locked (AC).
-  /// Open-source builds leave this true (`LaunchPromoEntitlements`).
+  /// Pro seam: when false, IR MoM review is locked (AC).
+  /// Play / open-source builds leave this false (`NoEntitlements`).
   final bool meetingIntelligenceEnabled;
 
   /// Device below LLM tier (#1658): show cloud-fallback choice, not a crash.

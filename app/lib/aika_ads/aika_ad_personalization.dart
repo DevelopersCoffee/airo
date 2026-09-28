@@ -15,8 +15,5 @@ AdRequest buildAikaAdRequest() {
   if (AikaAdPersonalization.instance.enabled) {
     return const AdRequest();
   }
-  return const AdRequest(
-    nonPersonalizedAds: true,
-    extras: {'npa': '1'},
-  );
+  return const AdRequest(nonPersonalizedAds: true, extras: {'npa': '1'});
 }
