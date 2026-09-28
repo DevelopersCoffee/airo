@@ -270,6 +270,7 @@ class SettingsHubScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
+            ref.watch(licenseSettingsSectionBuilderProvider)(),
             const AppInfoTile(),
           ],
         ),

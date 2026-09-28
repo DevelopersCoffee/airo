@@ -200,7 +200,8 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
         key: const ValueKey('tv_settings_section_airo_apps'),
         children: [
           for (final app in _publishedSiblings) SiblingAppCard(app: app),
-          const SizedBox(height: 24),
+          ref.watch(licenseSettingsSectionBuilderProvider)(),
+          const SizedBox(height: 8),
           const AppInfoTile(),
         ],
       );

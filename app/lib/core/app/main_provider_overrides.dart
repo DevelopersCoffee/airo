@@ -1,3 +1,4 @@
+import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_data/core_data.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -45,5 +46,6 @@ List<Override> buildMainProviderOverrides({
       ),
     ...moduleRegistry.allProviderOverrides,
     ...intelligenceLiveCatalogOverrides(),
+    ...pro_bootstrap.createProviderOverrides(),
   ];
 }
