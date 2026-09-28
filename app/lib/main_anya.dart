@@ -14,6 +14,7 @@
 /// ```
 library;
 
+import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
@@ -47,6 +48,7 @@ void main() {
     composeApp: () async {
       registry = buildAnyaModuleRegistry();
       final prefs = await SharedPreferences.getInstance();
+      await pro_bootstrap.prepareProEntitlements();
       final repairPort = await anya_repair.createAnyaPlanRepairPort();
       return AiroAnyaApp(
         registry: registry,

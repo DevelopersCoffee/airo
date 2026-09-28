@@ -7,6 +7,11 @@ void main() {
     expect(createProviderOverrides(), isEmpty);
   });
 
+  test('open-source prepareProEntitlements is a no-op', () async {
+    await prepareProEntitlements();
+    expect(createEntitlements(), isA<NoEntitlements>());
+  });
+
   test('open-source bootstrap denies every pro feature', () {
     final entitlements = createEntitlements();
 

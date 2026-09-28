@@ -42,9 +42,11 @@ app/
   registerProModules() at startup
 ```
 
-- App startup calls `createEntitlements()` and `registerProModules(registry)`
-  unconditionally. In this repo entitlements deny all Pro features and
-  `registerProModules` is empty.
+- App startup calls `prepareProEntitlements()`, then
+  `createEntitlements()` and `registerProModules(registry)`. In this repo
+  entitlements deny all Pro features and `registerProModules` is empty.
+  Overlay builds enable Pro only after a stored license (or
+  `AIRO_PRO_LICENSE=true` for development).
 - `airo-pro` is a mirror of this repo plus a `packages_pro/` directory and a
   one-line `pubspec_overrides.yaml` in `app/` pointing `airo_pro_bootstrap`
   at the real implementation.

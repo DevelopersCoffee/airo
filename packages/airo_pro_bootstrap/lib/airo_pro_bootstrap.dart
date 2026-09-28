@@ -13,9 +13,14 @@ import 'package:flutter_riverpod/misc.dart';
 /// The entitlement policy for this build flavor.
 ///
 /// Play / open-source builds deny every [ProFeature]. The private overlay
-/// swaps this package and returns [LaunchPromoEntitlements] (or a later
-/// billing-backed policy). Call sites stay on [createEntitlements].
+/// swaps this package and returns license-backed entitlements after
+/// [prepareProEntitlements]. Call sites stay on [createEntitlements].
 Entitlements createEntitlements() => const NoEntitlements();
+
+/// Binds overlay license state after SharedPreferences is ready.
+///
+/// Open-source builds have nothing to bind.
+Future<void> prepareProEntitlements() async {}
 
 /// Contributes product-specific Riverpod overrides to application entrypoints.
 ///

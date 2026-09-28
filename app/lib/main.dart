@@ -1,3 +1,4 @@
+import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,6 +44,7 @@ Future<void> main() {
     ),
     composeApp: () async {
       prefs = await SharedPreferences.getInstance();
+      await pro_bootstrap.prepareProEntitlements();
       moduleRegistry = buildMainModuleRegistry();
       router = AppRouter.createRouter(moduleRegistry: moduleRegistry);
 

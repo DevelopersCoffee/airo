@@ -23,6 +23,7 @@ Future<List<String>> runProBootstrap({
 }) async {
   final logger = log ?? debugPrint;
   try {
+    await pro_bootstrap.prepareProEntitlements();
     final registry = ProModuleRegistry(
       (entitlements ?? pro_bootstrap.createEntitlements)(),
     );
