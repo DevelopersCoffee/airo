@@ -83,6 +83,8 @@ void main() {
     expect(find.text('Airo TV'), findsNothing);
     expect(find.text('Airo Coins'), findsNothing);
     expect(find.text('Airo Mind'), findsNothing);
+    expect(find.text('License'), findsOneWidget);
+    expect(find.textContaining('Free / Open Source'), findsOneWidget);
   });
 
   testWidgets('an unpublished sibling roster renders no promotion section', (

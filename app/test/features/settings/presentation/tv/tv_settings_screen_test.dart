@@ -145,6 +145,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(AppInfoTile), findsOneWidget);
+      expect(find.text('License'), findsOneWidget);
+      expect(find.textContaining('Free / Open Source'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('tv_settings_section_theme')),
         findsNothing,

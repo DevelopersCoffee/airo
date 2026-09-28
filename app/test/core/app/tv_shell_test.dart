@@ -425,6 +425,16 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
+    final accessibilityItem = tester.widget<TvFocusable>(
+      find.ancestor(
+        of: find.text('Accessibility'),
+        matching: find.byType(TvFocusable),
+      ),
+    );
+    expect(accessibilityItem.focusNode?.hasPrimaryFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
     final playbackItem = tester.widget<TvFocusable>(
       find.ancestor(
         of: find.text('Playback'),
