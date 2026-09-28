@@ -29,10 +29,7 @@ void main() {
         .setEnabled(false);
 
     expect(container.read(adsPersonalizationConsentProvider), isFalse);
-    expect(
-      prefs.getBool(adsPersonalizationConsentStorageKey),
-      isFalse,
-    );
+    expect(prefs.getBool(adsPersonalizationConsentStorageKey), isFalse);
     expect(AikaAdPersonalization.instance.enabled, isFalse);
     expect(buildAikaAdRequest().nonPersonalizedAds, isTrue);
     expect(buildAikaAdRequest().extras, containsPair('npa', '1'));
