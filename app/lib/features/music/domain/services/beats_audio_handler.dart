@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 // ignore: unused_import, depend_on_referenced_packages
@@ -39,6 +41,12 @@ class BeatsAudioHandler extends BaseAudioHandler with SeekHandler {
   /// Broadcast current playback state to the system
   void _broadcastState() {
     final playing = _player.playing;
+    final currentState = playbackState.value.processingState;
+    final mappedState = _mapProcessingState(_player.processingState);
+    final targetState = (currentState == AudioProcessingState.error && !playing)
+        ? AudioProcessingState.error
+        : mappedState;
+
     playbackState.add(
       playbackState.value.copyWith(
         controls: [
@@ -53,7 +61,7 @@ class BeatsAudioHandler extends BaseAudioHandler with SeekHandler {
           MediaAction.seekBackward,
         },
         androidCompactActionIndices: const [0, 1, 3],
-        processingState: _mapProcessingState(_player.processingState),
+        processingState: targetState,
         playing: playing,
         updatePosition: _player.position,
         bufferedPosition: _player.bufferedPosition,
@@ -183,6 +191,173 @@ class BeatsAudioHandler extends BaseAudioHandler with SeekHandler {
         errorMessage: error.toString(),
       ),
     );
+  }
+
+  /// List of favorite media items for Android Auto
+  final List<MediaItem> _favoriteItems = [];
+
+  /// List of recent media items for Android Auto (capped at 10)
+  final List<MediaItem> _recentItems = [];
+
+  /// Active sleep timer instance
+  int _sleepTimerMinutes = 0;
+
+  /// Update favorites list and notify Android Auto
+  void setFavorites(List<MediaItem> items) {
+    _favoriteItems.clear();
+    _favoriteItems.addAll(items.map((item) => _optimizeMediaItemForAuto(item, isGrid: true)));
+  }
+
+  /// Add item to recent items list and notify Android Auto
+  void addRecent(MediaItem item) {
+    _recentItems.removeWhere((existing) => existing.id == item.id);
+    _recentItems.insert(0, _optimizeMediaItemForAuto(item, isGrid: false));
+    if (_recentItems.length > 10) {
+      _recentItems.removeLast();
+    }
+  }
+
+  /// Optimize media item URI and attach Android Auto Driver Distraction hints
+  MediaItem _optimizeMediaItemForAuto(MediaItem item, {required bool isGrid}) {
+    final originalUri = item.artUri;
+    final optimizedArtUri = originalUri?.replace(
+      queryParameters: {
+        ...originalUri.queryParameters,
+        'w': '320',
+        'h': '320',
+        'fit': 'crop',
+      },
+    );
+
+    return item.copyWith(
+      artUri: optimizedArtUri,
+      extras: {
+        ...?item.extras,
+        'android.media.browse.CONTENT_STYLE_SUPPORTED': true,
+        'android.media.browse.CONTENT_STYLE_BROWSABLE_HINT': isGrid ? 2 : 1,
+        'android.media.browse.CONTENT_STYLE_PLAYABLE_HINT': 1,
+      },
+    );
+  }
+
+  /// Android Auto Root & Hierarchy Provider
+  @override
+  Future<List<MediaItem>> getChildren(String parentMediaId, [Map<String, dynamic>? options]) async {
+    switch (parentMediaId) {
+      case 'root':
+      case 'root_id':
+      case 'recent':
+        return [
+          const MediaItem(
+            id: 'favorites',
+            title: 'Favorites',
+            playable: false,
+            extras: {
+              'android.media.browse.CONTENT_STYLE_SUPPORTED': true,
+              'android.media.browse.CONTENT_STYLE_BROWSABLE_HINT': 2,
+            },
+          ),
+          const MediaItem(
+            id: 'recents',
+            title: 'Recent Stations',
+            playable: false,
+            extras: {
+              'android.media.browse.CONTENT_STYLE_SUPPORTED': true,
+              'android.media.browse.CONTENT_STYLE_BROWSABLE_HINT': 1,
+            },
+          ),
+          const MediaItem(
+            id: 'all_tracks',
+            title: 'All Channels',
+            playable: false,
+          ),
+        ];
+      case 'favorites':
+        return _favoriteItems;
+      case 'recents':
+        return _recentItems;
+      case 'all_tracks':
+        return _queue.map((item) => _optimizeMediaItemForAuto(item, isGrid: false)).toList();
+      default:
+        return [];
+    }
+  }
+
+  /// Google Assistant & Voice Command query handler
+  @override
+  Future<void> playFromSearch(String query, [Map<String, dynamic>? extras]) async {
+    final cleanQuery = query.toLowerCase().trim();
+    if (cleanQuery.isEmpty) {
+      if (_queue.isNotEmpty) await play();
+      return;
+    }
+
+    final match = _queue.firstWhere(
+      (item) {
+        final titleMatch = item.title.toLowerCase().contains(cleanQuery);
+        final artistMatch = item.artist?.toLowerCase().contains(cleanQuery) ?? false;
+        final genreMatch = (item.genre?.toLowerCase() ?? '').contains(cleanQuery);
+        return titleMatch || artistMatch || genreMatch;
+      },
+      orElse: () => const MediaItem(id: '', title: ''),
+    );
+
+    if (match.id.isNotEmpty) {
+      final index = _queue.indexOf(match);
+      await skipToQueueItem(index);
+    } else {
+      playbackState.add(
+        playbackState.value.copyWith(
+          processingState: AudioProcessingState.error,
+          errorMessage: 'No stream matching "$query" found on Aika Stream',
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<void> playFromMediaId(String mediaId, [Map<String, dynamic>? extras]) async {
+    final index = _queue.indexWhere((item) => item.id == mediaId);
+    if (index != -1) {
+      await skipToQueueItem(index);
+    } else {
+      await playFromSearch(mediaId, extras);
+    }
+  }
+
+  /// Sleep Timer with smooth 30-second linear volume fade-out
+  Future<void> setSleepTimer(int minutes) async {
+    _sleepTimerMinutes = minutes;
+    if (minutes <= 0) return;
+
+    final initialVolume = _player.volume;
+    final totalDuration = Duration(minutes: minutes);
+    final fadeStartDuration = totalDuration - const Duration(seconds: 30);
+
+    // Dynamic metadata update
+    if (currentMediaItem != null) {
+      mediaItem.add(
+        currentMediaItem!.copyWith(
+          displaySubtitle: '${currentMediaItem!.artist ?? ''} • Sleep in $minutes min',
+        ),
+      );
+    }
+
+    // Schedule fade-out 30s before expiry
+    Timer(fadeStartDuration > Duration.zero ? fadeStartDuration : Duration.zero, () async {
+      if (_sleepTimerMinutes != minutes) return; // Cancelled/overridden
+
+      const steps = 30;
+      for (var i = steps; i >= 0; i--) {
+        if (_sleepTimerMinutes != minutes) break;
+        final ratio = i / steps;
+        await _player.setVolume(initialVolume * ratio);
+        await Future.delayed(const Duration(seconds: 1));
+      }
+
+      await stop();
+      await _player.setVolume(initialVolume); // Restore volume for next session
+    });
   }
 
   /// Retry current track
