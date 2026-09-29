@@ -82,6 +82,8 @@ final class LicenseSnapshot {
     DevicePolicy? devicePolicy,
     LicenseCapabilities? capabilities,
     DateTime? issuedAt,
+    DateTime? expiresAt,
+    String? signature,
     bool? isLocalOnly,
   }) {
     return LicenseSnapshot(
@@ -95,8 +97,8 @@ final class LicenseSnapshot {
       devicePolicy: devicePolicy ?? this.devicePolicy,
       capabilities: capabilities ?? this.capabilities,
       policyVersion: policyVersion,
-      expiresAt: expiresAt,
-      signature: signature,
+      expiresAt: expiresAt ?? this.expiresAt,
+      signature: signature ?? this.signature,
       isLocalOnly: isLocalOnly ?? this.isLocalOnly,
     );
   }

@@ -7,6 +7,8 @@ library;
 export 'src/api/license_client.dart';
 export 'src/core/capability.dart';
 export 'src/core/license.dart';
+export 'src/core/license_snapshot_codec.dart';
+export 'src/core/license_snapshot_verifier.dart';
 export 'src/exceptions/license_exception.dart';
 export 'src/identity/installation_identity.dart';
 export 'src/providers/purchase_provider.dart';
