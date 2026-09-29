@@ -4,11 +4,15 @@ reviewers:
   - Chief Architect
   - Chief Security Officer
   - Chief Open Source Officer
-allowed_dependencies: []
+allowed_dependencies:
+  - cryptography
 forbidden_dependencies:
   - app
   - core_auth
   - airo_pro_bootstrap
+  - http
+  - supabase
+  - purchases_flutter
 quality_gates: {}
 
 status: pre-wired  # mock-only SDK; Play stays local-first and does not register installs. Overlay will consume this after hosted API exists.
