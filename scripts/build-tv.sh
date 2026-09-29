@@ -59,12 +59,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Overlay Pro sets REVENUECAT_API_KEY in the environment. Play OSS leaves it
-# unset so purchases_flutter (overlay-only) never configures.
-RC_DEFINES=()
-if [[ -n "${REVENUECAT_API_KEY:-}" ]]; then
-    RC_DEFINES+=(--dart-define="REVENUECAT_API_KEY=${REVENUECAT_API_KEY}")
-fi
+# Overlay Pro may set these in the environment. Play OSS leaves them unset:
+# no store SDK, no hosted license registration.
+PRO_DEFINES=()
+for _pro_define in \
+    REVENUECAT_API_KEY \
+    AIRO_LICENSE_API_URL \
+    LICENSE_SNAPSHOT_PUBLIC_KEY \
+    AIRO_LICENSE_ANON_KEY; do
+    if [[ -n "${!_pro_define:-}" ]]; then
+        PRO_DEFINES+=(--dart-define="${_pro_define}=${!_pro_define}")
+    fi
+done
 
 APK_PLATFORM_ARGS=(--target-platform=android-arm64)
 if [[ "$SPLIT_PER_ABI" == true ]]; then
@@ -129,7 +135,7 @@ if [[ "$FULL_BUILD" == true ]]; then
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
-            "${RC_DEFINES[@]}" \
+            "${PRO_DEFINES[@]}" \
             "${APK_PLATFORM_ARGS[@]}" \
             --tree-shake-icons \
             "${VERSION_ARGS[@]}"
@@ -139,7 +145,7 @@ if [[ "$FULL_BUILD" == true ]]; then
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
-            "${RC_DEFINES[@]}" \
+            "${PRO_DEFINES[@]}" \
             --tree-shake-icons \
             "${VERSION_ARGS[@]}"
     fi
@@ -185,7 +191,7 @@ if [[ "$BUILD_APK" == true ]]; then
         --target=lib/main_tv.dart \
         --dart-define=APP_VARIANT=tv \
         --dart-define=APP_PLATFORM=androidTv \
-        "${RC_DEFINES[@]}" \
+        "${PRO_DEFINES[@]}" \
         "${APK_PLATFORM_ARGS[@]}" \
         --tree-shake-icons \
         --split-debug-info=build/debug-info-tv \
@@ -200,7 +206,7 @@ if [[ "$BUILD_AAB" == true ]]; then
         --target=lib/main_tv.dart \
         --dart-define=APP_VARIANT=tv \
         --dart-define=APP_PLATFORM=androidTv \
-        "${RC_DEFINES[@]}" \
+        "${PRO_DEFINES[@]}" \
         --tree-shake-icons \
         --split-debug-info=build/debug-info-tv \
         --obfuscate \
