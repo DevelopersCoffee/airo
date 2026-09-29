@@ -122,6 +122,10 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
+        <!-- Android Auto descriptor (same media session as phone). -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
