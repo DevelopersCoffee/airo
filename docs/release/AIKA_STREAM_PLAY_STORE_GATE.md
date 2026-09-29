@@ -110,11 +110,16 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 | Pixel-line install and smoke | v0.0.1 preview UAT; Play hard release after listing graphics + internal track |
 | First Play AAB filename | Drop `Aika-Stream-0.0.1-14.aab` (rename of CI `Airo-TV-0.0.1-Play-Store.aab`, `versionCode` **14**). Remove any draft that used version 13 first. |
 
-## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`–`25`
+## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`–`25` then `0.0.4+26`
 
-Play already consumed `versionCode` **18**, **19**, **20**, **21**, **22**, **23**, and **24**. The next
-Play AAB is **25** (`0.0.3+25` in `app/pubspec_tv.yaml`). Never reuse 24.
-`versionName` stays `0.0.3` for this drop.
+Play already consumed `versionCode` **18**–**25**. The next Play AAB is **26**
+(`0.0.4+26` in `app/pubspec_tv.yaml`). Never reuse 25. `versionName` is
+`0.0.4` for this drop.
+
+This is the first listing drop that declares **Android Auto** (`automotive_app_desc.xml`
++ `com.google.android.gms.car.application` on both main and tv manifests) on
+the same dual-form-factor AAB as phone, tablet, D-pad, and Android TV. Do not
+split Auto onto a second package.
 
 Play Console rec on 19 (the only remaining production action): R8
 optimization, obfuscation, and shrinking all at **26%**. 0.0.2 drops the
@@ -134,7 +139,7 @@ Pixel 9:
 
 | Step | What to confirm |
 | --- | --- |
-| Form factors | Enable **Phone**, **Tablet**, and **TV** (same listing). Do not leave the app TV-only. Wi-Fi tablets need `android.hardware.telephony` `required="false"`. |
+| Form factors | Enable **Phone**, **Tablet**, and **TV** (same listing). Do not leave the app TV-only. Wi-Fi tablets need `android.hardware.telephony` `required="false"`. Android Auto is the same AAB (media projection), not a second listing. |
 | Phone screenshots | Save a phone screenshot set (compact explorer, 16:9 or 9:16). TV-only screenshots keep Pixel 9 out of the catalog. |
 | Tablet screenshots | Save 7-inch and 10-inch tablet screenshots. Missing tablet graphics keep tablets out of the catalog even when `supports-screens` is open. |
 | TV screenshots | Keep the existing TV set under `docs/store-assets/airo-tv/` (`01`–`04`, skip `05`). Console Save still required. |
@@ -142,8 +147,9 @@ Pixel 9:
 | Device catalog | Pixel 9 and the Sony Bravia appear as supported. If Pixel 9 is absent, form factors or screenshots are incomplete — do not cut another AAB with `leanback required=true`. |
 | Sideload vs Play | Testers must **uninstall sideloads** before installing from Play. Pixel sideload uses the upload key; Play-installed APKs use Play App Signing and will not upgrade in place (see Upgrade path above). |
 
-Cut the 0.0.3+25 AAB via `.github/workflows/aika-stream-release.yml` **after**
-this packet is green. Do not reuse versionCode 24.
+Cut the 0.0.4+26 AAB via `.github/workflows/aika-stream-release.yml` **after**
+this packet is green. Do not reuse versionCode 25. Enable Phone, Tablet, and
+TV form factors; keep Auto as projection on the phone/tablet catalog.
 
 ## Out of scope this wave
 
