@@ -190,3 +190,8 @@ model-artifact-report.md
 # app/pubspec.yaml's dependency_overrides for every `pub get` (pub's rule, not
 # ours) and silently breaks the full/phone and TV/Coins profiles.
 app/pubspec_overrides.yaml
+
+# Community-pass plaintext / insert dumps (never commit)
+docs/airo-license/community-pass/out/
+distribution_list.txt
+insert_coupons.sql
