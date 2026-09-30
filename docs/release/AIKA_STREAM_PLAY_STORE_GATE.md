@@ -110,12 +110,13 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 | Pixel-line install and smoke | v0.0.1 preview UAT; Play hard release after listing graphics + internal track |
 | First Play AAB filename | Drop `Aika-Stream-0.0.1-14.aab` (rename of CI `Airo-TV-0.0.1-Play-Store.aab`, `versionCode` **14**). Remove any draft that used version 13 first. |
 
-## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`–`25` then `0.0.4+26`–`27`
+## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`–`25` then `0.0.4+26`–`28`
 
-Play already consumed `versionCode` **18**–**26**. The next Play AAB is **27**
-(`0.0.4+27` in `app/pubspec_tv.yaml`). Never reuse 26. `versionName` stays
-`0.0.4`. Overlay Pro AABs at 27 ship Play Billing Library 8 (RevenueCat
-Flutter 9.16.1).
+Play already consumed `versionCode` **18**–**27**. The next Play AAB is **28**
+(`0.0.4+28` in `app/pubspec_tv.yaml`). Never reuse 27. `versionName` stays
+`0.0.4`. Overlay Pro AABs at 28 use the Play `goog_` RevenueCat SDK key
+(Billing Library 8 / RevenueCat Flutter 9.16.1) and refuse Test Store `test_`
+keys in release.
 
 This is the first listing drop that declares **Android Auto** (`automotive_app_desc.xml`
 + `com.google.android.gms.car.application` on both main and tv manifests) on
@@ -148,8 +149,8 @@ Pixel 9:
 | Device catalog | Pixel 9 and the Sony Bravia appear as supported. If Pixel 9 is absent, form factors or screenshots are incomplete — do not cut another AAB with `leanback required=true`. |
 | Sideload vs Play | Testers must **uninstall sideloads** before installing from Play. Pixel sideload uses the upload key; Play-installed APKs use Play App Signing and will not upgrade in place (see Upgrade path above). |
 
-Cut the 0.0.4+27 AAB via `.github/workflows/aika-stream-release.yml` **after**
-this packet is green. Do not reuse versionCode 26. Enable Phone, Tablet, and
+Cut the 0.0.4+28 AAB via `.github/workflows/aika-stream-release.yml` **after**
+this packet is green. Do not reuse versionCode 27. Enable Phone, Tablet, and
 TV form factors; keep Auto as projection on the phone/tablet catalog.
 
 ## Out of scope this wave
