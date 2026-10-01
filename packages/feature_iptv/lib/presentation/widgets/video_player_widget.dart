@@ -33,6 +33,7 @@ import "package:platform_media/platform_media.dart";
 import '../utils/web_fullscreen.dart' as web_fullscreen;
 import 'iptv_icon_placeholder.dart';
 import 'player_brightness_controller.dart';
+import 'spatial_audio_mode_playback_badge.dart';
 import 'player_gesture_overlay.dart';
 import 'player_lock_button.dart';
 import 'player_overlay.dart';
@@ -1373,6 +1374,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           )
                         : playerSurface,
 
+                    if (_showSpatialAudioModeBadge(state) &&
+                        !isPipActive &&
+                        !compactInlinePlayer)
+                      const Positioned(
+                        top: 8,
+                        right: 8,
+                        child: SafeArea(
+                          child: SpatialAudioModePlaybackBadge(),
+                        ),
+                      ),
+
                     // Failover toast only. Airo TV owns one visible control
                     // system below; keeping PlayerOverlay's old back/title layer
                     // mounted here caused a second set of controls to reappear
@@ -1617,6 +1629,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         ),
       ),
     );
+  }
+
+  bool _showSpatialAudioModeBadge(StreamingState state) {
+    if (state.currentChannel == null) return false;
+    return switch (state.playbackState) {
+      PlaybackState.playing ||
+      PlaybackState.paused ||
+      PlaybackState.buffering => true,
+      _ => false,
+    };
   }
 
   String? _recoveryFocusToken(StreamingState state) {
