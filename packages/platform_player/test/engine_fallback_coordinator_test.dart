@@ -82,6 +82,18 @@ class _ScriptedPlaybackEngine implements AiroPlaybackEngine {
   ) async => _state;
 
   @override
+  AiroSpatialAudioMode get spatialAudioMode => AiroSpatialAudioMode.original;
+
+  @override
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() async {
+    return AiroSpatialAudioTapResolver.expectedForBackend(backendKind);
+  }
+
+  @override
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode) async =>
+      _state;
+
+  @override
   Future<AiroPlaybackDiagnostics> diagnostics() async {
     return AiroPlaybackDiagnostics(backendId: backendKind.stableId);
   }

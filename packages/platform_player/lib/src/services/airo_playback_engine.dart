@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../models/playback_engine_models.dart';
+import '../models/spatial_audio_models.dart';
 
 abstract class AiroPlaybackEngine {
   AiroPlaybackBackendKind get backendKind;
@@ -31,6 +32,15 @@ abstract class AiroPlaybackEngine {
   });
 
   Future<AiroPlaybackState> clearTrackSelection(AiroPlaybackTrackKind kind);
+
+  /// Original (default) vs Spatial output mode (#2080). Backends without a PCM
+  /// tap may still accept the mode for persistence; [querySpatialAudioTap]
+  /// reports whether post-decode processing is actually wired.
+  AiroSpatialAudioMode get spatialAudioMode;
+
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap();
+
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode);
 
   Future<AiroPlaybackDiagnostics> diagnostics();
 

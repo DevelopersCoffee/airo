@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../models/playback_engine_models.dart';
+import '../models/spatial_audio_models.dart';
 import 'airo_playback_engine.dart';
+import 'airo_spatial_audio_engine_delegate.dart';
 
 class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
   FakeAiroPlaybackEngine({
@@ -42,9 +44,25 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
   final List<AiroPlaybackTrackOption> _tracks;
   final AiroPlaybackDiagnostics _diagnostics;
   AiroPlaybackState _state;
+  final AiroSpatialAudioEngineDelegate _spatial = AiroSpatialAudioEngineDelegate(
+    backendKind: AiroPlaybackBackendKind.fake,
+  );
 
   @override
   AiroPlaybackBackendKind get backendKind => AiroPlaybackBackendKind.fake;
+
+  @override
+  AiroSpatialAudioMode get spatialAudioMode => _spatial.mode;
+
+  @override
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() =>
+      _spatial.queryTapStatus();
+
+  @override
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode) async {
+    await _spatial.setMode(mode);
+    return _state;
+  }
 
   @override
   Stream<AiroPlaybackState> get states => _controller.stream;

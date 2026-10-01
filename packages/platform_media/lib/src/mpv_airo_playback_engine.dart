@@ -29,9 +29,25 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
   final StreamController<AiroPlaybackState> _stateController =
       StreamController<AiroPlaybackState>.broadcast();
   int _consecutiveDegradedSamples = 0;
+  final AiroSpatialAudioEngineDelegate _spatial = AiroSpatialAudioEngineDelegate(
+    backendKind: AiroPlaybackBackendKind.mpv,
+  );
 
   @override
   AiroPlaybackBackendKind get backendKind => AiroPlaybackBackendKind.mpv;
+
+  @override
+  AiroSpatialAudioMode get spatialAudioMode => _spatial.mode;
+
+  @override
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() =>
+      _spatial.queryTapStatus();
+
+  @override
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode) async {
+    await _spatial.setMode(mode);
+    return _state;
+  }
 
   @override
   Stream<AiroPlaybackState> get states => _stateController.stream;

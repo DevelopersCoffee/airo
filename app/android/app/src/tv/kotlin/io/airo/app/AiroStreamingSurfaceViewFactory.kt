@@ -10,6 +10,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -39,6 +40,7 @@ import io.flutter.plugin.platform.PlatformViewFactory
  * stream) -- stableIds match [AiroPlaybackEnginePhase] in `platform_player`
  * so the Dart side never forks a parallel phase vocabulary.
  */
+@UnstableApi
 class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
     PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     companion object {
@@ -147,6 +149,7 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
         init {
             Log.d(TAG, "creating ExoPlayer, dataSourceFactory=${AiroStreamingEngine.dataSourceFactory}")
             player = ExoPlayer.Builder(context)
+                .setRenderersFactory(AiroSpatialPcmTap.renderersFactory(context))
                 .setMediaSourceFactory(DefaultMediaSourceFactory(AiroStreamingEngine.dataSourceFactory))
                 .build()
             Log.d(TAG, "ExoPlayer built, attaching surface + listener")
