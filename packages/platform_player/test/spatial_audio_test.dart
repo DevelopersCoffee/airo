@@ -41,7 +41,7 @@ void main() {
       );
       expect(status.tapKind, AiroSpatialAudioTapKind.opaqueBackend);
       expect(status.isTapActive, isFalse);
-      expect(status.detailCodes, isNotEmpty);
+      expect(status.detailCodes, contains('query_native_for_tv_fork'));
     });
 
     test('media3 backend expects pcm tap', () {
@@ -73,7 +73,8 @@ void main() {
       const channel = MethodChannel('com.airo.player/spatial_audio');
       AiroSpatialAudioPlatform.debugSetMethodChannel(channel);
 
-      ServicesBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
         channel,
         (call) async {
           if (call.method == 'spatialAudioTapStatus') {

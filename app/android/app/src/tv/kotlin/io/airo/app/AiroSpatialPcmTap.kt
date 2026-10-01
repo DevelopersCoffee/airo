@@ -48,13 +48,14 @@ object AiroSpatialPcmTap {
 
     fun tapStatusMap(): Map<String, Any?> {
         return mapOf(
-            "backend" to "media3",
+            "backend" to "video_player",
             "tapKind" to "pcm_after_decode",
             "processorInstalled" to true,
             "framesProcessed" to processor.framesProcessed,
             "detailCodes" to listOf(
                 "default_audio_sink",
                 "identity_audio_processor",
+                "pcm_after_decode",
                 "mode_${mode.name.lowercase()}",
             ),
         )

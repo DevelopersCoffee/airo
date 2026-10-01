@@ -959,6 +959,15 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _updateState(_state.copyWith(isMuted: newMuted));
   }
 
+  AiroSpatialAudioMode get spatialAudioMode => _engine.spatialAudioMode;
+
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() =>
+      _engine.querySpatialAudioTap();
+
+  Future<void> setSpatialAudioMode(AiroSpatialAudioMode mode) async {
+    await _engine.setSpatialAudioMode(mode);
+  }
+
   @override
   Future<void> setQuality(VideoQuality quality) async {
     if (quality == _state.selectedQuality) return;

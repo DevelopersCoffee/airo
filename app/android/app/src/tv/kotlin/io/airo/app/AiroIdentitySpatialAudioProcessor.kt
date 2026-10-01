@@ -1,5 +1,6 @@
 package io.airo.app
 
+import android.util.Log
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
@@ -49,6 +50,12 @@ class AiroIdentitySpatialAudioProcessor(
         copy.flip()
         pendingOutput.add(copy)
         framesProcessed += 1
+        if (framesProcessed <= 3L || framesProcessed % 120L == 0L) {
+            Log.d(
+                TAG,
+                "pcm_after_decode passthrough bufferBytes=${copy.remaining()} totalFrames=$framesProcessed",
+            )
+        }
     }
 
     override fun queueEndOfStream() {
@@ -77,6 +84,7 @@ class AiroIdentitySpatialAudioProcessor(
     }
 
     companion object {
+        private const val TAG = "AiroSpatial"
         private val EMPTY_BUFFER: ByteBuffer =
             ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder())
     }

@@ -27,6 +27,19 @@ class AiroSpatialAudioEngineDelegate {
     if (_nativeTapProbe != null) {
       return _nativeTapProbe!();
     }
+    final native = await AiroSpatialAudioPlatform.queryTapStatus();
+    if (native != null && native.processorInstalled) {
+      return AiroSpatialAudioTapStatus(
+        backendKind: backendKind,
+        tapKind: native.tapKind,
+        detailCodes: [
+          ...native.detailCodes,
+          'native_${native.backendKind.stableId}',
+        ],
+        processorInstalled: true,
+        framesProcessed: native.framesProcessed,
+      );
+    }
     final expected = expectedTapStatus();
     if (expected.tapKind == AiroSpatialAudioTapKind.pcmAfterDecode &&
         backendKind == AiroPlaybackBackendKind.fake) {
@@ -43,7 +56,8 @@ class AiroSpatialAudioEngineDelegate {
 
   Future<AiroSpatialAudioMode> setMode(AiroSpatialAudioMode newMode) async {
     mode = newMode;
-    if (backendKind == AiroPlaybackBackendKind.media3) {
+    if (backendKind == AiroPlaybackBackendKind.media3 ||
+        backendKind == AiroPlaybackBackendKind.videoPlayer) {
       await AiroSpatialAudioPlatform.setSpatialAudioMode(newMode);
     }
     return mode;

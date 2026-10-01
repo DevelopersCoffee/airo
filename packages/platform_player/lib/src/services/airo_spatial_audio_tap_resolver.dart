@@ -26,8 +26,8 @@ class AiroSpatialAudioTapResolver {
           tapKind: AiroSpatialAudioTapKind.opaqueBackend,
           detailCodes: const [
             'flutter_video_player_plugin',
-            'exoplayer_no_custom_audio_sink',
-            'unlock_via_media3_migration_or_fork',
+            'query_native_for_tv_fork',
+            'tv_pubspec_video_player_android_fork',
           ],
         );
       case AiroPlaybackBackendKind.mpv:
