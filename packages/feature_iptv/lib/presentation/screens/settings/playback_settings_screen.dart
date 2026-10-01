@@ -1,8 +1,10 @@
+import 'package:feature_iptv/application/providers/spatial_audio_mode_provider.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_haptics/platform_haptics.dart';
+import 'package:platform_player/platform_player.dart';
 
 /// Playback Settings Screen (CV-031): aspect ratio preference for video
 /// playback. Picture-in-Picture is airo-pro scope and lives in its own
@@ -17,6 +19,7 @@ class PlaybackSettingsScreen extends ConsumerWidget {
     final pipEnabled = ref.watch(pictureInPicturePreferenceProvider);
     final hapticStrength = ref.watch(aikaHapticStrengthProvider);
     final extraSections = ref.watch(playbackSettingsExtraSectionsProvider);
+    final spatialMode = ref.watch(spatialAudioModeProvider);
     final sleepMinutes = ref.watch(sleepTimerRemainingProvider);
     final sleepGroupValue =
         sleepMinutes == 0 || sleepTimerPresetMinutes.contains(sleepMinutes)
@@ -54,6 +57,23 @@ class PlaybackSettingsScreen extends ConsumerWidget {
                   ),
               ],
             ),
+          ),
+          SwitchListTile(
+            key: const ValueKey('playback-spatial-mode-toggle'),
+            secondary: const Icon(Icons.surround_sound_outlined),
+            title: const Text('Spatial Mode (experimental)'),
+            subtitle: const Text(
+              'Process decoded audio for a wider sound stage. Original keeps '
+              'today\'s stereo passthrough.',
+            ),
+            value: spatialMode == AiroSpatialAudioMode.spatial,
+            onChanged: (enabled) => ref
+                .read(spatialAudioModeProvider.notifier)
+                .setMode(
+                  enabled
+                      ? AiroSpatialAudioMode.spatial
+                      : AiroSpatialAudioMode.original,
+                ),
           ),
           SwitchListTile(
             key: const ValueKey('playback-resume-last-channel-toggle'),

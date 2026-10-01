@@ -31,6 +31,16 @@ void main() {
       );
     }
 
+    test('spatial tap is opaque on video_player backend (#2081)', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+      final tap = await engine.querySpatialAudioTap();
+      expect(tap.tapKind, AiroSpatialAudioTapKind.opaqueBackend);
+      expect(engine.spatialAudioMode, AiroSpatialAudioMode.original);
+      await engine.setSpatialAudioMode(AiroSpatialAudioMode.spatial);
+      expect(engine.spatialAudioMode, AiroSpatialAudioMode.spatial);
+      await engine.dispose();
+    });
+
     test('backendKind is videoPlayer', () {
       final engine = VideoPlayerAiroPlaybackEngine();
       expect(engine.backendKind, AiroPlaybackBackendKind.videoPlayer);

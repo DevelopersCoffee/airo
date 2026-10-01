@@ -154,6 +154,8 @@ class MainActivity : AudioServiceFragmentActivity() {
         backgroundAudioPlugin = AiroBackgroundAudioPlugin(this)
         backgroundAudioPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
 
+        AiroSpatialAudioPlugin().register(flutterEngine.dartExecutor.binaryMessenger)
+
         phoneMediaPickerPlugin = PhoneMediaPickerPlugin(this)
         phoneMediaPickerPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
 

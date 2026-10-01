@@ -3,11 +3,44 @@ import 'package:feature_iptv/presentation/screens/settings/playback_settings_scr
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_player/platform_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('spatial mode toggle defaults to Original and persists', (
+    tester,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: PlaybackSettingsScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Spatial Mode (experimental)'), findsOneWidget);
+    expect(container.read(spatialAudioModeProvider), AiroSpatialAudioMode.original);
+
+    await tester.tap(
+      find.byKey(const ValueKey('playback-spatial-mode-toggle')),
+    );
+    await tester.pump();
+
+    expect(container.read(spatialAudioModeProvider), AiroSpatialAudioMode.spatial);
+    expect(
+      prefs.getString(SpatialAudioModeNotifier.storageKey),
+      AiroSpatialAudioMode.spatial.stableId,
+    );
   });
 
   testWidgets('resume last channel switch defaults on and writes the pref', (

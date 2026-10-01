@@ -1047,6 +1047,18 @@ class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
   ) async => _state;
 
   @override
+  AiroSpatialAudioMode get spatialAudioMode => AiroSpatialAudioMode.original;
+
+  @override
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() async {
+    return AiroSpatialAudioTapResolver.expectedForBackend(backendKind);
+  }
+
+  @override
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode) async =>
+      _state;
+
+  @override
   Future<AiroPlaybackDiagnostics> diagnostics() async =>
       AiroPlaybackDiagnostics(backendId: backendKind.stableId);
 
@@ -1142,6 +1154,18 @@ class _ScriptedMultiSourceEngine implements AiroPlaybackEngine {
   ) async => _state;
 
   @override
+  AiroSpatialAudioMode get spatialAudioMode => AiroSpatialAudioMode.original;
+
+  @override
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() async {
+    return AiroSpatialAudioTapResolver.expectedForBackend(backendKind);
+  }
+
+  @override
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode) async =>
+      _state;
+
+  @override
   Future<AiroPlaybackDiagnostics> diagnostics() async =>
       AiroPlaybackDiagnostics(backendId: backendKind.stableId);
 
@@ -1232,6 +1256,18 @@ class _StallableMultiSourceEngine implements AiroPlaybackEngine {
   ) async => _state;
 
   @override
+  AiroSpatialAudioMode get spatialAudioMode => AiroSpatialAudioMode.original;
+
+  @override
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() async {
+    return AiroSpatialAudioTapResolver.expectedForBackend(backendKind);
+  }
+
+  @override
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode) async =>
+      _state;
+
+  @override
   Future<AiroPlaybackDiagnostics> diagnostics() async =>
       AiroPlaybackDiagnostics(backendId: backendKind.stableId);
 
@@ -1311,6 +1347,18 @@ class _PendingOpenEngine implements AiroPlaybackEngine {
   Future<AiroPlaybackState> clearTrackSelection(
     AiroPlaybackTrackKind kind,
   ) async => _state;
+
+  @override
+  AiroSpatialAudioMode get spatialAudioMode => AiroSpatialAudioMode.original;
+
+  @override
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() async {
+    return AiroSpatialAudioTapResolver.expectedForBackend(backendKind);
+  }
+
+  @override
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode) async =>
+      _state;
 
   @override
   Future<AiroPlaybackDiagnostics> diagnostics() async =>

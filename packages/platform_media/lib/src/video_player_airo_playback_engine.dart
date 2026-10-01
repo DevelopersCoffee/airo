@@ -37,10 +37,26 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   AiroPlaybackEnginePhase? _prebufferPhase;
   final StreamController<AiroPlaybackState> _stateController =
       StreamController<AiroPlaybackState>.broadcast();
+  final AiroSpatialAudioEngineDelegate _spatial = AiroSpatialAudioEngineDelegate(
+    backendKind: AiroPlaybackBackendKind.videoPlayer,
+  );
 
   @override
   AiroPlaybackBackendKind get backendKind =>
       AiroPlaybackBackendKind.videoPlayer;
+
+  @override
+  AiroSpatialAudioMode get spatialAudioMode => _spatial.mode;
+
+  @override
+  Future<AiroSpatialAudioTapStatus> querySpatialAudioTap() =>
+      _spatial.queryTapStatus();
+
+  @override
+  Future<AiroPlaybackState> setSpatialAudioMode(AiroSpatialAudioMode mode) async {
+    await _spatial.setMode(mode);
+    return _state;
+  }
 
   @override
   Stream<AiroPlaybackState> get states => _stateController.stream;
