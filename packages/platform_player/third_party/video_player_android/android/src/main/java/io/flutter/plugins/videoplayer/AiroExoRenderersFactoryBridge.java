@@ -3,6 +3,7 @@
 package io.flutter.plugins.videoplayer;
 
 import android.content.Context;
+import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
@@ -10,6 +11,8 @@ import androidx.media3.exoplayer.RenderersFactory;
 
 @UnstableApi
 public final class AiroExoRenderersFactoryBridge {
+  private static final String TAG = "AiroSpatial";
+
   private AiroExoRenderersFactoryBridge() {}
 
   @NonNull
@@ -18,8 +21,10 @@ public final class AiroExoRenderersFactoryBridge {
       Class<?> tap = Class.forName("io.airo.app.AiroSpatialPcmTap");
       Object result =
           tap.getMethod("renderersFactory", Context.class).invoke(null, context);
+      Log.d(TAG, "using AiroSpatialPcmTap renderers factory for ExoPlayer");
       return (RenderersFactory) result;
-    } catch (ReflectiveOperationException ignored) {
+    } catch (ReflectiveOperationException e) {
+      Log.d(TAG, "diagnostic_stock_renderers_factory: " + e.getClass().getSimpleName());
       return new DefaultRenderersFactory(context);
     }
   }

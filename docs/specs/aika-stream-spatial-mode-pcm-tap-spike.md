@@ -12,9 +12,11 @@ Parent epic: [#2080](https://github.com/DevelopersCoffee/airo/issues/2080).
 | **Web** | `video_player` `<video>` | browser decode | Opaque |
 
 On **Aika Stream TV APK**, IPTV `ExoPlayer` instances built by the forked
-`video_player_android` plugin share the same `AiroSpatialPcmTap.renderersFactory`
-as the streaming-engine surface. Other flavors still use stock pub.dev
-`video_player_android` (opaque).
+`video_player_android` plugin (Media3 **1.11.1**, matched to the app) share
+`AiroSpatialPcmTap.renderersFactory` with the streaming-engine surface. The PCM
+processor extends Media3 `BaseAudioProcessor` and is **inactive in Original mode**
+(`AudioFormat.NOT_SET`) so behavior matches stock `DefaultAudioSink`. Other
+flavors still use pub.dev `video_player_android` (opaque).
 
 ## Proposed tap point
 
@@ -85,7 +87,9 @@ In app:
 2. Add playlist URL: `https://iptv-org.github.io/iptv/index.m3u`
 3. Open any stereo channel → confirm playback with Spatial **off** (Original).
 4. Settings → Playback → enable **Spatial Mode (experimental)** → replay channel.
-5. Verify tap: `adb logcat -s AiroSpatial` (expect `pcm_after_decode passthrough` while audio plays).
+5. Verify tap (Spatial **must be ON** — Original keeps the processor inactive, so no
+   `pcm_after_decode` lines): `adb logcat -s AiroSpatial` → `using AiroSpatialPcmTap
+   renderers factory` at player create, then `pcm_after_decode passthrough` during playback.
 6. Optional: `adb logcat -s AiroStreamingSurface` for the separate Media3 test surface.
 
 Release-style TV APK: `make build-tv` (runs `scripts/build-tv.sh` with `pubspec_tv.yaml` swap).

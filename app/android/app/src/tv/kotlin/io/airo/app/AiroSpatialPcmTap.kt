@@ -23,6 +23,7 @@ object AiroSpatialPcmTap {
 
     enum class SpatialMode { ORIGINAL, SPATIAL }
 
+    @JvmStatic
     fun renderersFactory(context: Context): DefaultRenderersFactory {
         return object : DefaultRenderersFactory(context) {
             override fun buildAudioSink(
@@ -30,6 +31,8 @@ object AiroSpatialPcmTap {
                 enableFloatOutput: Boolean,
                 enableAudioOutputPlaybackParams: Boolean,
             ): AudioSink {
+                // Match DefaultRenderersFactory.buildAudioSink (Media3 1.11.x) plus
+                // optional processors — inactive processors are skipped by the sink.
                 return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(enableFloatOutput)
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)

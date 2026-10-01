@@ -53,7 +53,9 @@ android {
     }
 
     dependencies {
-        val exoplayerVersion = "1.9.2"
+        // Align with app TV flavor (media3 1.11.1) — avoids RenderersFactory/AudioSink
+        // skew when AiroSpatialPcmTap is loaded from the host APK (#2081).
+        val exoplayerVersion = "1.11.1"
         implementation("androidx.media3:media3-exoplayer:${exoplayerVersion}")
         implementation("androidx.media3:media3-exoplayer-hls:${exoplayerVersion}")
         implementation("androidx.media3:media3-exoplayer-dash:${exoplayerVersion}")
