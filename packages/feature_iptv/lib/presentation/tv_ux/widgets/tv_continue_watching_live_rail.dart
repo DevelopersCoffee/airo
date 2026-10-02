@@ -71,7 +71,7 @@ class _TvContinueWatchingLiveRailState
                     initials: channelInitials(channel.name),
                     variant: MediaCardVariant.continueWatching,
                     showResumeBadge: true,
-                    isLive: true,
+                    isLive: false,
                     autofocus: autofocus,
                     selectLongPressForSecondary: true,
                     onTap: () => widget.onPlayChannel(channel),

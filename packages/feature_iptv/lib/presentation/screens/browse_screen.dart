@@ -63,7 +63,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
             initials: channelInitials(channel.name),
             variant: cardVariant,
             showResumeBadge: isContinueWatching,
-            isLive: isContinueWatching,
+            isLive: false,
             selectLongPressForSecondary: isContinueWatching,
             onTap: () => widget.onChannelSelected?.call(channel),
             onLongPress: isContinueWatching
