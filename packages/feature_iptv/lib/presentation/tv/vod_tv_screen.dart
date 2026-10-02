@@ -6,13 +6,14 @@ import 'package:platform_channels/platform_channels.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/recently_watched_recorder.dart';
 import '../../application/providers/vod_providers.dart';
+import '../tv_ux/widgets/tv_continue_watching_scaffold.dart';
 import '../widgets/vod_grid.dart';
 
 /// A 10-foot VOD experience for Android TV and Fire TV: a "Continue
 /// Watching" row (when non-empty) above [VodGrid]. Mirrors the live TV
 /// path's dark, full-bleed layout (`AiroTvShell` in `tv_ux/`) since both
 /// screens live in the same TV shell.
-class VodTvScreen extends ConsumerWidget {
+class VodTvScreen extends ConsumerStatefulWidget {
   const VodTvScreen({super.key, this.onItemSelected});
 
   /// Invoked after an item starts playing, so a shell that paints this
@@ -21,64 +22,89 @@ class VodTvScreen extends ConsumerWidget {
   final VoidCallback? onItemSelected;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VodTvScreen> createState() => _VodTvScreenState();
+}
+
+class _VodTvScreenState extends ConsumerState<VodTvScreen> {
+  var _showRemoveHint = false;
+
+  @override
+  Widget build(BuildContext context) {
     final continueWatching =
-        ref.watch(vodContinueWatchingProvider).value ?? const [];
+        ref.watch(vodContinueWatchingEntriesProvider).value ?? const [];
 
     return AiroResponsiveScaffold(
       overrideFormFactor: AiroFormFactor.tv,
       padding: EdgeInsets.zero,
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (continueWatching.isNotEmpty) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Text(
-                  'Continue Watching',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+        child: TvContinueWatchingScaffold(
+          showRemoveHint: _showRemoveHint,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (continueWatching.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Text(
+                    'Continue Watching',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(
-                height: 150,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  itemCount: continueWatching.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 16),
-                  itemBuilder: (context, index) {
-                    final item = continueWatching[index];
-                    return SizedBox(
-                      width: 200,
-                      child: _ContinueWatchingTile(
-                        item: item,
-                        onSelect: () => _selectItem(ref, item),
-                      ),
-                    );
-                  },
+                SizedBox(
+                  height: MediaCard.railHeightFor(
+                    MediaCardVariant.continueWatching,
+                  ),
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: continueWatching.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 16),
+                    itemBuilder: (context, index) {
+                      final entry = continueWatching[index];
+                      return SizedBox(
+                        width: 172,
+                        child: MediaCard(
+                          name: entry.item.title,
+                          subtitle: entry.item.group,
+                          logoUrl: entry.item.posterUrl,
+                          variant: MediaCardVariant.continueWatching,
+                          showResumeBadge: true,
+                          watchProgress: entry.watchProgress,
+                          selectLongPressForSecondary: true,
+                          onTap: () => _selectItem(ref, entry.item),
+                          onLongPress: () => _remove(entry.item.id),
+                          onFocus: () =>
+                              setState(() => _showRemoveHint = true),
+                          onUnfocus: () =>
+                              setState(() => _showRemoveHint = false),
+                        ),
+                      );
+                    },
+                  ),
                 ),
+              ],
+              Expanded(
+                child: VodGrid(onItemSelect: (item) => _selectItem(ref, item)),
               ),
             ],
-            Expanded(
-              child: VodGrid(onItemSelect: (item) => _selectItem(ref, item)),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
+  Future<void> _remove(String itemId) async {
+    await ref.read(removeFromVodContinueWatchingProvider(itemId).future);
+    if (!mounted) return;
+    setState(() => _showRemoveHint = false);
+  }
+
   void _selectItem(WidgetRef ref, VodItem item) {
-    // VOD streams the same way live channels do (per CV-019): reuse the
-    // existing live-channel player by building a minimal synthetic
-    // IPTVChannel purely for this call — a same-request, non-persisted,
-    // player-launch-only adapter, not a shared/persisted history record.
     final syntheticChannel = IPTVChannel(
       id: item.id,
       name: item.title,
@@ -88,40 +114,6 @@ class VodTvScreen extends ConsumerWidget {
     );
     ref.read(pendingVodHistoryItemProvider.notifier).state = item;
     ref.read(iptvStreamingServiceProvider).playChannel(syntheticChannel);
-    onItemSelected?.call();
-  }
-}
-
-class _ContinueWatchingTile extends StatelessWidget {
-  const _ContinueWatchingTile({required this.item, required this.onSelect});
-
-  final VodItem item;
-  final VoidCallback onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return TvFocusable(
-      onSelect: onSelect,
-      semanticLabel: item.title,
-      semanticHint: 'Press OK to resume',
-      semanticButton: true,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[850],
-          borderRadius: BorderRadius.circular(
-            TvFocusConstants.focusBorderRadius,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            item.title,
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-      ),
-    );
+    widget.onItemSelected?.call();
   }
 }

@@ -105,4 +105,37 @@ final addToVodWatchHistoryProvider = FutureProvider.family<void, VodItem>((
   final storage = ref.watch(vodWatchHistoryStorageProvider);
   await storage.addToRecent(item);
   ref.invalidate(vodContinueWatchingProvider);
+  ref.invalidate(vodContinueWatchingEntriesProvider);
+});
+
+/// VOD Continue Watching row entry with optional resume progress.
+class VodContinueWatchingEntry {
+  const VodContinueWatchingEntry({required this.item, this.watchProgress});
+
+  final VodItem item;
+  final double? watchProgress;
+}
+
+final vodContinueWatchingEntriesProvider =
+    FutureProvider<List<VodContinueWatchingEntry>>((ref) async {
+  final items = await ref.watch(vodContinueWatchingProvider.future);
+  final resumeStorage = ref.watch(vodResumePositionStorageProvider);
+  final entries = <VodContinueWatchingEntry>[];
+  for (final item in items) {
+    final position = await resumeStorage.getPosition(item.id);
+    final progress = position != null && !position.isNearlyComplete
+        ? position.completionRatio
+        : null;
+    entries.add(VodContinueWatchingEntry(item: item, watchProgress: progress));
+  }
+  return entries;
+});
+
+final removeFromVodContinueWatchingProvider =
+    FutureProvider.family<void, String>((ref, itemId) async {
+  final storage = ref.watch(vodWatchHistoryStorageProvider);
+  await storage.removeFromRecent(itemId);
+  await ref.watch(vodResumePositionStorageProvider).clearPosition(itemId);
+  ref.invalidate(vodContinueWatchingProvider);
+  ref.invalidate(vodContinueWatchingEntriesProvider);
 });

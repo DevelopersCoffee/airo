@@ -28,6 +28,10 @@ class AiroRailCard extends StatelessWidget {
     this.onFocus,
     this.onUnfocus,
     this.autofocus = false,
+    this.watchProgress,
+    this.showResumeBadge = false,
+    this.selectLongPressForSecondary = false,
+    this.semanticHint,
   });
 
   final String name;
@@ -50,6 +54,12 @@ class AiroRailCard extends StatelessWidget {
   final VoidCallback? onFocus;
   final VoidCallback? onUnfocus;
   final bool autofocus;
+  final double? watchProgress;
+  final bool showResumeBadge;
+  final bool selectLongPressForSecondary;
+  final String? semanticHint;
+
+  static const _selectLongPressThreshold = Duration(milliseconds: 500);
 
   @override
   Widget build(BuildContext context) {
@@ -62,13 +72,16 @@ class AiroRailCard extends StatelessWidget {
     return TvFocusable(
       onSelect: onTap,
       onSecondaryAction: onLongPress,
+      selectLongPressThreshold: selectLongPressForSecondary && onLongPress != null
+          ? _selectLongPressThreshold
+          : null,
       onFocus: onFocus,
       onUnfocus: onUnfocus,
       autofocus: autofocus,
       borderRadius: 12,
       focusColor: focusColor,
       semanticLabel: isLive ? '$name, live' : name,
-      semanticHint: 'Press OK to play channel',
+      semanticHint: semanticHint ?? 'Press OK to play channel',
       semanticButton: true,
       child: GestureDetector(
         onTap: onTap,
@@ -102,6 +115,19 @@ class AiroRailCard extends StatelessWidget {
                           quality: quality!,
                           color: qualityColor,
                         ),
+                      ),
+                    if (showResumeBadge)
+                      const Positioned(
+                        left: 7,
+                        bottom: 7,
+                        child: _ResumeBadge(),
+                      ),
+                    if (watchProgress != null && watchProgress! > 0)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _WatchProgressBar(progress: watchProgress!),
                       ),
                   ],
                 ),
@@ -250,6 +276,58 @@ class _PulsingDotState extends State<_PulsingDot>
           shape: BoxShape.circle,
         ),
       ),
+    );
+  }
+}
+
+class _ResumeBadge extends StatelessWidget {
+  const _ResumeBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xB3000000),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'RESUME',
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+  }
+}
+
+class _WatchProgressBar extends StatelessWidget {
+  const _WatchProgressBar({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = progress.clamp(0.0, 1.0);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: [
+            Container(
+              height: 3,
+              color: const Color(0x66000000),
+            ),
+            Container(
+              height: 3,
+              width: constraints.maxWidth * clamped,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ],
+        );
+      },
     );
   }
 }

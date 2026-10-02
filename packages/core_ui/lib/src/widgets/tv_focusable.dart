@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -205,6 +207,11 @@ class TvFocusable extends StatefulWidget {
   /// take focus or it can never receive typed input.
   final bool descendantsAreFocusable;
 
+  /// When set with [onSecondaryAction], Select/OK uses press-and-hold:
+  /// short press fires [onSelect], hold fires [onSecondaryAction] without
+  /// also firing [onSelect] on release (remote long-press contract).
+  final Duration? selectLongPressThreshold;
+
   const TvFocusable({
     super.key,
     required this.child,
@@ -225,6 +232,7 @@ class TvFocusable extends StatefulWidget {
     this.semanticButton,
     this.announceFocus = false,
     this.descendantsAreFocusable = false,
+    this.selectLongPressThreshold,
   });
 
   @override
@@ -239,6 +247,8 @@ class _TvFocusableState extends State<TvFocusable>
   late final CurvedAnimation _focusCurve;
   late final Animation<double> _scaleAnimation;
   final ValueNotifier<bool> _isFocused = ValueNotifier<bool>(false);
+  Timer? _selectLongPressTimer;
+  bool _selectConsumedByLongPress = false;
 
   @override
   void initState() {
@@ -267,6 +277,7 @@ class _TvFocusableState extends State<TvFocusable>
 
   @override
   void dispose() {
+    _selectLongPressTimer?.cancel();
     _focusNode.removeListener(_onFocusChange);
     if (_ownsFocusNode) _focusNode.dispose();
     _focusCurve.dispose();
@@ -326,14 +337,44 @@ class _TvFocusableState extends State<TvFocusable>
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
+    if (key == TvInputKey.select &&
+        widget.onSelect != null &&
+        widget.onSecondaryAction != null &&
+        widget.selectLongPressThreshold != null) {
+      return _handleSelectLongPress(event);
+    }
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if (key == TvInputKey.select && widget.onSelect != null) {
       _handleSelect();
       return KeyEventResult.handled;
     }
     if (key == TvInputKey.menu && widget.onSecondaryAction != null) {
       widget.onSecondaryAction!.call();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _handleSelectLongPress(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      _selectLongPressTimer ??= Timer(widget.selectLongPressThreshold!, () {
+        _selectLongPressTimer = null;
+        if (!mounted) return;
+        _selectConsumedByLongPress = true;
+        widget.onSecondaryAction?.call();
+      });
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent) {
+      final wasStillPending = _selectLongPressTimer != null;
+      _selectLongPressTimer?.cancel();
+      _selectLongPressTimer = null;
+      if (_selectConsumedByLongPress) {
+        _selectConsumedByLongPress = false;
+      } else if (wasStillPending) {
+        _handleSelect();
+      }
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;

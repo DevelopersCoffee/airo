@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_history/platform_history.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const _bbc = IPTVChannel(
   id: 'bbc',
@@ -123,6 +125,48 @@ void main() {
     expect(find.text('CNN International'), findsWidgets);
     expect(find.text('Live TV'), findsOneWidget);
     expect(find.text('Recently Added'), findsNothing);
+    expect(find.text('RESUME'), findsOneWidget);
+  });
+
+  testWidgets('focused Continue Watching tile shows long-press remove hint', (
+    tester,
+  ) async {
+    await pumpHome(tester, channels: const [_bbc], recents: const [_bbc]);
+
+    await tester.pump();
+    expect(find.textContaining('Long press'), findsOneWidget);
+  });
+
+  testWidgets('long-press remove drops channel from Continue Watching row', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = RecentlyWatchedStorage(prefs);
+    await storage.addToRecent(_bbc);
+    await storage.addToRecent(_cnn);
+
+    await pumpHome(
+      tester,
+      channels: const [_bbc, _cnn],
+      recents: await storage.getRecentlyWatched(),
+      extraOverrides: [
+        recentlyWatchedStorageProvider.overrideWithValue(storage),
+        recentlyWatchedChannelsProvider.overrideWith((ref) async {
+          return ref.watch(recentlyWatchedStorageProvider).getRecentlyWatched(
+            limit: 10,
+          );
+        }),
+      ],
+    );
+
+    expect(find.text('BBC One HD'), findsWidgets);
+    await tester.longPress(find.text('BBC One HD').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('BBC One HD'), findsNothing);
+    expect(find.text('CNN International'), findsWidgets);
   });
 
   testWidgets(

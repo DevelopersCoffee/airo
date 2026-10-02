@@ -53,6 +53,7 @@ final recentlyWatchedRecorderProvider = Provider<void>((ref) {
       enqueueWrite(() async {
         await ref.read(vodWatchHistoryStorageProvider).addToRecent(pendingVod);
         ref.invalidate(vodContinueWatchingProvider);
+        ref.invalidate(vodContinueWatchingEntriesProvider);
       });
       return;
     }

@@ -458,6 +458,50 @@ void main() {
     expect(secondaryCount, 1);
   });
 
+  testWidgets('Select long-press fires secondary without short select', (
+    tester,
+  ) async {
+    var selectCount = 0;
+    var secondaryCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 160,
+              height: 80,
+              child: TvFocusable(
+                autofocus: true,
+                onSelect: () => selectCount += 1,
+                onSecondaryAction: () => secondaryCount += 1,
+                selectLongPressThreshold: const Duration(milliseconds: 400),
+                child: const Center(child: Text('Hold me')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+
+    expect(secondaryCount, 1);
+    expect(selectCount, 0);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+
+    expect(selectCount, 1);
+    expect(secondaryCount, 1);
+  });
+
   // issues/02-focus-tokens-reduced-motion.md acceptance criterion 2:
   // reduced motion makes focus scale instantaneous/absent without removing
   // focus visibility (the border must still appear).

@@ -967,6 +967,14 @@ final addToRecentlyWatchedProvider = FutureProvider.family<void, IPTVChannel>((
   ref.invalidate(recentlyWatchedChannelsProvider);
 });
 
+/// Removes one channel from Continue Watching / recently watched (local only).
+final removeFromRecentlyWatchedProvider =
+    FutureProvider.family<void, String>((ref, channelId) async {
+  final storage = ref.watch(recentlyWatchedStorageProvider);
+  await storage.removeFromRecent(channelId);
+  ref.invalidate(recentlyWatchedChannelsProvider);
+});
+
 // =============================================================================
 // Favorite Channels Providers
 // =============================================================================
