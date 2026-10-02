@@ -20,6 +20,9 @@ enum MediaCardVariant {
 
   /// Standard size with the pulsing LIVE badge forced on.
   live,
+
+  /// Continue Watching: landscape tile with optional progress + RESUME badge.
+  continueWatching,
 }
 
 /// The single reusable media card: channel, movie, show — one widget.
@@ -42,6 +45,9 @@ class MediaCard extends StatelessWidget {
     this.onFocus,
     this.onUnfocus,
     this.autofocus = false,
+    this.watchProgress,
+    this.showResumeBadge = false,
+    this.selectLongPressForSecondary = false,
   });
 
   final String name;
@@ -58,11 +64,22 @@ class MediaCard extends StatelessWidget {
   final VoidCallback? onUnfocus;
   final bool autofocus;
 
+  /// Fraction watched in `[0, 1]`; drawn on [MediaCardVariant.continueWatching].
+  final double? watchProgress;
+
+  /// Shows a RESUME pill on the thumbnail (Continue Watching rows).
+  final bool showResumeBadge;
+
+  /// When true, remote Select/OK long-press routes to [onLongPress].
+  final bool selectLongPressForSecondary;
+
   /// (width, thumbnailHeight) for each [MediaCardVariant].
   static (double, double) _dimensionsFor(MediaCardVariant variant) =>
       switch (variant) {
         MediaCardVariant.compact => (140.0, 84.0),
-        MediaCardVariant.standard || MediaCardVariant.live => (172.0, 104.0),
+        MediaCardVariant.standard ||
+        MediaCardVariant.live ||
+        MediaCardVariant.continueWatching => (172.0, 104.0),
         MediaCardVariant.hero => (320.0, 180.0),
       };
 
@@ -93,6 +110,15 @@ class MediaCard extends StatelessWidget {
       onFocus: onFocus,
       onUnfocus: onUnfocus,
       autofocus: autofocus,
+      watchProgress: variant == MediaCardVariant.continueWatching
+          ? watchProgress
+          : null,
+      showResumeBadge:
+          variant == MediaCardVariant.continueWatching && showResumeBadge,
+      selectLongPressForSecondary: selectLongPressForSecondary,
+      semanticHint: variant == MediaCardVariant.continueWatching
+          ? 'Press OK to resume. Long press OK to remove from continue watching.'
+          : null,
     );
   }
 }

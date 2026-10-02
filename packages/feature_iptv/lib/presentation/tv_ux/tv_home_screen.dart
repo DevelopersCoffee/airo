@@ -13,6 +13,7 @@ import '../widgets/tv_playlist_qr_dialog.dart';
 import 'tv_local_media_browser.dart';
 import 'tv_playlist_import_success_dialog.dart';
 import 'tv_playlist_url_dialog.dart';
+import 'widgets/tv_continue_watching_live_rail.dart';
 
 const _liveTvRailLimit = 12;
 
@@ -224,8 +225,6 @@ class _TvHomeDashboard extends ConsumerWidget {
     // Recently Added stays hidden until a recency signal exists (import
     // timestamp or stable new ids). Do not invent popularity.
     final rails = <_HomeRailSpec>[
-      if (recents.isNotEmpty)
-        _HomeRailSpec(title: 'Continue Watching', channels: recents),
       if (liveTv.isNotEmpty)
         _HomeRailSpec(
           title: 'Live TV',
@@ -239,7 +238,7 @@ class _TvHomeDashboard extends ConsumerWidget {
         ),
     ];
 
-    var assignedAutofocus = false;
+    var assignedAutofocus = recents.isNotEmpty;
     final railWidgets = [
       for (final rail in rails)
         _HomeRail(
@@ -255,9 +254,9 @@ class _TvHomeDashboard extends ConsumerWidget {
                 initials: channelInitials(channel.name),
                 isLive: true,
                 autofocus: () {
-                  final autofocus = !assignedAutofocus;
+                  if (assignedAutofocus) return false;
                   assignedAutofocus = true;
-                  return autofocus;
+                  return true;
                 }(),
                 onTap: () => _play(ref, channel),
               ),
@@ -268,7 +267,15 @@ class _TvHomeDashboard extends ConsumerWidget {
     return TvOverscanSafeArea(
       child: ListView(
         padding: const EdgeInsets.only(top: AiroSpacing.md),
-        children: railWidgets,
+        children: [
+          if (recents.isNotEmpty)
+            TvContinueWatchingLiveRail(
+              channels: recents,
+              onPlayChannel: (channel) => _play(ref, channel),
+              autofocusFirst: true,
+            ),
+          ...railWidgets,
+        ],
       ),
     );
   }

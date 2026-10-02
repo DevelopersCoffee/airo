@@ -9,8 +9,8 @@ class DefaultRailCatalog {
   static List<RailDefinition> definitions() => const [
     RailDefinition(
       id: 'recently-watched',
-      title: 'Recently Watched',
-      subtitle: 'Jump back in',
+      title: 'Continue Watching',
+      subtitle: 'Pick up where you left off',
       query: RailQuery(recentOnly: true),
       priority: 5,
     ),
