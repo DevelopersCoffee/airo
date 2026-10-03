@@ -190,11 +190,23 @@ class _NfcQuickExpenseCaptureScreenState
       ),
       VaultUnavailable() => _buildSessionGate(
         context,
-        const VaultUnavailableView(),
+        const EmptyStateWidget(
+          icon: Icons.no_encryption_outlined,
+          title: 'Biometrics required',
+          message:
+              'The Airo Coin vault needs a device lock (fingerprint, face, or '
+              'screen lock). Set one up in system settings, then try again.',
+        ),
       ),
       VaultAuthError(:final failure) => _buildSessionGate(
         context,
-        VaultAuthErrorView(failure: failure),
+        ErrorView(
+          icon: Icons.error_outline,
+          title: 'Could not unlock',
+          message: failure.message,
+          retryLabel: 'Try again',
+          onRetry: () => ref.read(vaultSessionProvider.notifier).unlock(),
+        ),
       ),
       VaultLocked() => _buildSessionGate(
         context,
