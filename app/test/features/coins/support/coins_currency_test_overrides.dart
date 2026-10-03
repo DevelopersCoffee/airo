@@ -13,5 +13,8 @@ Future<Override> coinsCurrencyProviderTestOverride({
     'airo_coins_currency_user_selected': true,
   });
   final prefs = await SharedPreferences.getInstance();
-  return coinsCurrencyProvider.overrideWith((ref) => CoinsCurrencyNotifier(prefs));
+  return coinsCurrencyProvider.overrideWith(
+    (ref) => CoinsCurrencyNotifier(prefs),
+  );
 }
+
