@@ -35,6 +35,8 @@ void main() {
       ),
     );
     expect(manifest, contains('android:name=".CoinsActivity"'));
+    expect(manifest, contains('android.nfc.action.NDEF_DISCOVERED'));
+    expect(manifest, contains('android:path="/quick-capture"'));
   });
 
   test('coins registry registers the vault module for ShellId.coins', () {

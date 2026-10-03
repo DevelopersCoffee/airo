@@ -1,4 +1,5 @@
 import 'package:core_product_shell/core_product_shell.dart';
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -15,6 +16,7 @@ import '../../features/quest/presentation/screens/quest_list_screen.dart';
 import '../../features/quest/presentation/screens/quest_upload_screen.dart';
 import '../../features/coins/presentation/screens/coins_dashboard_screen.dart';
 import '../../features/coins/presentation/screens/add_expense_screen.dart';
+import '../../features/coins/presentation/screens/nfc_quick_expense_capture_screen.dart';
 import '../../features/coins/presentation/screens/budget_management_screen.dart';
 import '../../features/coins/presentation/screens/groups_list_screen.dart';
 import '../../features/coins/presentation/screens/group_detail_screen.dart';
@@ -65,6 +67,18 @@ class AppRouter {
         final isLoginRoute =
             state.matchedLocation == RouteNames.login ||
             state.matchedLocation == RouteNames.register;
+
+        if (NfcExpenseCaptureLink.matches(state.uri)) {
+          if (!isLoggedIn) {
+            return RouteNames.login;
+          }
+          return RouteNames.coinsQuickCapturePath;
+        }
+
+        if (state.matchedLocation == RouteNames.coinsQuickCapturePath &&
+            !isLoggedIn) {
+          return RouteNames.login;
+        }
 
         // If not logged in and not on login/register page, redirect to login
         if (!isLoggedIn && !isLoginRoute) {
@@ -188,6 +202,12 @@ class AppRouter {
                       path: 'add-expense',
                       name: RouteNames.coinsAddExpense,
                       builder: (context, state) => const AddExpenseScreen(),
+                    ),
+                    GoRoute(
+                      path: 'quick-capture',
+                      name: RouteNames.coinsQuickCapture,
+                      builder: (context, state) =>
+                          const NfcQuickExpenseCaptureScreen(),
                     ),
                     GoRoute(
                       path: 'budgets',

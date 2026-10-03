@@ -256,12 +256,12 @@ android {
             }
             if (isCoinsVariant) {
                 manifest.srcFile("src/coins/AndroidManifest.xml")
-                kotlin.setSrcDirs(listOf("src/coins/kotlin"))
+                kotlin.setSrcDirs(listOf("src/coins/kotlin", "src/coins_nfc/kotlin"))
             } else if (isAnyaVariant) {
                 manifest.srcFile("src/anya/AndroidManifest.xml")
                 kotlin.setSrcDirs(listOf("src/anya/kotlin"))
             } else {
-                kotlin.setSrcDirs(listOf("src/product/kotlin"))
+                kotlin.setSrcDirs(listOf("src/product/kotlin", "src/coins_nfc/kotlin"))
             }
             // Pick the real LiteRT-LM plugin only when the private Maven
             // dependency was resolvable (see `app/android/build.gradle.kts`).
