@@ -5,6 +5,7 @@ import '../../../bill_split/domain/models/receipt_item.dart';
 import '../../../bill_split/presentation/screens/itemized_split_screen.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/group_providers.dart';
+import '../../application/providers/settlement_providers.dart';
 import '../../application/providers/split_providers.dart';
 import '../../application/use_cases/add_split_use_case.dart';
 import '../../domain/entities/split_entry.dart';
