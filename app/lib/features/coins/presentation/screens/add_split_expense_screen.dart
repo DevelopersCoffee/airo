@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../domain/entities/split_entry.dart';
 import '../../application/providers/split_providers.dart';
 import '../../application/providers/group_providers.dart';
@@ -59,7 +59,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
-    final currencyFormatter = ref.watch(currencyFormatterProvider);
+    final currencyFormatter = ref.watch(coinsCurrencyFormatterProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -367,7 +367,10 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
             groupId: widget.groupId,
             description: _descriptionController.text,
             totalAmountCents: _parseAmount(),
-            currencyCode: ref.read(currencyFormatterProvider).currency.code,
+            currencyCode: ref
+                .read(coinsCurrencyFormatterProvider)
+                .currency
+                .code,
             paidByUserId: _paidByUserId!,
             splitType: _splitType,
             participantIds: List.unmodifiable(_selectedParticipantIds),
@@ -477,7 +480,7 @@ class _SplitPreviewCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     if (totalAmountCents <= 0) {
       return const Card(
         child: Padding(

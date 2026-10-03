@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../domain/entities/budget.dart';
 import '../../domain/models/budget_status.dart';
 
@@ -25,7 +25,7 @@ class BudgetProgressCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     final percentUsed = status?.percentUsed ?? 0.0;
     final spentCents = status?.spentCents ?? 0;
 
