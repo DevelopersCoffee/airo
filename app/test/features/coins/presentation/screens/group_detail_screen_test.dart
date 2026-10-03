@@ -1,12 +1,13 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/group_providers.dart';
-import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
 import 'package:airo_app/features/coins/application/providers/settlement_providers.dart';
 import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:airo_app/features/coins/presentation/screens/group_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/coins_currency_test_overrides.dart';
 
 void main() {
   testWidgets('shows real simplified debts with member names and currency', (
@@ -60,12 +61,13 @@ void main() {
       calculatedAt: DateTime(2026, 5, 13),
     );
 
+    final currencyOverride = await coinsCurrencyProviderTestOverride(
+      currencyCode: 'USD',
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          coinsCurrencyFormatterProvider.overrideWithValue(
-            CurrencyFormatter.fromCode('USD'),
-          ),
+          currencyOverride,
           groupByIdProvider(groupId).overrideWith((ref) => Stream.value(group)),
           groupMembersProvider(
             groupId,
@@ -149,12 +151,13 @@ void main() {
       createdAt: now,
     );
 
+    final currencyOverride = await coinsCurrencyProviderTestOverride(
+      currencyCode: 'USD',
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          coinsCurrencyFormatterProvider.overrideWithValue(
-            CurrencyFormatter.fromCode('USD'),
-          ),
+          currencyOverride,
           groupByIdProvider(groupId).overrideWith((ref) => Stream.value(group)),
           groupMembersProvider(
             groupId,
@@ -219,12 +222,13 @@ void main() {
       createdAt: now,
     );
 
+    final currencyOverride = await coinsCurrencyProviderTestOverride(
+      currencyCode: 'USD',
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          coinsCurrencyFormatterProvider.overrideWithValue(
-            CurrencyFormatter.fromCode('USD'),
-          ),
+          currencyOverride,
           groupByIdProvider(groupId).overrideWith((ref) => Stream.value(group)),
           groupMembersProvider(
             groupId,

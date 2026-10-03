@@ -1,11 +1,12 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/group_providers.dart';
-import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
 import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_split_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/coins_currency_test_overrides.dart';
 
 void main() {
   testWidgets('offers supported custom split options', (tester) async {
@@ -83,13 +84,14 @@ Future<void> _pumpScreen(
   _FakeGroupRepository? repository,
 }) async {
   final fakeRepository = repository ?? _FakeGroupRepository();
+  final currencyOverride = await coinsCurrencyProviderTestOverride(
+    currencyCode: 'USD',
+  );
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        currencyOverride,
         groupRepositoryProvider.overrideWithValue(fakeRepository),
-        coinsCurrencyFormatterProvider.overrideWithValue(
-          CurrencyFormatter.fromCode('USD'),
-        ),
         groupMembersProvider(
           'group_1',
         ).overrideWith((ref) => Stream.value(_members)),

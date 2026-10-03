@@ -1,6 +1,5 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/android_import_permission_provider.dart';
-import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
 import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:airo_app/features/coins/application/providers/dashboard_providers.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
@@ -9,19 +8,17 @@ import 'package:airo_app/features/coins/presentation/screens/coins_dashboard_scr
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/coins_currency_test_overrides.dart';
 
 void main() {
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
-  });
-
   testWidgets('delegates header actions to the Airo super-app shell', (
     tester,
   ) async {
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          currencyOverride,
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -39,12 +36,13 @@ void main() {
   testWidgets('shows real safe-to-spend data in the user currency', (
     tester,
   ) async {
+    final currencyOverride = await coinsCurrencyProviderTestOverride(
+      currencyCode: 'USD',
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          coinsCurrencyFormatterProvider.overrideWithValue(
-            CurrencyFormatter.fromCode('USD'),
-          ),
+          currencyOverride,
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(
               safeToSpend: SafeToSpend(
@@ -85,9 +83,11 @@ void main() {
   testWidgets('shows guided empty states for first-time finance users', (
     tester,
   ) async {
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          currencyOverride,
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -110,9 +110,11 @@ void main() {
   });
 
   testWidgets('shows the secure vault dashboard entry', (tester) async {
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          currencyOverride,
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -130,9 +132,11 @@ void main() {
     tester,
   ) async {
     var openedAddExpense = false;
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          currencyOverride,
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -155,9 +159,11 @@ void main() {
   });
 
   testWidgets('quick add opens a prefilled expense draft', (tester) async {
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          currencyOverride,
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -186,10 +192,12 @@ void main() {
   ) async {
     final pending = _pendingImportedTransaction();
     final repository = _InMemoryTransactionRepository([pending]);
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          currencyOverride,
           transactionRepositoryProvider.overrideWithValue(repository),
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(pendingTransactionReviews: [pending]),
@@ -217,9 +225,11 @@ void main() {
   testWidgets('shows reviewed and pending review badges in recent expenses', (
     tester,
   ) async {
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          currencyOverride,
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(
               recentExpenses: [
@@ -260,9 +270,11 @@ void main() {
   testWidgets('shows Android import permission education when not enabled', (
     tester,
   ) async {
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          currencyOverride,
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -285,8 +297,10 @@ void main() {
   testWidgets('persists the Android import toggle from the dashboard', (
     tester,
   ) async {
+    final currencyOverride = await coinsCurrencyProviderTestOverride();
     final container = ProviderContainer(
       overrides: [
+        currencyOverride,
         dashboardDataProvider.overrideWith(
           (ref) async => const DashboardData(),
         ),
