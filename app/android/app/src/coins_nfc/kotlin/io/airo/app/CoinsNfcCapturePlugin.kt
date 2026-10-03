@@ -17,7 +17,6 @@ import io.flutter.plugin.common.MethodChannel
 class CoinsNfcCapturePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private var channel: MethodChannel? = null
     private var pendingCapture: Boolean = false
-    private var trustedLocalSession: Boolean = false
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, CHANNEL_NAME).also {
@@ -37,9 +36,6 @@ class CoinsNfcCapturePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 pendingCapture = false
                 result.success(wasPending)
             }
-            "isTrustedLocalSession" -> {
-                result.success(trustedLocalSession)
-            }
             "debugSimulateCapture" -> {
                 if (BuildConfig.DEBUG) {
                     pendingCapture = true
@@ -53,10 +49,6 @@ class CoinsNfcCapturePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     }
 
     fun onLaunchIntent(intent: Intent?) {
-        if (intent == null) return
-        if (Intent.ACTION_MAIN == intent.action) {
-            trustedLocalSession = true
-        }
         if (matchesCaptureIntent(intent)) {
             pendingCapture = true
         }

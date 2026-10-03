@@ -26,23 +26,6 @@ class CoinsNfcCapturePlatform {
     }
   }
 
-  /// True after a trusted entry (launcher / resumed process), not a capture-only
-  /// cold start. Used by the coins standalone shell where login is absent.
-  static Future<bool> isTrustedLocalSession() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      return false;
-    }
-    try {
-      final trusted =
-          await _channel.invokeMethod<bool>('isTrustedLocalSession');
-      return trusted ?? false;
-    } on MissingPluginException {
-      return false;
-    } on PlatformException {
-      return false;
-    }
-  }
-
   /// Test hook mirroring `adb shell am start … -d airo://coins/quick-capture`.
   @visibleForTesting
   static Future<void> debugSimulateCaptureLaunch() async {

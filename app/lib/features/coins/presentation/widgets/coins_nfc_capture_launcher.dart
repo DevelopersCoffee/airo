@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../application/services/coins_nfc_capture_platform.dart';
 
 /// Polls the Android activity for a pending NFC / deep-link capture launch and
-/// navigates to [captureRoute].
-class CoinsNfcCaptureLauncher extends StatefulWidget {
+/// navigates to [captureRoute] when [canOpenQuickCapture] allows it.
+class CoinsNfcCaptureLauncher extends ConsumerStatefulWidget {
   const CoinsNfcCaptureLauncher({
     super.key,
     required this.child,
@@ -15,14 +16,14 @@ class CoinsNfcCaptureLauncher extends StatefulWidget {
 
   final Widget child;
   final String captureRoute;
-  final Future<bool> Function() canOpenQuickCapture;
+  final Future<bool> Function(WidgetRef ref) canOpenQuickCapture;
 
   @override
-  State<CoinsNfcCaptureLauncher> createState() =>
+  ConsumerState<CoinsNfcCaptureLauncher> createState() =>
       _CoinsNfcCaptureLauncherState();
 }
 
-class _CoinsNfcCaptureLauncherState extends State<CoinsNfcCaptureLauncher>
+class _CoinsNfcCaptureLauncherState extends ConsumerState<CoinsNfcCaptureLauncher>
     with WidgetsBindingObserver {
   @override
   void initState() {
@@ -46,10 +47,10 @@ class _CoinsNfcCaptureLauncherState extends State<CoinsNfcCaptureLauncher>
 
   Future<void> _maybeOpenCapture() async {
     if (!mounted) return;
-    if (!await widget.canOpenQuickCapture()) return;
+    if (!await widget.canOpenQuickCapture(ref)) return;
     final pending = await CoinsNfcCapturePlatform.consumePendingCaptureLaunch();
     if (!mounted || !pending) return;
-    if (!await widget.canOpenQuickCapture()) return;
+    if (!await widget.canOpenQuickCapture(ref)) return;
     context.go(widget.captureRoute);
   }
 

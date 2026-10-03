@@ -120,8 +120,9 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
           state.matchedLocation == _coinsStandaloneQuickCapturePath;
       if (!wantsCapture) return null;
 
-      final allowed =
-          await CoinsNfcCaptureSession.canOpenQuickCaptureCoinsShell();
+      final allowed = CoinsNfcCaptureSession.canOpenQuickCaptureCoinsShell(
+        context: context,
+      );
       if (!allowed) return '/';
 
       if (NfcExpenseCaptureLink.matches(state.uri)) {
@@ -158,8 +159,10 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
         routerConfig: _router,
         builder: (context, child) => CoinsNfcCaptureLauncher(
           captureRoute: _coinsStandaloneQuickCapturePath,
-          canOpenQuickCapture:
-              CoinsNfcCaptureSession.canOpenQuickCaptureCoinsShell,
+          canOpenQuickCapture: (ref) =>
+              Future.value(
+                CoinsNfcCaptureSession.canOpenQuickCaptureCoinsShell(ref: ref),
+              ),
           child: AiroDisplayScale(
             child: AiroDomainTheme(
               domain: AiroDomain.money,

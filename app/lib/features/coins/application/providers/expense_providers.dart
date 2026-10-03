@@ -57,16 +57,16 @@ final expenseCategoryOptionsProvider = Provider<List<coins.Category>>((ref) {
 
 final nfcQuickExpenseCaptureServiceProvider =
     Provider<NfcQuickExpenseCaptureService>(
-  (ref) => const NfcQuickExpenseCaptureService(),
-);
+      (ref) => const NfcQuickExpenseCaptureService(),
+    );
 
 final completeNfcQuickExpenseCaptureUseCaseProvider =
     Provider<CompleteNfcQuickExpenseCaptureUseCase>((ref) {
-  return CompleteNfcQuickExpenseCaptureUseCase(
-    ref.watch(addExpenseUseCaseProvider),
-    captureService: ref.watch(nfcQuickExpenseCaptureServiceProvider),
-  );
-});
+      return CompleteNfcQuickExpenseCaptureUseCase(
+        ref.watch(addExpenseUseCaseProvider),
+        captureService: ref.watch(nfcQuickExpenseCaptureServiceProvider),
+      );
+    });
 
 final expenseAccountOptionsProvider = FutureProvider<List<Account>>((
   ref,

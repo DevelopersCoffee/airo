@@ -1,3 +1,4 @@
+import 'package:feature_coin/feature_coin.dart';
 import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../application/providers/dashboard_providers.dart';
 import '../../application/providers/expense_providers.dart';
+import '../../application/services/coins_nfc_capture_session.dart';
 
 enum _CaptureStep { amount, category, note }
 
@@ -67,6 +69,14 @@ class _NfcQuickExpenseCaptureScreenState
     if (_isSaving) return;
     if (!save) {
       await _cancel();
+      return;
+    }
+
+    if (!CoinsNfcCaptureSession.isVaultUnlocked(ref)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save expense. Try again.')),
+      );
       return;
     }
 
@@ -137,6 +147,18 @@ class _NfcQuickExpenseCaptureScreenState
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(vaultSessionProvider) is! VaultUnlocked) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/');
+        }
+      });
+      return const Scaffold(body: SizedBox.shrink());
+    }
+
     return PopScope(
       canPop: !_isSaving,
       onPopInvokedWithResult: (didPop, _) {
@@ -156,19 +178,19 @@ class _NfcQuickExpenseCaptureScreenState
             padding: const EdgeInsets.all(24),
             child: switch (_step) {
               _CaptureStep.amount => _AmountStep(
-                  controller: _amountController,
-                  errorText: _amountError,
-                  onContinue: _continueFromAmount,
-                ),
+                controller: _amountController,
+                errorText: _amountError,
+                onContinue: _continueFromAmount,
+              ),
               _CaptureStep.category => _CategoryStep(
-                  selectedId: _categoryId,
-                  onSelected: _selectCategory,
-                ),
+                selectedId: _categoryId,
+                onSelected: _selectCategory,
+              ),
               _CaptureStep.note => _NoteStep(
-                  controller: _noteController,
-                  isSaving: _isSaving,
-                  onDone: () => _finish(save: true),
-                ),
+                controller: _noteController,
+                isSaving: _isSaving,
+                onDone: () => _finish(save: true),
+              ),
             },
           ),
         ),
