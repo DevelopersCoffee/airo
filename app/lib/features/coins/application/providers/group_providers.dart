@@ -104,7 +104,10 @@ class CreateGroupNotifier extends StateNotifier<AsyncValue<Group?>> {
     state = const AsyncValue.loading();
     try {
       final useCase = _ref.read(createGroupUseCaseProvider);
-      final currencyCode = _ref.read(coinsCurrencyFormatterProvider).currency.code;
+      final currencyCode = _ref
+          .read(coinsCurrencyFormatterProvider)
+          .currency
+          .code;
       final result = await useCase.execute(
         CreateGroupParams(
           name: name,
@@ -169,7 +172,10 @@ class AddMemberNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     try {
       final useCase = _ref.read(addGroupMemberUseCaseProvider);
-      final currencyCode = _ref.read(coinsCurrencyFormatterProvider).currency.code;
+      final currencyCode = _ref
+          .read(coinsCurrencyFormatterProvider)
+          .currency
+          .code;
       final result = await useCase.execute(
         AddGroupMemberParams(
           groupId: groupId,

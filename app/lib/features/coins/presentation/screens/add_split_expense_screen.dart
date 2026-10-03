@@ -367,7 +367,10 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
             groupId: widget.groupId,
             description: _descriptionController.text,
             totalAmountCents: _parseAmount(),
-            currencyCode: ref.read(coinsCurrencyFormatterProvider).currency.code,
+            currencyCode: ref
+                .read(coinsCurrencyFormatterProvider)
+                .currency
+                .code,
             paidByUserId: _paidByUserId!,
             splitType: _splitType,
             participantIds: List.unmodifiable(_selectedParticipantIds),

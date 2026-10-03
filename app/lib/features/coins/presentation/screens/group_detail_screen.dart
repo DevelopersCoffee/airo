@@ -317,7 +317,10 @@ class GroupDetailScreen extends ConsumerWidget {
             groupId: groupId,
             description: result.description,
             totalAmountCents: totalAmountCents,
-            currencyCode: ref.read(coinsCurrencyFormatterProvider).currency.code,
+            currencyCode: ref
+                .read(coinsCurrencyFormatterProvider)
+                .currency
+                .code,
             paidByUserId: payerId,
             splitType: SplitType.itemized,
             participantIds: summary.keys.toList(growable: false),

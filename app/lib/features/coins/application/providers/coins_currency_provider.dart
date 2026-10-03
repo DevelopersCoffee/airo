@@ -51,20 +51,14 @@ class CoinsCurrencyNotifier extends StateNotifier<CoinsCurrencyState> {
       platformLocale: locale,
       timeZoneName: timeZone,
     );
-    state = CoinsCurrencyState(
-      currencyCode: resolved,
-      userSelected: false,
-    );
+    state = CoinsCurrencyState(currencyCode: resolved, userSelected: false);
   }
 
   Future<void> setCurrencyCode(String code) async {
     final normalized = code.trim().toUpperCase();
     await _prefs.setString(_codeKey, normalized);
     await _prefs.setBool(_userSelectedKey, true);
-    state = CoinsCurrencyState(
-      currencyCode: normalized,
-      userSelected: true,
-    );
+    state = CoinsCurrencyState(currencyCode: normalized, userSelected: true);
   }
 }
 
