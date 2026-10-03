@@ -1201,35 +1201,53 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       );
     }
 
+    final size = MediaQuery.sizeOf(context);
+    final hasActiveChannel = ref.watch(
+      streamingStateProvider.select(
+        (async) => async.asData?.value.currentChannel != null,
+      ),
+    );
+    // Phone landscape with live playback: drop the app bar so the inline
+    // player can use the full short side (Cast stays on the mini controller).
+    final hidePhoneLandscapeAppBar =
+        size.width > size.height &&
+        size.shortestSide < 600 &&
+        hasActiveChannel;
+
     return guardRouteBack(
       AiroResponsiveScaffold(
         padding: EdgeInsets.zero,
-        appBar: AppBar(
-          title: const Row(
-            children: [
-              Image(
-                image: AssetImage(
-                  'assets/aika_stream_mark.png',
-                  package: 'feature_iptv',
+        appBar: hidePhoneLandscapeAppBar
+            ? null
+            : AppBar(
+                title: const Row(
+                  children: [
+                    Image(
+                      image: AssetImage(
+                        'assets/aika_stream_mark.png',
+                        package: 'feature_iptv',
+                      ),
+                      width: 28,
+                      height: 28,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Aika Stream',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-                width: 28,
-                height: 28,
+                actions: [
+                  if (isGoogleCastSenderPlatform)
+                    IconButton(
+                      icon: const Icon(Icons.cast_connected),
+                      tooltip: 'Cast',
+                      onPressed: _showCastSheet,
+                    ),
+                ],
               ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text('Aika Stream', overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
-          actions: [
-            if (isGoogleCastSenderPlatform)
-              IconButton(
-                icon: const Icon(Icons.cast_connected),
-                tooltip: 'Cast',
-                onPressed: _showCastSheet,
-              ),
-          ],
-        ),
         body: IptvResumeGate(
           enabled: resumeGateEnabled,
           child: Stack(

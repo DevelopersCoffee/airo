@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -39,6 +40,10 @@ import 'sections/shell_settings_dialog.dart';
 
 typedef VideoFrameEncoder =
     Future<Uint8List> Function(RenderRepaintBoundary boundary);
+
+/// Matches [ChannelLibraryGrid]'s phone breakpoint and
+/// [VideoPlayerWidget]'s compact inline player threshold.
+const _phoneLayoutBreakpoint = 600.0;
 
 class AiroTvShell extends ConsumerStatefulWidget {
   const AiroTvShell({
@@ -132,6 +137,10 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   Timer? _visibleScanDebounce;
   String _visibleScanSignature = '';
   final _videoCaptureKey = GlobalKey();
+
+  /// Slide-over channel browser on phone landscape (hidden by default so
+  /// playback can use the full viewport).
+  bool _phoneLandscapeLibraryOpen = false;
 
   /// True while one of the stage action row's sheets (Settings / Help /
   /// MultiView layout) owns the screen. Feeds [ChannelNameOverlay]'s
@@ -442,6 +451,18 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final shortestSide = math.min(
+          constraints.maxWidth,
+          constraints.maxHeight,
+        );
+        final isLandscape = constraints.maxWidth > constraints.maxHeight;
+        final usePhonePortraitStack =
+            constraints.maxWidth < _phoneLayoutBreakpoint;
+        final usePhoneLandscapeImmersive =
+            widget.showVideoStage &&
+            isLandscape &&
+            shortestSide < _phoneLayoutBreakpoint;
+
         final chrome = [
           const _OfflineBanner(),
           if (showInfoBar)
@@ -473,7 +494,86 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           if (showHotbar) hotbar,
           if (showFilter) filterRowFor(true),
         ];
-        if (constraints.maxWidth < 600) {
+        if (usePhoneLandscapeImmersive) {
+          final panelWidth = math.min(
+            constraints.maxWidth * 0.46,
+            400.0,
+          );
+          return FocusTraversalGroup(
+            child: Stack(
+              key: const ValueKey('airo-tv-phone-landscape-immersive'),
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(
+                  child: ColoredBox(
+                    color: Colors.black,
+                    child: SafeArea(
+                      bottom: false,
+                      child: _PhoneLandscapeVideoSurface(child: videoStage),
+                    ),
+                  ),
+                ),
+                if (_phoneLandscapeLibraryOpen) ...[
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(
+                        () => _phoneLandscapeLibraryOpen = false,
+                      ),
+                      child: ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    bottom: 0,
+                    right: 0,
+                    width: panelWidth,
+                    child: Material(
+                      key: const ValueKey('airo-tv-phone-landscape-panel'),
+                      color: const Color(0xFF020419),
+                      child: SafeArea(
+                        left: false,
+                        child: Column(
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: IconButton(
+                                key: const ValueKey(
+                                  'airo-tv-phone-landscape-close',
+                                ),
+                                tooltip: 'Close channels',
+                                onPressed: () => setState(
+                                  () => _phoneLandscapeLibraryOpen = false,
+                                ),
+                                icon: const Icon(Icons.close),
+                              ),
+                            ),
+                            ...compactChrome,
+                            if (showPlaylist)
+                              Expanded(child: libraryGrid(compact: true)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (!_phoneLandscapeLibraryOpen)
+                  Positioned(
+                    left: 8 + MediaQuery.paddingOf(context).left,
+                    top: 8 + MediaQuery.paddingOf(context).top,
+                    child: _PhoneLandscapeChannelsButton(
+                      onPressed: () => setState(
+                        () => _phoneLandscapeLibraryOpen = true,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }
+        if (usePhonePortraitStack) {
           return FocusTraversalGroup(
             child: Column(
               children: [
@@ -970,6 +1070,80 @@ class _StageAction extends StatelessWidget {
 
 bool? _countryPromptCompleted(AsyncValue<bool> prompt) {
   return prompt.maybeWhen(data: (value) => value, orElse: () => null);
+}
+
+/// Sizes the inline player to the largest 16:9 rect that fits the viewport,
+/// using height as the limiting axis in landscape (standard mobile OTT).
+class _PhoneLandscapeVideoSurface extends StatelessWidget {
+  const _PhoneLandscapeVideoSurface({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        final maxH = constraints.maxHeight;
+        if (maxW <= 0 || maxH <= 0) {
+          return const SizedBox.shrink();
+        }
+        final widthLimitedHeight = maxW * 9 / 16;
+        late final double width;
+        late final double height;
+        if (widthLimitedHeight <= maxH) {
+          width = maxW;
+          height = widthLimitedHeight;
+        } else {
+          height = maxH;
+          width = height * 16 / 9;
+        }
+        return Center(
+          child: SizedBox(width: width, height: height, child: child),
+        );
+      },
+    );
+  }
+}
+
+class _PhoneLandscapeChannelsButton extends StatelessWidget {
+  const _PhoneLandscapeChannelsButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.55),
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        key: const ValueKey('airo-tv-phone-landscape-channels-toggle'),
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.view_list_rounded,
+                color: Theme.of(context).colorScheme.primary,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Channels',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Frames the phone-layout video stage as a rounded, elevated card instead of
