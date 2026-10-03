@@ -18,7 +18,10 @@ import 'group_detail_screen.dart';
 /// Phase: 2 (Split Engine)
 /// See: docs/features/coins/UI_WIREFRAMES.md (Screen 5)
 class GroupsListScreen extends ConsumerWidget {
-  const GroupsListScreen({super.key});
+  const GroupsListScreen({super.key, this.showCloudModeCard = true});
+
+  /// When false, hides cloud-sync upsell (standalone Airo Coin shell).
+  final bool showCloudModeCard;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -66,14 +69,16 @@ class GroupsListScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _CloudModeCard(
-                stateAsync: cloudModeAsync,
-                onEnableCloud: () => _enableCloudMode(context, ref),
-                onUseLocal: () => ref
-                    .read(coinsCloudModeControllerProvider.notifier)
-                    .useLocalMode(),
-              ),
-              const SizedBox(height: 12),
+              if (showCloudModeCard) ...[
+                _CloudModeCard(
+                  stateAsync: cloudModeAsync,
+                  onEnableCloud: () => _enableCloudMode(context, ref),
+                  onUseLocal: () => ref
+                      .read(coinsCloudModeControllerProvider.notifier)
+                      .useLocalMode(),
+                ),
+                const SizedBox(height: 12),
+              ],
               if (groups.isEmpty)
                 _EmptyGroupsView(
                   onCreateGroup: () => _showCreateGroupDialog(context, ref),

@@ -1,8 +1,11 @@
 import 'dart:io';
 
 import 'package:airo_app/core/coins/coins_standalone_home.dart';
-import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
+import 'package:airo_app/core/coins/coins_standalone_identity.dart';
+import 'package:airo_app/features/coins/application/providers/coins_identity_provider.dart';
+import 'package:airo_app/features/coins/application/providers/group_providers.dart';
+import 'package:airo_app/features/coins/domain/entities/group.dart';
+import 'package:airo_app/features/coins/presentation/screens/groups_list_screen.dart';
 import 'package:airo_app/main_coins.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_coin/feature_coin.dart';
@@ -83,18 +86,23 @@ void main() {
     expect(module.isEnabledForShell(const ShellId('watch')), isFalse);
   });
 
-  testWidgets('coins shell boots into the lean money summary home', (
+  test('coins shell uses a local-only identity override', () {
+    final container = ProviderContainer(
+      overrides: [
+        coinsIdentityProvider.overrideWithValue(const LocalCoinsIdentity()),
+      ],
+    );
+    addTearDown(container.dispose);
+    expect(container.read(coinsIdentityProvider).current, isNull);
+  });
+
+  testWidgets('coins shell boots into the splits and vault hub', (
     tester,
   ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           screenSecurityProvider.overrideWithValue(_FakeScreenSecurity()),
-          // Resolve the read path with an empty list so the boot test never
-          // touches the native Drift database.
-          recentExpensesProvider.overrideWith(
-            (ref) => Future<List<Transaction>>.value(const []),
-          ),
         ],
         child: AiroCoinsApp(registry: buildCoinsModuleRegistry()),
       ),
@@ -102,5 +110,29 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CoinsStandaloneHome), findsOneWidget);
+    expect(find.text('Shared expenses'), findsOneWidget);
+    expect(find.text('Secure vault'), findsOneWidget);
+  });
+
+  testWidgets('hub opens groups list without cloud mode card on web', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          screenSecurityProvider.overrideWithValue(_FakeScreenSecurity()),
+          allGroupsProvider.overrideWith((ref) => Stream<List<Group>>.value([])),
+        ],
+        child: AiroCoinsApp(registry: buildCoinsModuleRegistry()),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Shared expenses'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GroupsListScreen), findsOneWidget);
+    expect(find.text('Cloud sharing'), findsNothing);
+    expect(find.text('Local-first mode'), findsNothing);
   });
 }

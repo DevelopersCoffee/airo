@@ -12,8 +12,10 @@ dependencies:
     sdk: flutter
   flutter_riverpod: 3.4.2
   go_router: ^17.3.0
-  # Shared expenses reuse the legacy Drift-backed coins store in
-  # `app/lib/features/coins` until package-first migration (#938–#942).
+  # The standalone shell's lean home reuses the legacy read path (ADR-0010
+  # interim exception): recent transactions + display card. That pulls the
+  # Drift-backed finance store and currency formatting — but not the heavy
+  # add/split/group/budget flows, so no OCR/share/uuid deps are needed.
   drift: ^2.32.1
   path: 1.9.1
   path_provider: ^2.1.6

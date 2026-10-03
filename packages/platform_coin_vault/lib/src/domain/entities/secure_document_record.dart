@@ -8,6 +8,7 @@ enum DocumentCategory {
   incomeProof,
   taxCredit,
   investmentProof,
+  insurance,
   hra,
   capitalGains,
   homeLoan,

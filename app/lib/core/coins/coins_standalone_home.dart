@@ -1,96 +1,119 @@
-import 'package:feature_coin/feature_coin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../features/coins/application/providers/expense_providers.dart';
-import '../../features/coins/presentation/widgets/expense_card.dart';
+import '../../features/coins/application/services/coins_platform_support.dart';
 
-/// Home screen for the standalone Airo Coins shell.
+/// Home hub for the standalone Airo Coin shell.
 ///
-/// A lean, read-only money summary that mirrors the super-app Coins tab's
-/// content-first feel — recent transactions plus an entry into the secure
-/// vault — without dropping onto the biometric gate. It deliberately reuses
-/// only the legacy read path (`recentExpensesProvider`) and display card;
-/// the heavy add/split/group/budget flows (and their OCR, share, and uuid
-/// dependencies) stay out of the standalone until the money dashboard is
-/// migrated package-first into `feature_coin` (ADR-0010 interim exception;
-/// Airo Coin phased epic #938–#942).
+/// Priority surfaces: Splitwise-style shared expenses (groups, add/split,
+/// balances, settle-up) and the encrypted document vault — all on-device.
 class CoinsStandaloneHome extends ConsumerWidget {
   const CoinsStandaloneHome({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recentAsync = ref.watch(recentExpensesProvider);
+    final splitsAvailable = CoinsPlatformSupport.groupsAvailable();
     return Scaffold(
-      appBar: AppBar(title: const Text('Airo Coins')),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(recentExpensesProvider.future),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _VaultEntryCard(
-              onOpen: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const VaultGateScreen(),
-                ),
-              ),
+      appBar: AppBar(title: const Text('Airo Coin')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            'Local-first money',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Split shared expenses and store sensitive documents on this '
+            'device — no account required.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Recent transactions',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            recentAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, _) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text('Could not load transactions: $error'),
-              ),
-              data: (transactions) => transactions.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Text(
-                        'No transactions yet. Your locally stored spending '
-                        'will appear here.',
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        for (final transaction in transactions)
-                          ExpenseCard(transaction: transaction),
-                      ],
-                    ),
-            ),
-          ],
+          ),
+          const SizedBox(height: 24),
+          _HubEntryCard(
+            icon: Icons.groups_outlined,
+            title: 'Shared expenses',
+            subtitle: splitsAvailable
+                ? 'Groups, balances, and settle-up — works offline.'
+                : 'Available on Android and desktop builds (SQLite required).',
+            onTap: splitsAvailable
+                ? () => context.push('/groups')
+                : () => _showSplitsUnavailable(context),
+          ),
+          const SizedBox(height: 12),
+          _HubEntryCard(
+            icon: Icons.lock_outline,
+            title: 'Secure vault',
+            subtitle:
+                'Bank accounts, cards, insurance, and tax documents — '
+                'encrypted on device.',
+            onTap: () => context.push('/money/vault'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSplitsUnavailable(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Shared expenses need native storage. Use the Airo Coin Android '
+          'app or a desktop build.',
         ),
       ),
     );
   }
 }
 
-class _VaultEntryCard extends StatelessWidget {
-  const _VaultEntryCard({required this.onOpen});
+class _HubEntryCard extends StatelessWidget {
+  const _HubEntryCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
 
-  final VoidCallback onOpen;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
-      color: scheme.surfaceContainerHighest,
-      child: ListTile(
-        leading: Icon(Icons.lock_outline, color: scheme.primary),
-        title: const Text('Secure Vault'),
-        subtitle: const Text(
-          'Bank accounts, cards, and documents — unlocked with biometrics '
-          'when you open a record.',
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 32, color: scheme.primary),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
         ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onOpen,
       ),
     );
   }

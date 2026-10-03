@@ -6,6 +6,7 @@ import FlutterMacOS
 import Foundation
 
 import airo_calendar
+import airo_haptics
 import audio_service
 import audio_session
 import audioplayers_darwin
@@ -35,10 +36,10 @@ import sqlite3_flutter_libs
 import url_launcher_macos
 import video_player_avfoundation
 import wakelock_plus
-import webview_flutter_wkwebview
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   PlatformCalendarPlugin.register(with: registry.registrar(forPlugin: "PlatformCalendarPlugin"))
+  AiroHapticsPlugin.register(with: registry.registrar(forPlugin: "AiroHapticsPlugin"))
   AudioServicePlugin.register(with: registry.registrar(forPlugin: "AudioServicePlugin"))
   AudioSessionPlugin.register(with: registry.registrar(forPlugin: "AudioSessionPlugin"))
   AudioplayersDarwinPlugin.register(with: registry.registrar(forPlugin: "AudioplayersDarwinPlugin"))
@@ -68,5 +69,4 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   UrlLauncherPlugin.register(with: registry.registrar(forPlugin: "UrlLauncherPlugin"))
   VideoPlayerPlugin.register(with: registry.registrar(forPlugin: "VideoPlayerPlugin"))
   WakelockPlusMacosPlugin.register(with: registry.registrar(forPlugin: "WakelockPlusMacosPlugin"))
-  WebViewFlutterPlugin.register(with: registry.registrar(forPlugin: "WebViewFlutterPlugin"))
 }

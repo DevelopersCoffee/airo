@@ -10,6 +10,7 @@ void main() {
         DocumentCategory.incomeProof,
         DocumentCategory.taxCredit,
         DocumentCategory.investmentProof,
+        DocumentCategory.insurance,
         DocumentCategory.hra,
         DocumentCategory.capitalGains,
         DocumentCategory.homeLoan,
