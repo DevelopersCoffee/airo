@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_coin/feature_coin.dart';
 import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,13 @@ class _NfcQuickExpenseCaptureScreenState
   String? _amountError;
   String? _categoryId;
   bool _isSaving = false;
+  var _autoUnlockAttempted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoUnlock());
+  }
 
   @override
   void dispose() {
@@ -36,12 +44,31 @@ class _NfcQuickExpenseCaptureScreenState
     super.dispose();
   }
 
-  Future<void> _cancel() async {
-    if (_isSaving) return;
+  void _leaveCaptureFlow() {
+    if (!mounted) return;
     if (context.canPop()) {
       context.pop();
-    } else {
-      context.go('/');
+      return;
+    }
+    context.go('/');
+  }
+
+  Future<void> _cancel() async {
+    if (_isSaving) return;
+    _leaveCaptureFlow();
+  }
+
+  Future<void> _maybeAutoUnlock() async {
+    if (!mounted || _autoUnlockAttempted) return;
+    final session = ref.read(vaultSessionProvider);
+    if (session is VaultUnlocked || session is VaultUnlocking) return;
+
+    _autoUnlockAttempted = true;
+    await ref.read(vaultSessionProvider.notifier).unlock();
+    if (!mounted) return;
+
+    if (ref.read(vaultSessionProvider) is! VaultUnlocked) {
+      _leaveCaptureFlow();
     }
   }
 
@@ -147,18 +174,49 @@ class _NfcQuickExpenseCaptureScreenState
 
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(vaultSessionProvider) is! VaultUnlocked) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!context.mounted) return;
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/');
-        }
-      });
-      return const Scaffold(body: SizedBox.shrink());
-    }
+    ref.listen<VaultSessionState>(vaultSessionProvider, (previous, next) {
+      if (previous is VaultUnlocked && next is VaultLocked) {
+        _autoUnlockAttempted = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoUnlock());
+      }
+    });
 
+    final session = ref.watch(vaultSessionProvider);
+    return switch (session) {
+      VaultUnlocked() => _buildCaptureFlow(context),
+      VaultUnlocking() => _buildSessionGate(
+        context,
+        const Center(child: LoadingIndicator(message: 'Unlocking')),
+      ),
+      VaultUnavailable() => _buildSessionGate(
+        context,
+        const VaultUnavailableView(),
+      ),
+      VaultAuthError(:final failure) => _buildSessionGate(
+        context,
+        VaultAuthErrorView(failure: failure),
+      ),
+      VaultLocked() => _buildSessionGate(
+        context,
+        const Center(child: LoadingIndicator(message: 'Unlocking')),
+      ),
+    };
+  }
+
+  Widget _buildSessionGate(BuildContext context, Widget body) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: _leaveCaptureFlow,
+        ),
+        title: const Text('Quick capture'),
+      ),
+      body: body,
+    );
+  }
+
+  Widget _buildCaptureFlow(BuildContext context) {
     return PopScope(
       canPop: !_isSaving,
       onPopInvokedWithResult: (didPop, _) {

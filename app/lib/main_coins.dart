@@ -114,17 +114,7 @@ class AiroCoinsApp extends StatefulWidget {
 class _AiroCoinsAppState extends State<AiroCoinsApp> {
   late final GoRouter _router = GoRouter(
     initialLocation: '/',
-    redirect: (context, state) async {
-      final wantsCapture =
-          NfcExpenseCaptureLink.matches(state.uri) ||
-          state.matchedLocation == _coinsStandaloneQuickCapturePath;
-      if (!wantsCapture) return null;
-
-      final allowed = CoinsNfcCaptureSession.canOpenQuickCaptureCoinsShell(
-        context: context,
-      );
-      if (!allowed) return '/';
-
+    redirect: (context, state) {
       if (NfcExpenseCaptureLink.matches(state.uri)) {
         return _coinsStandaloneQuickCapturePath;
       }
@@ -159,10 +149,8 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
         routerConfig: _router,
         builder: (context, child) => CoinsNfcCaptureLauncher(
           captureRoute: _coinsStandaloneQuickCapturePath,
-          canOpenQuickCapture: (ref) =>
-              Future.value(
-                CoinsNfcCaptureSession.canOpenQuickCaptureCoinsShell(ref: ref),
-              ),
+          canOpenQuickCapture: (ref) async =>
+              CoinsNfcCaptureSession.canRouteToQuickCaptureCoinsShell(ref: ref),
           child: AiroDisplayScale(
             child: AiroDomainTheme(
               domain: AiroDomain.money,

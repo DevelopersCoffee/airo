@@ -1,5 +1,4 @@
 import 'package:core_product_shell/core_product_shell.dart';
-import 'package:feature_coin/feature_coin.dart';
 import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:go_router/go_router.dart';
@@ -25,7 +24,6 @@ import '../../features/coins/presentation/screens/add_split_expense_screen.dart'
 import '../../features/life_track/presentation/screens/track_detail_screen.dart';
 import '../../features/life_track/presentation/screens/track_list_screen.dart';
 import '../../core/auth/auth_service.dart';
-import '../../features/coins/application/services/coins_nfc_capture_session.dart';
 import '../../core/app/app_shell.dart';
 import '../http/http_dog.dart';
 import 'route_names.dart';
@@ -74,19 +72,12 @@ class AppRouter {
           if (!isLoggedIn) {
             return RouteNames.login;
           }
-          if (!CoinsNfcCaptureSession.isVaultUnlockedFromContext(context)) {
-            return '/money';
-          }
           return RouteNames.coinsQuickCapturePath;
         }
 
-        if (state.matchedLocation == RouteNames.coinsQuickCapturePath) {
-          if (!isLoggedIn) {
-            return RouteNames.login;
-          }
-          if (!CoinsNfcCaptureSession.isVaultUnlockedFromContext(context)) {
-            return '/money';
-          }
+        if (state.matchedLocation == RouteNames.coinsQuickCapturePath &&
+            !isLoggedIn) {
+          return RouteNames.login;
         }
 
         // If not logged in and not on login/register page, redirect to login

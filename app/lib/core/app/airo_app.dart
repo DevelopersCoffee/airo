@@ -53,7 +53,7 @@ class _AiroAppState extends ConsumerState<AiroApp> {
       builder: (context, child) => CoinsNfcCaptureLauncher(
         captureRoute: RouteNames.coinsQuickCapturePath,
         canOpenQuickCapture: (ref) =>
-            CoinsNfcCaptureSession.canOpenQuickCaptureSuperApp(ref: ref),
+            CoinsNfcCaptureSession.canRouteToQuickCaptureSuperApp(ref: ref),
         child: child ?? const SizedBox.shrink(),
       ),
       debugShowCheckedModeBanner: false,
