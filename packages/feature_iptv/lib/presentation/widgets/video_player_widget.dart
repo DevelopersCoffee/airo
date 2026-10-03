@@ -1216,7 +1216,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   ),
           )
         else if (state.isLoading)
-          _buildLoading()
+          state.diagnostic != null &&
+                  state.diagnostic!.retryEligible &&
+                  state.retryCount > 0
+              ? _buildReconnecting(state)
+              : _buildLoading()
         else if (_isAudioOnly)
           _buildAudioOnlyPlaceholder(state)
         else if (videoView != null)
@@ -1614,6 +1618,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               style: const TextStyle(color: Colors.white),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Bounded auto-reconnect in flight — same copy as the error overlay but
+  /// keeps the surface in [PlaybackState.loading] so the app stays responsive.
+  Widget _buildReconnecting(StreamingState state) {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Colors.white),
+              const SizedBox(height: 20),
+              PlaybackDiagnosticOverlay(
+                diagnostic: state.diagnostic!,
+                retryAttempt: state.retryCount,
+                maxRetryAttempts: 3,
+              ),
+            ],
+          ),
         ),
       ),
     );
