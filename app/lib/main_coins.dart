@@ -34,8 +34,8 @@ import 'core/coins/coins_standalone_home.dart';
 import 'core/coins/coins_standalone_identity.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
 import 'features/coins/application/providers/coins_identity_provider.dart';
+import 'core/coins/coins_standalone_groups_list_screen.dart';
 import 'features/coins/presentation/screens/group_detail_screen.dart';
-import 'features/coins/presentation/screens/groups_list_screen.dart';
 
 void main() {
   late ModuleRegistry registry;
@@ -111,8 +111,7 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
       ),
       GoRoute(
         path: '/groups',
-        builder: (context, state) =>
-            const GroupsListScreen(showCloudModeCard: false),
+        builder: (context, state) => const CoinsStandaloneGroupsListScreen(),
       ),
       GoRoute(
         path: '/groups/:groupId',

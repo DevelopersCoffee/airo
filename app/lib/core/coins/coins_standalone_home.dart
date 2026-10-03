@@ -1,43 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/coins/application/services/coins_platform_support.dart';
 
-/// Home hub for the standalone Airo Coin shell.
-///
-/// Priority surfaces: Splitwise-style shared expenses (groups, add/split,
-/// balances, settle-up) and the encrypted document vault — all on-device.
-class CoinsStandaloneHome extends ConsumerWidget {
+/// Home hub for the standalone Airo Coin shell — two entry cards only.
+class CoinsStandaloneHome extends StatelessWidget {
   const CoinsStandaloneHome({super.key});
 
+  static const _sharedExpensesSubtitle =
+      'Groups, balances, and settle-up — works offline.';
+  static const _secureVaultSubtitle =
+      'Bank accounts, cards, insurance, and tax documents — encrypted on device.';
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final splitsAvailable = CoinsPlatformSupport.groupsAvailable();
     return Scaffold(
       appBar: AppBar(title: const Text('Airo Coin')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'Local-first money',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Split shared expenses and store sensitive documents on this '
-            'device — no account required.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 24),
           _HubEntryCard(
             icon: Icons.groups_outlined,
             title: 'Shared expenses',
-            subtitle: splitsAvailable
-                ? 'Groups, balances, and settle-up — works offline.'
-                : 'Available on Android and desktop builds (SQLite required).',
+            subtitle: _sharedExpensesSubtitle,
             onTap: splitsAvailable
                 ? () => context.push('/groups')
                 : () => _showSplitsUnavailable(context),
@@ -46,9 +32,7 @@ class CoinsStandaloneHome extends ConsumerWidget {
           _HubEntryCard(
             icon: Icons.lock_outline,
             title: 'Secure vault',
-            subtitle:
-                'Bank accounts, cards, insurance, and tax documents — '
-                'encrypted on device.',
+            subtitle: _secureVaultSubtitle,
             onTap: () => context.push('/money/vault'),
           ),
         ],
@@ -60,8 +44,7 @@ class CoinsStandaloneHome extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-          'Shared expenses need native storage. Use the Airo Coin Android '
-          'app or a desktop build.',
+          'Shared expenses need native storage. Use the Airo Coin Android app.',
         ),
       ),
     );

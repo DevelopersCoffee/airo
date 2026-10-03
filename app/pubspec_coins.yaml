@@ -23,8 +23,6 @@ dependencies:
   uuid: ^4.5.3
   share_plus: ^13.3.0
   equatable: ^2.1.0
-  file_picker: ^12.0.0-beta.7
-  image_picker: ^1.2.3
   airo_pro_bootstrap:
     path: ../packages/airo_pro_bootstrap
   core_app_shell:
@@ -39,8 +37,6 @@ dependencies:
     path: ../packages/feature_coin
   feature_coins_core:
     path: ../packages/feature_coins_core
-  feature_billsplit_core:
-    path: ../packages/feature_billsplit_core
 
 dev_dependencies:
   flutter_test:

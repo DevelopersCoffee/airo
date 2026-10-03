@@ -1,11 +1,11 @@
 import 'dart:io';
 
+import 'package:airo_app/core/coins/coins_standalone_groups_list_screen.dart';
 import 'package:airo_app/core/coins/coins_standalone_home.dart';
 import 'package:airo_app/core/coins/coins_standalone_identity.dart';
 import 'package:airo_app/features/coins/application/providers/coins_identity_provider.dart';
 import 'package:airo_app/features/coins/application/providers/group_providers.dart';
 import 'package:airo_app/features/coins/domain/entities/group.dart';
-import 'package:airo_app/features/coins/presentation/screens/groups_list_screen.dart';
 import 'package:airo_app/main_coins.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_coin/feature_coin.dart';
@@ -58,8 +58,6 @@ void main() {
         .map((r) => r.path);
     expect(paths, contains('/vault'));
 
-    // The module keeps feature_coin's internal add/edit navigation in sync
-    // with the mount point by overriding vaultRoutePrefixProvider.
     final container = ProviderContainer(
       overrides: module.providerOverridesFor(ShellId.coins),
     );
@@ -70,8 +68,6 @@ void main() {
   test('vault route prefix defaults to the super-app mount point', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
-    // The super-app registers no override, so feature_coin's default must
-    // stay its historical /money/vault mount (no-break rule).
     expect(container.read(vaultRoutePrefixProvider), '/money/vault');
   });
 
@@ -80,9 +76,7 @@ void main() {
 
     expect(module.isEnabledForShell(ShellId.coins), isTrue);
     expect(module.isEnabledForShell(ShellId.mobile), isTrue);
-    // packages/feature_coin/module.yaml ship policy: tv "Never Ship".
     expect(module.isEnabledForShell(ShellId.tv), isFalse);
-    // Contract stays shell-count-agnostic: unknown shells default to off.
     expect(module.isEnabledForShell(const ShellId('watch')), isFalse);
   });
 
@@ -112,27 +106,38 @@ void main() {
     expect(find.byType(CoinsStandaloneHome), findsOneWidget);
     expect(find.text('Shared expenses'), findsOneWidget);
     expect(find.text('Secure vault'), findsOneWidget);
-  });
-
-  testWidgets('hub opens groups list without cloud mode card on web', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          screenSecurityProvider.overrideWithValue(_FakeScreenSecurity()),
-          allGroupsProvider.overrideWith((ref) => Stream<List<Group>>.value([])),
-        ],
-        child: AiroCoinsApp(registry: buildCoinsModuleRegistry()),
-      ),
+    expect(
+      find.text('Groups, balances, and settle-up — works offline.'),
+      findsOneWidget,
     );
-    await tester.pump();
-
-    await tester.tap(find.text('Shared expenses'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(GroupsListScreen), findsOneWidget);
-    expect(find.text('Cloud sharing'), findsNothing);
-    expect(find.text('Local-first mode'), findsNothing);
+    expect(
+      find.text(
+        'Bank accounts, cards, insurance, and tax documents — encrypted on device.',
+      ),
+      findsOneWidget,
+    );
   });
+
+  testWidgets(
+    'hub opens standalone groups list when splits storage is available',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            screenSecurityProvider.overrideWithValue(_FakeScreenSecurity()),
+            allGroupsProvider.overrideWith(
+              (ref) => Stream<List<Group>>.value(const []),
+            ),
+          ],
+          child: AiroCoinsApp(registry: buildCoinsModuleRegistry()),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Shared expenses'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CoinsStandaloneGroupsListScreen), findsOneWidget);
+    },
+  );
 }
