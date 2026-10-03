@@ -163,8 +163,9 @@ class _NfcQuickExpenseCaptureScreenState
     ref.invalidate(dashboardDataProvider);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Expense saved')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Expense saved')));
       if (context.canPop()) {
         context.pop();
       } else {

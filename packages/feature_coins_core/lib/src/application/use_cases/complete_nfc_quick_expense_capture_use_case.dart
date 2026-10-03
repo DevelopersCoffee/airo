@@ -9,7 +9,8 @@ class CompleteNfcQuickExpenseCaptureUseCase {
   CompleteNfcQuickExpenseCaptureUseCase(
     this._addExpense, {
     NfcQuickExpenseCaptureService? captureService,
-  }) : _captureService = captureService ?? const NfcQuickExpenseCaptureService();
+  }) : _captureService =
+           captureService ?? const NfcQuickExpenseCaptureService();
 
   final AddExpenseUseCase _addExpense;
   final NfcQuickExpenseCaptureService _captureService;

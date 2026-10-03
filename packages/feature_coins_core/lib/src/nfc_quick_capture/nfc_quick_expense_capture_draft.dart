@@ -27,8 +27,7 @@ class NfcQuickExpenseCaptureDraft extends Equatable {
 
   bool get hasValidAmount => amountCents != null && amountCents! > 0;
 
-  bool get hasCategory =>
-      categoryId != null && categoryId!.trim().isNotEmpty;
+  bool get hasCategory => categoryId != null && categoryId!.trim().isNotEmpty;
 
   bool get isReadyToSave => hasValidAmount && hasCategory;
 

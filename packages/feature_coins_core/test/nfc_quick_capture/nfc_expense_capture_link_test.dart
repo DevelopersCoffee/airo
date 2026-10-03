@@ -5,14 +5,18 @@ void main() {
   group('NfcExpenseCaptureLink', () {
     test('matches canonical airo URI', () {
       expect(
-        NfcExpenseCaptureLink.matches(NfcExpenseCaptureLink.nfcExpenseCaptureUri),
+        NfcExpenseCaptureLink.matches(
+          NfcExpenseCaptureLink.nfcExpenseCaptureUri,
+        ),
         isTrue,
       );
     });
 
     test('matches https app link', () {
       expect(
-        NfcExpenseCaptureLink.matches(NfcExpenseCaptureLink.httpsExpenseCaptureUri),
+        NfcExpenseCaptureLink.matches(
+          NfcExpenseCaptureLink.httpsExpenseCaptureUri,
+        ),
         isTrue,
       );
     });
@@ -33,10 +37,7 @@ void main() {
         NfcExpenseCaptureLink.matchesString('airo://coins/quick-capture'),
         isTrue,
       );
-      expect(
-        NfcExpenseCaptureLink.matchesString('/quick-capture'),
-        isTrue,
-      );
+      expect(NfcExpenseCaptureLink.matchesString('/quick-capture'), isTrue);
     });
   });
 }
