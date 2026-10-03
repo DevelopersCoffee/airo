@@ -933,7 +933,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         : retriesExhausted
         ? _deadStreamTerminalMessage
         : 'Playback failed: $message';
-    final terminalDiagnostic = retriesExhausted && !keepDiagnosticCopy
+    final resolvedDiagnostic = retriesExhausted && !keepDiagnosticCopy
         ? AiroPlaybackDiagnostic(
             code: diagnostic.code,
             severity: diagnostic.severity,
@@ -946,7 +946,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       _state.copyWith(
         playbackState: PlaybackState.error,
         errorMessage: userMessage,
-        diagnostic: terminalDiagnostic,
+        diagnostic: resolvedDiagnostic,
         clearFailover: true,
         retryCount: newRetryCount,
         lastError: DateTime.now(),
