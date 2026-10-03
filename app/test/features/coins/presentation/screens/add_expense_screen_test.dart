@@ -1,5 +1,6 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
+import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
 import 'package:feature_coins_core/src/entities/account.dart';
 import 'package:feature_coins_core/src/entities/transaction.dart';
 import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
@@ -18,7 +19,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currencyFormatterProvider.overrideWithValue(
+          coinsCurrencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('USD'),
           ),
           transactionRepositoryProvider.overrideWithValue(repository),

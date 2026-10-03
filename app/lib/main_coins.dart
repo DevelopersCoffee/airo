@@ -38,6 +38,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/coins/coins_standalone_home.dart';
+import 'features/coins/application/providers/coins_currency_provider.dart';
+import 'features/coins/presentation/screens/coins_settings_screen.dart';
 import 'features/coins/presentation/screens/nfc_quick_expense_capture_screen.dart';
 import 'features/coins/presentation/widgets/coins_nfc_capture_launcher.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
@@ -70,10 +72,10 @@ void main() {
           'the standalone vault has no auth surface today',
     ),
     composeApp: () async {
-      await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
       await pro_bootstrap.prepareProEntitlements();
       registry = buildCoinsModuleRegistry();
-      return AiroCoinsApp(registry: registry);
+      return AiroCoinsApp(registry: registry, prefs: prefs);
     },
     afterRunApp: () {
       scheduleDeferredStartupTask(
@@ -102,9 +104,10 @@ ModuleRegistry buildCoinsModuleRegistry() {
 /// Root widget for the Airo Coins shell: opens on the money dashboard, with
 /// the vault reachable from it. Vault routes come from the module registry.
 class AiroCoinsApp extends StatefulWidget {
-  const AiroCoinsApp({super.key, required this.registry});
+  const AiroCoinsApp({super.key, required this.registry, required this.prefs});
 
   final ModuleRegistry registry;
+  final SharedPreferences prefs;
 
   @override
   State<AiroCoinsApp> createState() => _AiroCoinsAppState();
@@ -125,6 +128,10 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
         builder: (context, state) => const CoinsStandaloneHome(),
       ),
       GoRoute(
+        path: '/settings',
+        builder: (context, state) => const CoinsSettingsScreen(),
+      ),
+      GoRoute(
         path: _coinsStandaloneQuickCapturePath,
         builder: (context, state) => const NfcQuickExpenseCaptureScreen(),
       ),
@@ -141,7 +148,12 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
-      overrides: widget.registry.allProviderOverrides,
+      overrides: [
+        ...widget.registry.allProviderOverrides,
+        coinsCurrencyProvider.overrideWith(
+          (ref) => CoinsCurrencyNotifier(widget.prefs),
+        ),
+      ],
       child: MaterialApp.router(
         title: 'Airo Coins',
         theme: AiroTheme.defaultDark,

@@ -51,6 +51,7 @@ class RouteNames {
   static const String coinsDashboardPath = '/money/dashboard';
   static const String coinsAddExpensePath = '/money/add-expense';
   static const String coinsQuickCapturePath = '/money/quick-capture';
+  static const String coinsSettingsPath = '/money/settings';
   static const String coinsStandaloneQuickCapturePath = '/quick-capture';
   static const String coinsBudgetsPath = '/money/budgets';
   static const String coinsGroupsPath = '/money/groups';

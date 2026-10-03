@@ -9,6 +9,7 @@ import 'package:feature_coin/feature_coin.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeScreenSecurity extends VaultScreenSecurity {
   _FakeScreenSecurity()
@@ -88,6 +89,8 @@ void main() {
   testWidgets('coins shell boots into the lean money summary home', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -98,7 +101,7 @@ void main() {
             (ref) => Future<List<Transaction>>.value(const []),
           ),
         ],
-        child: AiroCoinsApp(registry: buildCoinsModuleRegistry()),
+        child: AiroCoinsApp(registry: buildCoinsModuleRegistry(), prefs: prefs),
       ),
     );
     await tester.pump();

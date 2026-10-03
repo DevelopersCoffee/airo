@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../domain/models/safe_to_spend.dart';
 
 /// Safe to Spend Card Widget
@@ -18,7 +18,7 @@ class SafeToSpendCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     final amount = safeToSpend?.dailyAmountCents ?? 0;
     final isNegative = amount < 0;
 

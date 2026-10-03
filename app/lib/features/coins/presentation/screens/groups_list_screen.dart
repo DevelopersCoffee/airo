@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../application/providers/cloud_mode_provider.dart';
 import '../../application/services/coins_platform_support.dart';
 import '../../application/services/coins_invite_link_service.dart';
@@ -484,7 +484,7 @@ class _GroupCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(

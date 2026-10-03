@@ -1,6 +1,7 @@
 import '../application/use_cases/add_expense_use_case.dart';
 import '../entities/transaction.dart';
 import '../result.dart';
+import '../currency/coins_amount_input.dart';
 import 'nfc_quick_expense_capture_draft.dart';
 import 'nfc_quick_expense_categories.dart';
 
@@ -12,13 +13,7 @@ class NfcQuickExpenseCaptureService {
   /// Parses a user-entered amount string (e.g. `300`, `300.50`) into cents.
   ///
   /// Returns null when the value is missing, non-numeric, or non-positive.
-  int? parseAmountCents(String raw) {
-    final normalized = raw.trim().replaceAll(',', '').replaceAll('₹', '');
-    if (normalized.isEmpty) return null;
-    final value = double.tryParse(normalized);
-    if (value == null || value <= 0) return null;
-    return (value * 100).round();
-  }
+  int? parseAmountCents(String raw) => CoinsAmountInput.parseToCents(raw);
 
   /// Builds repository params when the user confirms; null when the draft is
   /// incomplete or [userConfirmed] is false (cancel / dismiss).

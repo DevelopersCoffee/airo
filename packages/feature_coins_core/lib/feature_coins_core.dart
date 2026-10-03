@@ -53,6 +53,8 @@ export 'src/eval/recurrence_detector_eval_harness.dart';
 export 'src/models/balance_summary.dart';
 export 'src/models/budget_status.dart';
 export 'src/models/currency.dart';
+export 'src/currency/coins_amount_input.dart';
+export 'src/currency/coins_currency_defaults.dart';
 export 'src/models/debt_entry.dart';
 export 'src/models/detected_subscription.dart';
 export 'src/models/labeled_merchant_example.dart';

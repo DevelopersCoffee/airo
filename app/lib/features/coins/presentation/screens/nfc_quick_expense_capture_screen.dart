@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../application/providers/coins_currency_provider.dart';
 import '../../application/providers/dashboard_providers.dart';
 import '../../application/providers/expense_providers.dart';
 import '../../application/services/coins_nfc_capture_session.dart';
@@ -268,7 +269,7 @@ class _NfcQuickExpenseCaptureScreenState
   }
 }
 
-class _AmountStep extends StatelessWidget {
+class _AmountStep extends ConsumerWidget {
   const _AmountStep({
     required this.controller,
     required this.errorText,
@@ -280,7 +281,8 @@ class _AmountStep extends StatelessWidget {
   final VoidCallback onContinue;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -296,9 +298,12 @@ class _AmountStep extends StatelessWidget {
           autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            FilteringTextInputFormatter.allow(
+              CoinsAmountInput.allowedInputCharacters,
+            ),
           ],
           decoration: InputDecoration(
+            prefixText: '${formatter.currency.symbol} ',
             hintText: '0',
             errorText: errorText,
             border: const OutlineInputBorder(),

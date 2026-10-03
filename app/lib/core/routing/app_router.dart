@@ -16,6 +16,7 @@ import '../../features/quest/presentation/screens/quest_list_screen.dart';
 import '../../features/quest/presentation/screens/quest_upload_screen.dart';
 import '../../features/coins/presentation/screens/coins_dashboard_screen.dart';
 import '../../features/coins/presentation/screens/add_expense_screen.dart';
+import '../../features/coins/presentation/screens/coins_settings_screen.dart';
 import '../../features/coins/presentation/screens/nfc_quick_expense_capture_screen.dart';
 import '../../features/coins/presentation/screens/budget_management_screen.dart';
 import '../../features/coins/presentation/screens/groups_list_screen.dart';
@@ -208,6 +209,11 @@ class AppRouter {
                       name: RouteNames.coinsQuickCapture,
                       builder: (context, state) =>
                           const NfcQuickExpenseCaptureScreen(),
+                    ),
+                    GoRoute(
+                      path: 'settings',
+                      name: 'coins_settings',
+                      builder: (context, state) => const CoinsSettingsScreen(),
                     ),
                     GoRoute(
                       path: 'budgets',

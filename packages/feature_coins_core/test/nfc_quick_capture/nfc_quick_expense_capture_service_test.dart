@@ -23,9 +23,11 @@ void main() {
   const service = NfcQuickExpenseCaptureService();
 
   group('parseAmountCents', () {
-    test('parses whole rupee amounts', () {
+    test('parses amounts with optional currency symbols stripped', () {
       expect(service.parseAmountCents('300'), 30000);
       expect(service.parseAmountCents('₹300'), 30000);
+      expect(service.parseAmountCents('\$42.50'), 4250);
+      expect(service.parseAmountCents('€10,99'), 1099);
     });
 
     test('rejects invalid amounts', () {

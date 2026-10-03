@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-import '../../../../core/utils/locale_settings.dart';
+import 'coins_currency_provider.dart';
 import '../../../money/application/providers/money_provider.dart';
 import '../../domain/entities/category.dart' as coins;
 import '../../data/datasources/coins_local_datasource_impl_stub.dart'
@@ -81,7 +81,7 @@ final expenseAccountOptionsProvider = FutureProvider<List<Account>>((
     // Use a first-run fallback when the local account store is not ready.
   }
 
-  final currencyCode = ref.watch(currencyFormatterProvider).currency.code;
+  final currencyCode = ref.watch(coinsCurrencyFormatterProvider).currency.code;
   return [
     Account(
       id: 'cash_default',
