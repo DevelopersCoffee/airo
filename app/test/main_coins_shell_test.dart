@@ -1,5 +1,3 @@
-// @dart=3.13
-
 import 'dart:io';
 
 import 'package:airo_app/core/coins/coins_standalone_groups_list_screen.dart';
@@ -28,8 +26,9 @@ class _FakeScreenSecurity extends VaultScreenSecurity {
 
 void main() {
   test('Coins Android manifest removes the base MainActivity launcher', () {
-    final manifest = File('android/app/src/coins/AndroidManifest.xml')
-        .readAsStringSync();
+    final manifest = File(
+      'android/app/src/coins/AndroidManifest.xml',
+    ).readAsStringSync();
 
     expect(manifest, contains('xmlns:tools='));
     expect(

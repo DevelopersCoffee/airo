@@ -1,5 +1,3 @@
-// @dart=3.13
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -94,8 +92,9 @@ Future<void> _saveItemizedSplit(
 
   if (!context.mounted) return;
   if (saveResult.error != null) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(saveResult.error!)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(saveResult.error!)));
     return;
   }
 
