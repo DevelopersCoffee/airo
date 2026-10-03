@@ -434,6 +434,7 @@ String _documentCategoryLabel(DocumentCategory category) {
     DocumentCategory.incomeProof => 'Income proof',
     DocumentCategory.taxCredit => 'Tax credit',
     DocumentCategory.investmentProof => 'Investment proof',
+    DocumentCategory.insurance => 'Insurance',
     DocumentCategory.hra => 'HRA',
     DocumentCategory.capitalGains => 'Capital gains',
     DocumentCategory.homeLoan => 'Home loan',

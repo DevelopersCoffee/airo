@@ -1,24 +1,18 @@
-/// Entrypoint for the Airo Coins shell.
+/// Entrypoint for the standalone Airo Coin phone app.
 ///
-/// The standalone Airo Coins app opens on a lean, content-first money summary
-/// ([CoinsStandaloneHome]: recent transactions plus a Secure Vault entry)
-/// rather than dropping straight onto the vault gate, so it feels like the
-/// super-app's Coins tab instead of a biometric wall.
+/// Mirrors the Aika Stream / Airo TV pattern: a dedicated Dart entrypoint
+/// (`main_coins.dart`) paired with [`pubspec_coins.yaml`] and the Android
+/// `coins` product flavor (`CoinsActivity`, `io.airo.app.coins`). Swap the
+/// pubspec before building, same as TV:
+/// ```bash
+/// cp pubspec_coins.yaml pubspec.yaml && flutter pub get
+/// ```
 ///
-/// It registers [CoinVaultModule] — the ADR-0010 package-first vault from
-/// `package:feature_coin` — scoped to [ShellId.coins], mounted at
-/// `/money/vault` to match the super-app's vault path.
-///
-/// ADR-0010 exception (interim debt): the home reuses the legacy
-/// `app/lib/features/coins` read path (recent transactions + display card),
-/// which ADR-0010 otherwise keeps as a migration source only. The heavy
-/// add/split/group/budget flows stay out of the standalone until the money
-/// dashboard is migrated package-first into `feature_coin` (Airo Coin phased
-/// epic #938–#942). See ADR-0010's "Standalone shell interim exception" note.
-/// The read path self-wires from `appDatabaseProvider` (Drift, native), so no
-/// extra bootstrap is required here.
-///
-/// Build command (no dedicated store build target yet):
+/// Build command:
+/// ```bash
+/// bash scripts/build-coins.sh
+/// ```
+/// or manually:
 /// ```bash
 /// flutter build apk --release \
 ///   --target=lib/main_coins.dart \
@@ -37,7 +31,11 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/coins/coins_standalone_home.dart';
+import 'core/coins/coins_standalone_identity.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
+import 'features/coins/application/providers/coins_identity_provider.dart';
+import 'core/coins/coins_standalone_groups_list_screen.dart';
+import 'features/coins/presentation/screens/group_detail_screen.dart';
 
 void main() {
   late ModuleRegistry registry;
@@ -78,7 +76,7 @@ void main() {
   );
 }
 
-/// Builds the Airo Coins shell's module registry. Split out (and returning
+/// Builds the Airo Coin shell's module registry. Split out (and returning
 /// a fresh instance per call) so tests can exercise the exact registration
 /// this entrypoint performs without sharing static state.
 @visibleForTesting
@@ -92,8 +90,8 @@ ModuleRegistry buildCoinsModuleRegistry() {
   return registry;
 }
 
-/// Root widget for the Airo Coins shell: opens on the money dashboard, with
-/// the vault reachable from it. Vault routes come from the module registry.
+/// Root widget for the Airo Coin shell: hub home with shared expenses and
+/// vault routes from the module registry.
 class AiroCoinsApp extends StatefulWidget {
   const AiroCoinsApp({super.key, required this.registry});
 
@@ -111,6 +109,17 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
         path: '/',
         builder: (context, state) => const CoinsStandaloneHome(),
       ),
+      GoRoute(
+        path: '/groups',
+        builder: (context, state) => const CoinsStandaloneGroupsListScreen(),
+      ),
+      GoRoute(
+        path: '/groups/:groupId',
+        builder: (context, state) {
+          final groupId = state.pathParameters['groupId']!;
+          return GroupDetailScreen(groupId: groupId);
+        },
+      ),
       ...widget.registry.allRoutes,
     ],
   );
@@ -124,9 +133,12 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
-      overrides: widget.registry.allProviderOverrides,
+      overrides: [
+        ...widget.registry.allProviderOverrides,
+        coinsIdentityProvider.overrideWithValue(const LocalCoinsIdentity()),
+      ],
       child: MaterialApp.router(
-        title: 'Airo Coins',
+        title: 'Airo Coin',
         theme: AiroTheme.defaultDark,
         routerConfig: _router,
         builder: (context, child) => AiroDisplayScale(
