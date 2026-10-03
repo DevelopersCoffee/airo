@@ -16,6 +16,10 @@
     <!-- Local notification scheduling for Agent Skills reminders -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    <!-- NFC quick expense capture (Airo Coins) -->
+    <uses-permission android:name="android.permission.NFC"/>
+    <uses-feature android:name="android.hardware.nfc" android:required="false"/>
+
     <!-- Audio service permissions for background music playback -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
@@ -68,6 +72,40 @@
                     android:scheme="https"
                     android:host="developerscoffee.github.io"
                     android:pathPrefix="/airo/iptv"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="airo"
+                    android:host="coins"
+                    android:path="/quick-capture"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="developerscoffee.github.io"
+                    android:pathPrefix="/airo/coins/quick-capture"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data
+                    android:scheme="airo"
+                    android:host="coins"
+                    android:path="/quick-capture"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data
+                    android:scheme="https"
+                    android:host="developerscoffee.github.io"
+                    android:pathPrefix="/airo/coins/quick-capture"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

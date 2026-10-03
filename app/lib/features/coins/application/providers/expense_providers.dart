@@ -1,3 +1,4 @@
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -49,38 +50,10 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) {
 });
 
 final expenseCategoryOptionsProvider = Provider<List<coins.Category>>((ref) {
+  final quickCapture = NfcQuickExpenseCategories.asCategoryEntities();
   final now = DateTime(2026);
   return [
-    coins.Category(
-      id: 'food',
-      name: 'Food',
-      type: coins.CategoryType.expense,
-      iconName: 'restaurant',
-      color: '#16A34A',
-      isSystem: true,
-      sortOrder: 1,
-      createdAt: now,
-    ),
-    coins.Category(
-      id: 'transport',
-      name: 'Transport',
-      type: coins.CategoryType.expense,
-      iconName: 'directions_car',
-      color: '#2563EB',
-      isSystem: true,
-      sortOrder: 2,
-      createdAt: now,
-    ),
-    coins.Category(
-      id: 'shopping',
-      name: 'Shopping',
-      type: coins.CategoryType.expense,
-      iconName: 'shopping_bag',
-      color: '#9333EA',
-      isSystem: true,
-      sortOrder: 3,
-      createdAt: now,
-    ),
+    ...quickCapture,
     coins.Category(
       id: 'salary',
       name: 'Salary',
@@ -88,10 +61,23 @@ final expenseCategoryOptionsProvider = Provider<List<coins.Category>>((ref) {
       iconName: 'payments',
       color: '#0F766E',
       isSystem: true,
-      sortOrder: 4,
+      sortOrder: quickCapture.length + 1,
       createdAt: now,
     ),
   ];
+});
+
+final nfcQuickExpenseCaptureServiceProvider =
+    Provider<NfcQuickExpenseCaptureService>(
+  (ref) => const NfcQuickExpenseCaptureService(),
+);
+
+final completeNfcQuickExpenseCaptureUseCaseProvider =
+    Provider<CompleteNfcQuickExpenseCaptureUseCase>((ref) {
+  return CompleteNfcQuickExpenseCaptureUseCase(
+    ref.watch(addExpenseUseCaseProvider),
+    captureService: ref.watch(nfcQuickExpenseCaptureServiceProvider),
+  );
 });
 
 final expenseAccountOptionsProvider = FutureProvider<List<Account>>((

@@ -28,6 +28,7 @@ library;
 
 import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_app_shell/core_app_shell.dart';
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_coin/feature_coin.dart';
@@ -37,6 +38,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/coins/coins_standalone_home.dart';
+import 'core/routing/route_names.dart';
+import 'features/coins/presentation/screens/nfc_quick_expense_capture_screen.dart';
+import 'features/coins/presentation/widgets/coins_nfc_capture_launcher.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
 
 void main() {
@@ -106,10 +110,20 @@ class AiroCoinsApp extends StatefulWidget {
 class _AiroCoinsAppState extends State<AiroCoinsApp> {
   late final GoRouter _router = GoRouter(
     initialLocation: '/',
+    redirect: (context, state) {
+      if (NfcExpenseCaptureLink.matches(state.uri)) {
+        return RouteNames.coinsStandaloneQuickCapturePath;
+      }
+      return null;
+    },
     routes: <RouteBase>[
       GoRoute(
         path: '/',
         builder: (context, state) => const CoinsStandaloneHome(),
+      ),
+      GoRoute(
+        path: RouteNames.coinsStandaloneQuickCapturePath,
+        builder: (context, state) => const NfcQuickExpenseCaptureScreen(),
       ),
       ...widget.registry.allRoutes,
     ],
@@ -129,10 +143,13 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
         title: 'Airo Coins',
         theme: AiroTheme.defaultDark,
         routerConfig: _router,
-        builder: (context, child) => AiroDisplayScale(
-          child: AiroDomainTheme(
-            domain: AiroDomain.money,
-            child: child ?? const SizedBox.shrink(),
+        builder: (context, child) => CoinsNfcCaptureLauncher(
+          captureRoute: RouteNames.coinsStandaloneQuickCapturePath,
+          child: AiroDisplayScale(
+            child: AiroDomainTheme(
+              domain: AiroDomain.money,
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
       ),
