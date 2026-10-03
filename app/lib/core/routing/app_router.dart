@@ -67,16 +67,21 @@ class AppRouter {
         final isLoginRoute =
             state.matchedLocation == RouteNames.login ||
             state.matchedLocation == RouteNames.register;
-        final isQuickCaptureRoute =
-            state.matchedLocation == RouteNames.coinsQuickCapturePath ||
-            NfcExpenseCaptureLink.matches(state.uri);
 
         if (NfcExpenseCaptureLink.matches(state.uri)) {
+          if (!isLoggedIn) {
+            return RouteNames.login;
+          }
           return RouteNames.coinsQuickCapturePath;
         }
 
+        if (state.matchedLocation == RouteNames.coinsQuickCapturePath &&
+            !isLoggedIn) {
+          return RouteNames.login;
+        }
+
         // If not logged in and not on login/register page, redirect to login
-        if (!isLoggedIn && !isLoginRoute && !isQuickCaptureRoute) {
+        if (!isLoggedIn && !isLoginRoute) {
           return RouteNames.login;
         }
 

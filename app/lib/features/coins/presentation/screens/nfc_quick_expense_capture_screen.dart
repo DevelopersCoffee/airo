@@ -78,8 +78,26 @@ class _NfcQuickExpenseCaptureScreenState
       note: _noteController.text,
     );
 
-    final accounts = await ref.read(expenseAccountOptionsProvider.future);
-    final accountId = accounts.firstWhere((a) => a.isDefault, orElse: () => accounts.first).id;
+    String? accountId;
+    try {
+      final accounts = await ref.read(expenseAccountOptionsProvider.future);
+      if (accounts.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save expense. Try again.')),
+        );
+        return;
+      }
+      accountId = accounts
+          .firstWhere((a) => a.isDefault, orElse: () => accounts.first)
+          .id;
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save expense. Try again.')),
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
     final useCase = ref.read(completeNfcQuickExpenseCaptureUseCaseProvider);
@@ -94,7 +112,7 @@ class _NfcQuickExpenseCaptureScreenState
     if (result?.error != null) {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result!.error!)),
+        const SnackBar(content: Text('Could not save expense. Try again.')),
       );
       return;
     }
@@ -231,7 +249,7 @@ class _CategoryStep extends StatelessWidget {
         Expanded(
           child: ListView.separated(
             itemCount: options.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final option = options[index];
               return ListTile(

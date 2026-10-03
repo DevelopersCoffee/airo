@@ -4,21 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../money/application/providers/money_provider.dart';
-import '../../domain/entities/account.dart';
 import '../../domain/entities/category.dart' as coins;
-import '../../domain/entities/transaction.dart';
-import '../../domain/repositories/account_repository.dart';
-import '../../domain/repositories/transaction_repository.dart';
-import '../../domain/services/finance_message_parser.dart';
-import '../services/finance_chat_ingestion_service.dart';
-import '../services/transaction_review_service.dart';
-import '../use_cases/add_expense_use_case.dart';
-import '../../data/repositories/account_repository_impl.dart';
-import '../../data/repositories/transaction_repository_impl.dart';
 import '../../data/datasources/coins_local_datasource_impl_stub.dart'
     if (dart.library.io) '../../data/datasources/coins_local_datasource_impl.dart';
-import '../../data/mappers/account_mapper.dart';
-import '../../data/mappers/transaction_mapper.dart';
 
 /// Coins local datasource provider - singleton
 final coinsLocalDatasourceProvider = Provider<CoinsLocalDatasourceImpl>((ref) {

@@ -10,10 +10,12 @@ class CoinsNfcCaptureLauncher extends StatefulWidget {
     super.key,
     required this.child,
     required this.captureRoute,
+    required this.canOpenQuickCapture,
   });
 
   final Widget child;
   final String captureRoute;
+  final Future<bool> Function() canOpenQuickCapture;
 
   @override
   State<CoinsNfcCaptureLauncher> createState() =>
@@ -44,8 +46,10 @@ class _CoinsNfcCaptureLauncherState extends State<CoinsNfcCaptureLauncher>
 
   Future<void> _maybeOpenCapture() async {
     if (!mounted) return;
+    if (!await widget.canOpenQuickCapture()) return;
     final pending = await CoinsNfcCapturePlatform.consumePendingCaptureLaunch();
     if (!mounted || !pending) return;
+    if (!await widget.canOpenQuickCapture()) return;
     context.go(widget.captureRoute);
   }
 

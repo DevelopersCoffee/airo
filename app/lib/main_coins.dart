@@ -38,10 +38,14 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/coins/coins_standalone_home.dart';
-import 'core/routing/route_names.dart';
+import 'features/coins/application/services/coins_nfc_capture_session.dart';
 import 'features/coins/presentation/screens/nfc_quick_expense_capture_screen.dart';
 import 'features/coins/presentation/widgets/coins_nfc_capture_launcher.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
+
+/// Standalone coins quick-capture route (mirrors [RouteNames.coinsStandaloneQuickCapturePath]
+/// in the super-app router without importing the mind-backed route table).
+const String _coinsStandaloneQuickCapturePath = '/quick-capture';
 
 void main() {
   late ModuleRegistry registry;
@@ -110,9 +114,18 @@ class AiroCoinsApp extends StatefulWidget {
 class _AiroCoinsAppState extends State<AiroCoinsApp> {
   late final GoRouter _router = GoRouter(
     initialLocation: '/',
-    redirect: (context, state) {
+    redirect: (context, state) async {
+      final wantsCapture =
+          NfcExpenseCaptureLink.matches(state.uri) ||
+          state.matchedLocation == _coinsStandaloneQuickCapturePath;
+      if (!wantsCapture) return null;
+
+      final allowed =
+          await CoinsNfcCaptureSession.canOpenQuickCaptureCoinsShell();
+      if (!allowed) return '/';
+
       if (NfcExpenseCaptureLink.matches(state.uri)) {
-        return RouteNames.coinsStandaloneQuickCapturePath;
+        return _coinsStandaloneQuickCapturePath;
       }
       return null;
     },
@@ -122,7 +135,7 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
         builder: (context, state) => const CoinsStandaloneHome(),
       ),
       GoRoute(
-        path: RouteNames.coinsStandaloneQuickCapturePath,
+        path: _coinsStandaloneQuickCapturePath,
         builder: (context, state) => const NfcQuickExpenseCaptureScreen(),
       ),
       ...widget.registry.allRoutes,
@@ -144,7 +157,9 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
         theme: AiroTheme.defaultDark,
         routerConfig: _router,
         builder: (context, child) => CoinsNfcCaptureLauncher(
-          captureRoute: RouteNames.coinsStandaloneQuickCapturePath,
+          captureRoute: _coinsStandaloneQuickCapturePath,
+          canOpenQuickCapture:
+              CoinsNfcCaptureSession.canOpenQuickCaptureCoinsShell,
           child: AiroDisplayScale(
             child: AiroDomainTheme(
               domain: AiroDomain.money,
