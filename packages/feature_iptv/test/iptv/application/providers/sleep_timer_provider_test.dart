@@ -2,8 +2,8 @@ import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/sleep_timer_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_media/src/video_player_streaming_service.dart';
-import 'package:platform_player/src/services/fake_playback_engine.dart';
+import 'package:platform_media/platform_media.dart';
+import 'package:platform_player/platform_player.dart';
 
 class _StopCounterService extends VideoPlayerStreamingService {
   _StopCounterService() : super(engine: FakeAiroPlaybackEngine());
