@@ -151,6 +151,7 @@ void main() {
       );
       final networkService = VideoPlayerStreamingService(
         engine: networkFailureEngine,
+        autoRetryPolicy: const AiroPlaybackRetryPolicy(maxAttempts: 0),
       );
       addTearDown(networkService.dispose);
 
@@ -651,40 +652,64 @@ void main() {
       final scripted = _ScriptedOpenFailureEngine(
         AiroPlaybackErrorCode.networkUnavailable,
       );
-      // Zero retryDelay: asserts retry-count/exhaustion logic across
-      // repeated retry() calls, not debounce timing (covered separately).
-      // maxRetries: 5 preserves this test's original assumption (the
-      // previously-implicit StreamingConfig.youtube default) -- the plain
-      // StreamingConfig() constructor's own default is 3, not 5.
+      const autoRetry = AiroPlaybackRetryPolicy(
+        maxAttempts: 3,
+        initialDelay: Duration.zero,
+        maxDelay: Duration.zero,
+      );
       final svc = VideoPlayerStreamingService(
         engine: scripted,
         config: const StreamingConfig(retryDelay: Duration.zero, maxRetries: 5),
+        autoRetryPolicy: autoRetry,
       );
       addTearDown(svc.dispose);
 
       await svc.playChannel(channel());
-      for (var attempt = 0; attempt < 4; attempt++) {
-        await svc.retry();
-      }
+      await Future<void>.delayed(Duration.zero);
 
-      expect(svc.currentState.retryCount, 5);
-      expect(svc.currentState.errorMessage, startsWith('Playback failed:'));
-
-      await svc.retry();
-
+      expect(scripted.openCallCount, 4);
       expect(svc.currentState.playbackState, PlaybackState.error);
-      expect(svc.currentState.retryCount, 6);
       expect(
         svc.currentState.errorMessage,
         'This channel may be blocked in your region or not currently '
         'broadcasting.',
       );
-      expect(
-        svc.currentState.diagnostic?.userMessage,
-        svc.currentState.errorMessage,
-      );
+      expect(svc.currentState.diagnostic?.retryEligible, isFalse);
+
+      scripted.openCallCount = 0;
+      await svc.retry();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(scripted.openCallCount, 4);
+      expect(svc.currentState.playbackState, PlaybackState.error);
       expect(svc.currentState.diagnostic?.retryEligible, isFalse);
     });
+
+    test(
+      'bounded auto-reconnect stops after policy maxAttempts without blocking',
+      () async {
+        final scripted = _ScriptedOpenFailureEngine(
+          AiroPlaybackErrorCode.networkUnavailable,
+        );
+        final svc = VideoPlayerStreamingService(
+          engine: scripted,
+          config: const StreamingConfig(retryDelay: Duration.zero),
+          autoRetryPolicy: const AiroPlaybackRetryPolicy(
+            maxAttempts: 2,
+            initialDelay: Duration.zero,
+            maxDelay: Duration.zero,
+          ),
+        );
+        addTearDown(svc.dispose);
+
+        await svc.playChannel(channel());
+        await Future<void>.delayed(Duration.zero);
+
+        expect(scripted.openCallCount, 3);
+        expect(svc.currentState.playbackState, PlaybackState.error);
+        expect(svc.currentState.diagnostic?.retryEligible, isFalse);
+      },
+    );
   });
 
   group('VideoPlayerStreamingService retry debounce', () {
@@ -708,6 +733,7 @@ void main() {
       final svc = VideoPlayerStreamingService(
         engine: engine,
         config: const StreamingConfig(retryDelay: Duration(seconds: 1)),
+        autoRetryPolicy: const AiroPlaybackRetryPolicy(maxAttempts: 0),
       );
       addTearDown(svc.dispose);
 
@@ -728,6 +754,7 @@ void main() {
       final svc = VideoPlayerStreamingService(
         engine: engine,
         config: const StreamingConfig(retryDelay: Duration(milliseconds: 50)),
+        autoRetryPolicy: const AiroPlaybackRetryPolicy(maxAttempts: 0),
       );
       addTearDown(svc.dispose);
 
@@ -985,6 +1012,7 @@ class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
 
   final AiroPlaybackErrorCode _errorCode;
   final int? httpStatusCode;
+  int openCallCount = 0;
   final _controller = StreamController<AiroPlaybackState>.broadcast();
   AiroPlaybackState _state = AiroPlaybackState.idle(
     backendKind: AiroPlaybackBackendKind.fake,
@@ -1001,6 +1029,7 @@ class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
 
   @override
   Future<AiroPlaybackState> open(AiroMediaOpenRequest request) async {
+    openCallCount++;
     _state = _state.copyWith(
       phase: AiroPlaybackEnginePhase.failed,
       request: request,

@@ -28,6 +28,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   final StreamingConfig _config;
   final AudioContextManager _audioContext;
   final Duration _failoverBackoffBase;
+  final AiroPlaybackRetryPolicy _autoRetryPolicy;
 
   /// Play / public builds stay on a single source. airo-pro turns this on
   /// via [ProFeature.multiSourceFailover].
@@ -65,6 +66,20 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   AiroPlaybackExternalSubtitle? _activeExternalSubtitle;
   int _requestCounter = 0;
 
+  /// Bounded auto-reconnect for retry-eligible failures (CV-001 /
+  /// [AiroPlaybackRetryStateMachine]). Manual "Try Again" stays separate
+  /// and is rate-limited by [StreamingConfig.retryDelay].
+  late final AiroPlaybackRetryStateMachine _autoRetryMachine;
+  Timer? _autoRetryTimer;
+
+  /// Invalidates in-flight auto-retry timers when the user changes channel,
+  /// stops playback, or starts a new open attempt.
+  int _playbackSessionId = 0;
+
+  /// Prevents engine error spam from re-entering recovery while a decision
+  /// is already being applied.
+  bool _recoveryInFlight = false;
+
   /// Per-channel multi-source failover session, rebuilt on every fresh
   /// [playChannel] and preserved across [retry] so "Try Again" advances
   /// to an untried source instead of resubmitting a dead URL.
@@ -77,6 +92,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     AudioContextManager? audioContext,
     LiveEdgeConfig? liveEdgeConfig,
     this._failoverBackoffBase = const Duration(milliseconds: 250),
+    AiroPlaybackRetryPolicy? autoRetryPolicy,
     this.mediaSessionDelegate,
     this.enableMultiSourceFailover = false,
     bool mixWithOthers = false,
@@ -86,7 +102,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
        _mixWithOthers = mixWithOthers,
        _engine = engine ?? VideoPlayerAiroPlaybackEngine(),
        _audioContext = audioContext ?? AudioContextManager(),
+       _autoRetryPolicy = autoRetryPolicy ?? const AiroPlaybackRetryPolicy(),
        _liveEdgeDetector = LiveEdgeDetector(config: liveEdgeConfig) {
+    _autoRetryMachine = AiroPlaybackRetryStateMachine(policy: _autoRetryPolicy);
     _setupLiveEdgeCallbacks();
     _engineSubscription = _engine.states.listen(_onEngineStateUpdate);
   }
@@ -197,6 +215,11 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     required bool preserveFailover,
     required bool resetRetryCount,
   }) async {
+    _cancelAutoRetry();
+    if (resetRetryCount) {
+      _playbackSessionId++;
+      _autoRetryMachine.reset();
+    }
     _loadStartTime = DateTime.now();
     _updateState(
       _state.copyWith(
@@ -284,6 +307,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
             : externalSubtitles.first;
         _lastWorkingSourceIdsByChannel[channel.id] = source.sourceId;
         _metricsCollector?.firstFrameRendered();
+        _autoRetryMachine.onPlaybackRecovered();
 
         // Calculate load time
         final loadTime = DateTime.now().difference(_loadStartTime!);
@@ -340,7 +364,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
             continue;
           }
         }
-        await _handleError(e.toString(), engineError: engineError);
+        await _handlePlaybackFailure(
+          e.toString(),
+          engineError: engineError,
+        );
         return;
       }
     }
@@ -494,10 +521,17 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// doesn't change across channel switches, only what it has open.
   void _onEngineStateUpdate(AiroPlaybackState engineState) {
     if (engineState.error != null) {
-      _handleError(
-        engineState.error!.code.stableId,
-        engineError: engineState.error,
-      );
+      // [playChannel]'s open catch already handles failures that happen
+      // while the service is in loading; handling them here too would
+      // double-count auto-retry attempts and schedule duplicate timers.
+      if (_state.playbackState != PlaybackState.loading) {
+        unawaited(
+          _handlePlaybackFailure(
+            engineState.error!.code.stableId,
+            engineError: engineState.error,
+          ),
+        );
+      }
       return;
     }
 
@@ -777,10 +811,94 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         : mapStreamingErrorToDiagnostic(message);
   }
 
+  void _cancelAutoRetry() {
+    _autoRetryTimer?.cancel();
+    _autoRetryTimer = null;
+  }
+
+  Future<void> _handlePlaybackFailure(
+    String message, {
+    AiroPlaybackError? engineError,
+    AiroPlaybackDiagnosticCode? overrideCode,
+  }) async {
+    if (_recoveryInFlight) return;
+    _recoveryInFlight = true;
+    try {
+      final diagnostic = _diagnosticFor(
+        message,
+        engineError,
+        overrideCode: overrideCode,
+      );
+      final decision = _autoRetryMachine.onFailure(diagnostic);
+      switch (decision.action) {
+        case AiroPlaybackRetryAction.retry:
+          await _engine.stop();
+          _bufferMonitor?.cancel();
+          _audioContext.releaseFocus(AudioFocusType.video);
+          _liveEdgeDetector.detach();
+          _updateState(
+            _state.copyWith(
+              playbackState: PlaybackState.loading,
+              errorMessage: null,
+              diagnostic: decision.diagnostic,
+              retryCount: decision.attempt,
+              clearFailover: true,
+            ),
+          );
+          final session = _playbackSessionId;
+          final delay = decision.delay ?? Duration.zero;
+          _cancelAutoRetry();
+          _autoRetryTimer = Timer(delay, () {
+            unawaited(_runScheduledAutoRetry(session));
+          });
+        case AiroPlaybackRetryAction.giveUp:
+          await _handleError(
+            message,
+            engineError: engineError,
+            overrideCode: overrideCode,
+            terminalDiagnostic: AiroPlaybackDiagnostic(
+              code: decision.diagnostic.code,
+              severity: decision.diagnostic.severity,
+              retryEligible: false,
+              userMessage: _deadStreamTerminalMessage,
+              technicalDetail: decision.diagnostic.technicalDetail,
+            ),
+          );
+        case AiroPlaybackRetryAction.stop:
+          await _handleError(
+            message,
+            engineError: engineError,
+            overrideCode: overrideCode,
+            terminalDiagnostic: AiroPlaybackDiagnostic(
+              code: decision.diagnostic.code,
+              severity: decision.diagnostic.severity,
+              retryEligible: false,
+              userMessage: decision.diagnostic.userMessage,
+              technicalDetail: decision.diagnostic.technicalDetail,
+            ),
+          );
+      }
+    } finally {
+      _recoveryInFlight = false;
+    }
+  }
+
+  Future<void> _runScheduledAutoRetry(int sessionId) async {
+    if (sessionId != _playbackSessionId) return;
+    final channel = _state.currentChannel;
+    if (channel == null) return;
+    await _playChannel(
+      channel,
+      preserveFailover: true,
+      resetRetryCount: false,
+    );
+  }
+
   Future<void> _handleError(
     String message, {
     AiroPlaybackError? engineError,
     AiroPlaybackDiagnosticCode? overrideCode,
+    AiroPlaybackDiagnostic? terminalDiagnostic,
   }) async {
     if (_isHandlingError || _state.playbackState == PlaybackState.error) {
       return;
@@ -805,11 +923,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     // this, every engine code except codec_unsupported (which happens to
     // match the 'codec' substring check) fell through to a generic
     // `unknown` diagnostic.
-    final diagnostic = _diagnosticFor(
-      message,
-      engineError,
-      overrideCode: overrideCode,
-    );
+    final diagnostic =
+        terminalDiagnostic ??
+        _diagnosticFor(message, engineError, overrideCode: overrideCode);
     final keepDiagnosticCopy =
         diagnostic.code == AiroPlaybackDiagnosticCode.adInsertionUnsupported;
     final userMessage = keepDiagnosticCopy
@@ -837,6 +953,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       ),
     );
 
+    _cancelAutoRetry();
+    await _engine.stop();
     _bufferMonitor?.cancel();
     _audioContext.releaseFocus(AudioFocusType.video);
     _liveEdgeDetector.detach();
@@ -862,6 +980,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   @override
   Future<void> stop() async {
+    _playbackSessionId++;
+    _cancelAutoRetry();
+    _autoRetryMachine.reset();
     _bufferMonitor?.cancel();
     _audioContext.releaseFocus(AudioFocusType.video);
     _liveEdgeDetector.detach();
@@ -998,6 +1119,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       return;
     }
     _isHandlingError = false;
+    _autoRetryMachine.reset();
 
     // Fail over before resubmitting: if the failed channel has an untried
     // alternate source, "Try Again" advances to it rather than replaying
@@ -1098,6 +1220,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   @override
   Future<void> dispose() async {
+    _playbackSessionId++;
+    _cancelAutoRetry();
     _bufferMonitor?.cancel();
     _metricsTimer?.cancel();
     _finalizeMetricsSession();
