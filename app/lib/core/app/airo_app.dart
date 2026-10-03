@@ -8,7 +8,6 @@ import '../error/global_error_handler.dart';
 import '../providers/app_theme_provider.dart';
 import '../platform/platform_config.dart';
 import '../routing/route_names.dart';
-import '../../features/coins/application/services/coins_nfc_capture_session.dart';
 import '../../features/coins/presentation/widgets/coins_nfc_capture_launcher.dart';
 
 class AiroApp extends ConsumerStatefulWidget {
@@ -52,8 +51,7 @@ class _AiroAppState extends ConsumerState<AiroApp> {
       routerConfig: widget.router,
       builder: (context, child) => CoinsNfcCaptureLauncher(
         captureRoute: RouteNames.coinsQuickCapturePath,
-        canOpenQuickCapture: (ref) =>
-            CoinsNfcCaptureSession.canRouteToQuickCaptureSuperApp(ref: ref),
+        requireSuperAppLogin: true,
         child: child ?? const SizedBox.shrink(),
       ),
       debugShowCheckedModeBanner: false,

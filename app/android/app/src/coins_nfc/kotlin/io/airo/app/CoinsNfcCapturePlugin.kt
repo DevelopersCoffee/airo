@@ -31,6 +31,9 @@ class CoinsNfcCapturePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            "hasPendingCapture" -> {
+                result.success(pendingCapture)
+            }
             "consumePendingCapture" -> {
                 val wasPending = pendingCapture
                 pendingCapture = false

@@ -38,7 +38,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/coins/coins_standalone_home.dart';
-import 'features/coins/application/services/coins_nfc_capture_session.dart';
 import 'features/coins/presentation/screens/nfc_quick_expense_capture_screen.dart';
 import 'features/coins/presentation/widgets/coins_nfc_capture_launcher.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
@@ -149,8 +148,7 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
         routerConfig: _router,
         builder: (context, child) => CoinsNfcCaptureLauncher(
           captureRoute: _coinsStandaloneQuickCapturePath,
-          canOpenQuickCapture: (ref) async =>
-              CoinsNfcCaptureSession.canRouteToQuickCaptureCoinsShell(ref: ref),
+          requireSuperAppLogin: false,
           child: AiroDisplayScale(
             child: AiroDomainTheme(
               domain: AiroDomain.money,

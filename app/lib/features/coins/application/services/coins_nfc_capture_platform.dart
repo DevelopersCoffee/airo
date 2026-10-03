@@ -10,14 +10,30 @@ class CoinsNfcCapturePlatform {
     'io.airo.app/coins_nfc_capture',
   );
 
+  /// True while a capture VIEW / NFC intent is waiting to be consumed.
+  static Future<bool> hasPendingCaptureLaunch() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return false;
+    }
+    try {
+      final pending = await _channel.invokeMethod<bool>('hasPendingCapture');
+      return pending ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
   /// True once per cold start when the activity was opened from a capture URI.
   static Future<bool> consumePendingCaptureLaunch() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       return false;
     }
     try {
-      final pending =
-          await _channel.invokeMethod<bool>('consumePendingCapture');
+      final pending = await _channel.invokeMethod<bool>(
+        'consumePendingCapture',
+      );
       return pending ?? false;
     } on MissingPluginException {
       return false;

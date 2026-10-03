@@ -73,6 +73,7 @@ class _NfcQuickExpenseCaptureScreenState
   }
 
   void _continueFromAmount() {
+    if (!CoinsNfcCaptureSession.isVaultUnlocked(ref)) return;
     final service = ref.read(nfcQuickExpenseCaptureServiceProvider);
     final cents = service.parseAmountCents(_amountController.text);
     if (cents == null) {
@@ -86,6 +87,7 @@ class _NfcQuickExpenseCaptureScreenState
   }
 
   void _selectCategory(String id) {
+    if (!CoinsNfcCaptureSession.isVaultUnlocked(ref)) return;
     setState(() {
       _categoryId = id;
       _step = _CaptureStep.note;
@@ -161,9 +163,8 @@ class _NfcQuickExpenseCaptureScreenState
     ref.invalidate(dashboardDataProvider);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Expense saved')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Expense saved')));
       if (context.canPop()) {
         context.pop();
       } else {
@@ -175,47 +176,44 @@ class _NfcQuickExpenseCaptureScreenState
   @override
   Widget build(BuildContext context) {
     ref.listen<VaultSessionState>(vaultSessionProvider, (previous, next) {
-      if (previous is VaultUnlocked && next is VaultLocked) {
-        _autoUnlockAttempted = false;
-        WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoUnlock());
+      if (previous is VaultUnlocked && next is! VaultUnlocked) {
+        _leaveCaptureFlow();
       }
     });
 
     final session = ref.watch(vaultSessionProvider);
     return switch (session) {
       VaultUnlocked() => _buildCaptureFlow(context),
-      VaultUnlocking() => _buildSessionGate(
+      VaultUnlocking() => _buildUnlockPlaceholder(
         context,
-        const Center(child: LoadingIndicator(message: 'Unlocking')),
+        const LoadingIndicator(message: 'Unlocking'),
       ),
-      VaultUnavailable() => _buildSessionGate(
+      VaultUnavailable() => _buildUnlockPlaceholder(
         context,
         const EmptyStateWidget(
           icon: Icons.no_encryption_outlined,
           title: 'Biometrics required',
           message:
-              'The Airo Coin vault needs a device lock (fingerprint, face, or '
-              'screen lock). Set one up in system settings, then try again.',
+              'Set up a device lock in system settings, then try quick capture '
+              'again.',
         ),
       ),
-      VaultAuthError(:final failure) => _buildSessionGate(
+      VaultAuthError(:final failure) => _buildUnlockPlaceholder(
         context,
         ErrorView(
           icon: Icons.error_outline,
           title: 'Could not unlock',
           message: failure.message,
-          retryLabel: 'Try again',
-          onRetry: () => ref.read(vaultSessionProvider.notifier).unlock(),
         ),
       ),
-      VaultLocked() => _buildSessionGate(
+      VaultLocked() => _buildUnlockPlaceholder(
         context,
-        const Center(child: LoadingIndicator(message: 'Unlocking')),
+        const LoadingIndicator(message: 'Unlocking'),
       ),
     };
   }
 
-  Widget _buildSessionGate(BuildContext context, Widget body) {
+  Widget _buildUnlockPlaceholder(BuildContext context, Widget body) {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -224,7 +222,7 @@ class _NfcQuickExpenseCaptureScreenState
         ),
         title: const Text('Quick capture'),
       ),
-      body: body,
+      body: Center(child: body),
     );
   }
 
@@ -308,20 +306,14 @@ class _AmountStep extends StatelessWidget {
           onSubmitted: (_) => onContinue(),
         ),
         const Spacer(),
-        FilledButton(
-          onPressed: onContinue,
-          child: const Text('Continue'),
-        ),
+        FilledButton(onPressed: onContinue, child: const Text('Continue')),
       ],
     );
   }
 }
 
 class _CategoryStep extends StatelessWidget {
-  const _CategoryStep({
-    required this.selectedId,
-    required this.onSelected,
-  });
+  const _CategoryStep({required this.selectedId, required this.onSelected});
 
   final String? selectedId;
   final ValueChanged<String> onSelected;

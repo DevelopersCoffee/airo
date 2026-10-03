@@ -4,12 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/auth/auth_service.dart';
 
-/// Session rules for NFC / deep-link quick capture entry.
+/// Session helpers for NFC / deep-link quick capture.
 ///
-/// Navigation may reach the capture route when auth preconditions pass; the
-/// capture screen then prompts for the same vault biometric unlock used for
-/// records ([vaultSessionProvider] → [VaultUnlocked]). A custom scheme, cold
-/// start, or launcher entry is not authentication.
+/// Routing may open the capture screen after login (super-app only). Biometric
+/// unlock is prompted on that screen. A custom scheme, cold start, or launcher
+/// entry is not authentication.
 class CoinsNfcCaptureSession {
   CoinsNfcCaptureSession._();
 
@@ -26,21 +25,8 @@ class CoinsNfcCaptureSession {
     }
   }
 
-  /// Whether the app may route to the quick-capture screen (login only).
-  static Future<bool> canRouteToQuickCaptureSuperApp({
-    WidgetRef? ref,
-    BuildContext? context,
-  }) async {
+  static Future<bool> passesSuperAppLoginGate() async {
     await AuthService.instance.initialize();
     return AuthService.instance.isLoggedIn;
-  }
-
-  /// Coins standalone has no login surface; routing does not require vault
-  /// unlock upfront (unlock is prompted on the capture screen).
-  static bool canRouteToQuickCaptureCoinsShell({
-    WidgetRef? ref,
-    BuildContext? context,
-  }) {
-    return true;
   }
 }
