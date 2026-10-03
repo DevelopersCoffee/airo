@@ -318,6 +318,69 @@ void main() {
     },
   );
 
+  testWidgets(
+    'phone landscape uses immersive video with a slide-over channel browser',
+    (tester) async {
+      await pumpAt(tester, 844, height: 390, currentChannel: channels.first);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-immersive')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-channels-toggle')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-panel')),
+        findsNothing,
+      );
+
+      final shellBox = tester.renderObject<RenderBox>(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-immersive')),
+      );
+      final videoStage = tester.renderObject<RenderBox>(
+        find.byKey(const ValueKey('video-stage')),
+      );
+      expect(
+        videoStage.size.width / videoStage.size.height,
+        closeTo(16 / 9, 0.02),
+      );
+      expect(
+        videoStage.size.width,
+        greaterThan(shellBox.size.width * 0.72),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-channels-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-panel')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('airo-tv-channel-library')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-close')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-panel')),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('wide layout uses the Explorer stage and panel composition', (
     tester,
   ) async {
