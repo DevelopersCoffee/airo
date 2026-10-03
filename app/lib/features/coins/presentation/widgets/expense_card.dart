@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../domain/entities/transaction.dart';
 
 /// Expense Card Widget
@@ -25,7 +25,7 @@ class ExpenseCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isExpense = transaction.type == TransactionType.expense;
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),

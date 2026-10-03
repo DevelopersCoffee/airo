@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../bill_split/domain/models/receipt_item.dart';
 import '../../../bill_split/domain/services/receipt_parser_service.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/category.dart' as coins;
 import '../../domain/entities/transaction.dart';
@@ -90,7 +90,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final addExpenseState = ref.watch(addExpenseProvider);
     final categories = ref.watch(expenseCategoryOptionsProvider);
     final accountsAsync = ref.watch(expenseAccountOptionsProvider);
-    final currencyFormatter = ref.watch(currencyFormatterProvider);
+    final currencyFormatter = ref.watch(coinsCurrencyFormatterProvider);
 
     ref.listen<AsyncValue<void>>(addExpenseProvider, (_, state) {
       state.whenOrNull(
@@ -367,7 +367,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   /// Show scanned receipt details
   Widget _buildScannedReceiptCard() {
     final receipt = _scannedReceipt!;
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -538,7 +538,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         });
 
         // Show success message
-        final formatter = ref.read(currencyFormatterProvider);
+        final formatter = ref.read(coinsCurrencyFormatterProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -576,7 +576,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
 
     // Add item details to notes
-    final formatter = ref.read(currencyFormatterProvider);
+    final formatter = ref.read(coinsCurrencyFormatterProvider);
     final itemsList = receipt.items
         .map(
           (item) =>

@@ -1,9 +1,7 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/group_providers.dart';
-import 'package:feature_coins_core/src/entities/group.dart';
-import 'package:feature_coins_core/src/entities/group_member.dart';
-import 'package:feature_coins_core/src/entities/shared_expense.dart';
-import 'package:feature_coins_core/src/repositories/group_repository.dart';
+import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_split_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,7 +87,7 @@ Future<void> _pumpScreen(
     ProviderScope(
       overrides: [
         groupRepositoryProvider.overrideWithValue(fakeRepository),
-        currencyFormatterProvider.overrideWithValue(
+        coinsCurrencyFormatterProvider.overrideWithValue(
           CurrencyFormatter.fromCode('USD'),
         ),
         groupMembersProvider(

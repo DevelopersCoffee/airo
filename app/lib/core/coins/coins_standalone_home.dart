@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/coins/application/providers/expense_providers.dart';
+import '../../features/coins/presentation/screens/coins_settings_screen.dart';
 import '../../features/coins/presentation/widgets/expense_card.dart';
 
 /// Home screen for the standalone Airo Coins shell.
@@ -22,7 +23,20 @@ class CoinsStandaloneHome extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recentAsync = ref.watch(recentExpensesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Airo Coins')),
+      appBar: AppBar(
+        title: const Text('Airo Coins'),
+        actions: [
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const CoinsSettingsScreen(),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(recentExpensesProvider.future),
         child: ListView(

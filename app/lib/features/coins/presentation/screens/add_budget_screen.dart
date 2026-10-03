@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../domain/entities/budget.dart';
 import '../../application/providers/budget_providers.dart';
 
@@ -68,7 +68,7 @@ class _AddBudgetScreenState extends ConsumerState<AddBudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final saveState = ref.watch(setBudgetProvider);
-    final currencyFormatter = ref.watch(currencyFormatterProvider);
+    final currencyFormatter = ref.watch(coinsCurrencyFormatterProvider);
 
     ref.listen<AsyncValue<void>>(setBudgetProvider, (_, state) {
       state.whenOrNull(

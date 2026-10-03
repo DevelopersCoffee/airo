@@ -364,10 +364,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
             continue;
           }
         }
-        await _handlePlaybackFailure(
-          e.toString(),
-          engineError: engineError,
-        );
+        await _handlePlaybackFailure(e.toString(), engineError: engineError);
         return;
       }
     }
@@ -887,11 +884,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     if (sessionId != _playbackSessionId) return;
     final channel = _state.currentChannel;
     if (channel == null) return;
-    await _playChannel(
-      channel,
-      preserveFailover: true,
-      resetRetryCount: false,
-    );
+    await _playChannel(channel, preserveFailover: true, resetRetryCount: false);
   }
 
   Future<void> _handleError(
