@@ -126,6 +126,8 @@ void main() {
   testWidgets(
     'hub opens standalone groups list when splits storage is available',
     (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -134,7 +136,7 @@ void main() {
               (ref) => Stream<List<Group>>.value(const []),
             ),
           ],
-          child: AiroCoinsApp(registry: buildCoinsModuleRegistry()),
+          child: AiroCoinsApp(registry: buildCoinsModuleRegistry(), prefs: prefs),
         ),
       );
       await tester.pump();
