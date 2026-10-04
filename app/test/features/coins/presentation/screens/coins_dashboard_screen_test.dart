@@ -8,8 +8,18 @@ import 'package:airo_app/features/coins/presentation/screens/add_expense_screen.
 import 'package:airo_app/features/coins/presentation/screens/coins_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+List<Override> _dashboardOverrides(List<Override> more, {String code = 'INR'}) {
+  return [
+    coinsCurrencyFormatterProvider.overrideWithValue(
+      CurrencyFormatter.fromCode(code),
+    ),
+    ...more,
+  ];
+}
 
 void main() {
   setUp(() {
@@ -21,11 +31,11 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
+        overrides: _dashboardOverrides([
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
-        ],
+        ]),
         child: const MaterialApp(home: CoinsDashboardScreen()),
       ),
     );
@@ -41,10 +51,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          coinsCurrencyFormatterProvider.overrideWithValue(
-            CurrencyFormatter.fromCode('USD'),
-          ),
+        overrides: _dashboardOverrides([
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(
               safeToSpend: SafeToSpend(
@@ -65,7 +72,7 @@ void main() {
               pendingSettlements: 1,
             ),
           ),
-        ],
+        ], code: 'USD'),
         child: const MaterialApp(home: CoinsDashboardScreen()),
       ),
     );
@@ -87,11 +94,11 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
+        overrides: _dashboardOverrides([
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
-        ],
+        ]),
         child: const MaterialApp(home: CoinsDashboardScreen()),
       ),
     );
@@ -112,11 +119,11 @@ void main() {
   testWidgets('shows the secure vault dashboard entry', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
+        overrides: _dashboardOverrides([
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
-        ],
+        ]),
         child: const MaterialApp(home: CoinsDashboardScreen()),
       ),
     );
@@ -132,11 +139,11 @@ void main() {
     var openedAddExpense = false;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
+        overrides: _dashboardOverrides([
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
-        ],
+        ]),
         child: MaterialApp(
           home: CoinsDashboardScreen(
             onOpenAddExpense: () => openedAddExpense = true,
@@ -157,11 +164,11 @@ void main() {
   testWidgets('quick add opens a prefilled expense draft', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
+        overrides: _dashboardOverrides([
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
-        ],
+        ]),
         child: const MaterialApp(home: CoinsDashboardScreen()),
       ),
     );
@@ -189,12 +196,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
+        overrides: _dashboardOverrides([
           transactionRepositoryProvider.overrideWithValue(repository),
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(pendingTransactionReviews: [pending]),
           ),
-        ],
+        ]),
         child: const MaterialApp(home: CoinsDashboardScreen()),
       ),
     );
@@ -219,7 +226,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
+        overrides: _dashboardOverrides([
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(
               recentExpenses: [
@@ -247,7 +254,7 @@ void main() {
               ],
             ),
           ),
-        ],
+        ]),
         child: const MaterialApp(home: CoinsDashboardScreen()),
       ),
     );
@@ -262,11 +269,11 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
+        overrides: _dashboardOverrides([
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
-        ],
+        ]),
         child: const MaterialApp(home: CoinsDashboardScreen()),
       ),
     );
@@ -286,11 +293,11 @@ void main() {
     tester,
   ) async {
     final container = ProviderContainer(
-      overrides: [
+      overrides: _dashboardOverrides([
         dashboardDataProvider.overrideWith(
           (ref) async => const DashboardData(),
         ),
-      ],
+      ]),
     );
     addTearDown(container.dispose);
 
