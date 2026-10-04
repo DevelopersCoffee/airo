@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import '../../../../core/utils/locale_settings.dart';
+import 'coins_currency_provider.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_member.dart';
 import '../../domain/entities/shared_expense.dart';
@@ -104,7 +104,10 @@ class CreateGroupNotifier extends StateNotifier<AsyncValue<Group?>> {
     state = const AsyncValue.loading();
     try {
       final useCase = _ref.read(createGroupUseCaseProvider);
-      final currencyCode = _ref.read(currencyFormatterProvider).currency.code;
+      final currencyCode = _ref
+          .read(coinsCurrencyFormatterProvider)
+          .currency
+          .code;
       final result = await useCase.execute(
         CreateGroupParams(
           name: name,
@@ -169,7 +172,10 @@ class AddMemberNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     try {
       final useCase = _ref.read(addGroupMemberUseCaseProvider);
-      final currencyCode = _ref.read(currencyFormatterProvider).currency.code;
+      final currencyCode = _ref
+          .read(coinsCurrencyFormatterProvider)
+          .currency
+          .code;
       final result = await useCase.execute(
         AddGroupMemberParams(
           groupId: groupId,

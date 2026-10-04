@@ -1,23 +1,13 @@
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import '../../../../core/utils/locale_settings.dart';
+
+import 'coins_currency_provider.dart';
 import '../../../money/application/providers/money_provider.dart';
-import '../../domain/entities/account.dart';
 import '../../domain/entities/category.dart' as coins;
-import '../../domain/entities/transaction.dart';
-import '../../domain/repositories/account_repository.dart';
-import '../../domain/repositories/transaction_repository.dart';
-import '../../domain/services/finance_message_parser.dart';
-import '../services/finance_chat_ingestion_service.dart';
-import '../services/transaction_review_service.dart';
-import '../use_cases/add_expense_use_case.dart';
-import '../../data/repositories/account_repository_impl.dart';
-import '../../data/repositories/transaction_repository_impl.dart';
 import '../../data/datasources/coins_local_datasource_impl_stub.dart'
     if (dart.library.io) '../../data/datasources/coins_local_datasource_impl.dart';
-import '../../data/mappers/account_mapper.dart';
-import '../../data/mappers/transaction_mapper.dart';
 
 /// Coins local datasource provider - singleton
 final coinsLocalDatasourceProvider = Provider<CoinsLocalDatasourceImpl>((ref) {
@@ -49,38 +39,10 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) {
 });
 
 final expenseCategoryOptionsProvider = Provider<List<coins.Category>>((ref) {
+  final quickCapture = NfcQuickExpenseCategories.asCategoryEntities();
   final now = DateTime(2026);
   return [
-    coins.Category(
-      id: 'food',
-      name: 'Food',
-      type: coins.CategoryType.expense,
-      iconName: 'restaurant',
-      color: '#16A34A',
-      isSystem: true,
-      sortOrder: 1,
-      createdAt: now,
-    ),
-    coins.Category(
-      id: 'transport',
-      name: 'Transport',
-      type: coins.CategoryType.expense,
-      iconName: 'directions_car',
-      color: '#2563EB',
-      isSystem: true,
-      sortOrder: 2,
-      createdAt: now,
-    ),
-    coins.Category(
-      id: 'shopping',
-      name: 'Shopping',
-      type: coins.CategoryType.expense,
-      iconName: 'shopping_bag',
-      color: '#9333EA',
-      isSystem: true,
-      sortOrder: 3,
-      createdAt: now,
-    ),
+    ...quickCapture,
     coins.Category(
       id: 'salary',
       name: 'Salary',
@@ -88,11 +50,24 @@ final expenseCategoryOptionsProvider = Provider<List<coins.Category>>((ref) {
       iconName: 'payments',
       color: '#0F766E',
       isSystem: true,
-      sortOrder: 4,
+      sortOrder: quickCapture.length + 1,
       createdAt: now,
     ),
   ];
 });
+
+final nfcQuickExpenseCaptureServiceProvider =
+    Provider<NfcQuickExpenseCaptureService>(
+      (ref) => const NfcQuickExpenseCaptureService(),
+    );
+
+final completeNfcQuickExpenseCaptureUseCaseProvider =
+    Provider<CompleteNfcQuickExpenseCaptureUseCase>((ref) {
+      return CompleteNfcQuickExpenseCaptureUseCase(
+        ref.watch(addExpenseUseCaseProvider),
+        captureService: ref.watch(nfcQuickExpenseCaptureServiceProvider),
+      );
+    });
 
 final expenseAccountOptionsProvider = FutureProvider<List<Account>>((
   ref,
@@ -106,7 +81,7 @@ final expenseAccountOptionsProvider = FutureProvider<List<Account>>((
     // Use a first-run fallback when the local account store is not ready.
   }
 
-  final currencyCode = ref.watch(currencyFormatterProvider).currency.code;
+  final currencyCode = ref.watch(coinsCurrencyFormatterProvider).currency.code;
   return [
     Account(
       id: 'cash_default',

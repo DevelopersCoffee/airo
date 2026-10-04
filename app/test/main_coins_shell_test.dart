@@ -12,6 +12,7 @@ import 'package:feature_coin/feature_coin.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeScreenSecurity extends VaultScreenSecurity {
   _FakeScreenSecurity()
@@ -38,6 +39,8 @@ void main() {
       ),
     );
     expect(manifest, contains('android:name=".CoinsActivity"'));
+    expect(manifest, contains('android.nfc.action.NDEF_DISCOVERED'));
+    expect(manifest, contains('android:path="/quick-capture"'));
   });
 
   test('coins registry registers the vault module for ShellId.coins', () {
@@ -93,12 +96,14 @@ void main() {
   testWidgets('coins shell boots into the splits and vault hub', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           screenSecurityProvider.overrideWithValue(_FakeScreenSecurity()),
         ],
-        child: AiroCoinsApp(registry: buildCoinsModuleRegistry()),
+        child: AiroCoinsApp(registry: buildCoinsModuleRegistry(), prefs: prefs),
       ),
     );
     await tester.pump();

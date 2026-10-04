@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../application/services/coins_invite_link_service.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/settlement.dart';
@@ -340,7 +340,7 @@ class _ExpenseListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     return ListTile(
       leading: CircleAvatar(
         child: Text(expense.description.substring(0, 1).toUpperCase()),
@@ -367,7 +367,7 @@ class _BalancesTab extends ConsumerWidget {
     final balancesAsync = ref.watch(groupBalanceSummaryProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
     final settlementsAsync = ref.watch(groupSettlementsProvider(groupId));
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
 
     return balancesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),

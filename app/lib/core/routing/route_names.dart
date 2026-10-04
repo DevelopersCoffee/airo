@@ -37,6 +37,7 @@ class RouteNames {
   // Coins Feature Routes
   static const String coinsDashboard = 'coins_dashboard';
   static const String coinsAddExpense = 'coins_add_expense';
+  static const String coinsQuickCapture = 'coins_quick_capture';
   static const String coinsBudgets = 'coins_budgets';
   static const String coinsGroups = 'coins_groups';
   static const String coinsGroupDetail = 'coins_group_detail';
@@ -49,6 +50,9 @@ class RouteNames {
   // Coins Full Paths (for direct navigation)
   static const String coinsDashboardPath = '/money/dashboard';
   static const String coinsAddExpensePath = '/money/add-expense';
+  static const String coinsQuickCapturePath = '/money/quick-capture';
+  static const String coinsSettingsPath = '/money/settings';
+  static const String coinsStandaloneQuickCapturePath = '/quick-capture';
   static const String coinsBudgetsPath = '/money/budgets';
   static const String coinsGroupsPath = '/money/groups';
   static const String coinVaultPath = '/money/vault';
