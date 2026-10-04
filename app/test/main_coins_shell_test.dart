@@ -136,7 +136,10 @@ void main() {
               (ref) => Stream<List<Group>>.value(const []),
             ),
           ],
-          child: AiroCoinsApp(registry: buildCoinsModuleRegistry(), prefs: prefs),
+          child: AiroCoinsApp(
+            registry: buildCoinsModuleRegistry(),
+            prefs: prefs,
+          ),
         ),
       );
       await tester.pump();
