@@ -497,6 +497,15 @@ jobs:
             pubspec: pubspec_tv.yaml
             size_target_mb: 35
             description: "Android TV (IPTV only)"
+          - name: fire-tv
+            target: lib/main_tv.dart
+            variant: fireTv
+            app_platform: androidTv
+            use_stubs: true
+            enforce_size: true
+            pubspec: pubspec_tv.yaml
+            size_target_mb: 35
+            description: "Fire OS / Amazon Appstore (Aika Stream, GMS-free gates)"
           - name: coins
             target: lib/main_coins.dart
             variant: coins
@@ -596,7 +605,7 @@ jobs:
           cd app
           case "${{ matrix.platform.variant }}" in
             full) package_name="io.airo.app" ;;
-            tv) package_name="com.developerscoffee.tv.midas" ;;
+            tv|fireTv) package_name="com.developerscoffee.tv.midas" ;;
             coins) package_name="io.airo.app.coins" ;;
             *)
               echo "::error::Unknown Android variant: ${{ matrix.platform.variant }}"
@@ -656,8 +665,48 @@ jobs:
             echo "::warning::FIREBASE_OPTIONS_DART_B64 is not set; using placeholder firebase_options.dart (Firebase init will be skipped at runtime)."
           fi
 
+      - name: Configure Fire TV release signing
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.variant == 'fireTv'
+        env:
+          FIRE_TV_RELEASE_KEYSTORE_BASE64: ${{ secrets.FIRE_TV_RELEASE_KEYSTORE_BASE64 }}
+          FIRE_TV_KEYSTORE_PASSWORD: ${{ secrets.FIRE_TV_KEYSTORE_PASSWORD }}
+          FIRE_TV_KEY_ALIAS: ${{ secrets.FIRE_TV_KEY_ALIAS }}
+          FIRE_TV_KEY_PASSWORD: ${{ secrets.FIRE_TV_KEY_PASSWORD }}
+        run: |
+          cd app/android
+          if [[ -n "$FIRE_TV_RELEASE_KEYSTORE_BASE64" && -n "$FIRE_TV_KEYSTORE_PASSWORD" && -n "$FIRE_TV_KEY_ALIAS" && -n "$FIRE_TV_KEY_PASSWORD" ]]; then
+            echo "$FIRE_TV_RELEASE_KEYSTORE_BASE64" | base64 -d > fire-tv-release.keystore
+            {
+              echo "storeFile=fire-tv-release.keystore"
+              echo "storePassword=$FIRE_TV_KEYSTORE_PASSWORD"
+              echo "keyAlias=$FIRE_TV_KEY_ALIAS"
+              echo "keyPassword=$FIRE_TV_KEY_PASSWORD"
+            } > key.properties
+            chmod 600 fire-tv-release.keystore key.properties
+            echo "Using FIRE_TV_RELEASE_KEYSTORE_BASE64 for Fire TV signing."
+            exit 0
+          fi
+          echo "::warning::Fire TV signing secrets not configured; falling back to ephemeral CI validation keystore."
+          keytool -genkeypair \
+            -v \
+            -keystore ci-validation.keystore \
+            -storepass ci-validation-password \
+            -keypass ci-validation-password \
+            -alias ci-validation \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Aika Stream Fire TV CI,O=DevelopersCoffee,C=US"
+          {
+            echo "storeFile=ci-validation.keystore"
+            echo "storePassword=ci-validation-password"
+            echo "keyAlias=ci-validation"
+            echo "keyPassword=ci-validation-password"
+          } > key.properties
+          chmod 600 ci-validation.keystore key.properties
+
       - name: Create CI validation signing config
-        if: steps.android_scope.outputs.should_build == 'true'
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.variant != 'fireTv'
         run: |
           cd app/android
           keytool -genkeypair \
@@ -704,6 +753,10 @@ jobs:
       - name: Patch Android plugin Gradle files
         if: steps.android_scope.outputs.should_build == 'true'
         run: scripts/patch-android-plugin-gradle.sh
+
+      - name: Fire TV release contract checks
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.variant == 'fireTv'
+        run: scripts/check-fire-tv-release.sh
 
       - name: Run code generation
         if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.name == 'full'
@@ -753,7 +806,7 @@ jobs:
       # app/android/app/build.gradle.kts packaging.jniLibs.excludes; this step
       # enforces it stays wired.
       - name: Assert TV APK excludes mpv native libs
-        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.variant == 'tv'
+        if: steps.android_scope.outputs.should_build == 'true' && (matrix.platform.variant == 'tv' || matrix.platform.variant == 'fireTv')
         run: |
           apk="app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
           if [ ! -f "$apk" ]; then

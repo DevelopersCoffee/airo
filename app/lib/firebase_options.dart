@@ -36,6 +36,7 @@ class DefaultFirebaseOptions {
   static AppVariant get currentVariant {
     switch (_variantString) {
       case 'tv':
+      case 'fireTv':
         return AppVariant.tv;
       case 'streaming':
         return AppVariant.streaming;

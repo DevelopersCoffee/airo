@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLE_FILE="$ROOT_DIR/app/android/app/build.gradle.kts"
 SDK_CATALOG="$ROOT_DIR/gradle/libs.versions.toml"
-TV_MANIFEST="$ROOT_DIR/app/android/app/src/tv/AndroidManifest.xml"
+TV_MANIFEST="${AIRO_TV_MANIFEST:-$ROOT_DIR/app/android/app/src/tv/AndroidManifest.xml}"
 TV_PUBSPEC="$ROOT_DIR/app/pubspec_tv.yaml"
 RESOURCE_KEEP_FILE="${AIRO_TV_RESOURCE_KEEP_FILE:-$ROOT_DIR/app/android/app/src/main/res/raw/keep.xml}"
 PLUGIN_REGISTRANT="${AIRO_TV_PLUGIN_REGISTRANT:-$ROOT_DIR/app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java}"
@@ -51,7 +51,8 @@ grep -q 'android.intent.action.OPEN_DOCUMENT' "$TV_MANIFEST" ||
   fail "TV manifest must expose the touch-sender video picker to Android package visibility"
 grep -q 'android:mimeType="video/\*"' "$TV_MANIFEST" ||
   fail "TV manifest local-file picker query must be restricted to video"
-grep -q "\"tv\" -> \"$TV_PACKAGE_NAME\"" "$GRADLE_FILE" || fail "TV applicationId must be $TV_PACKAGE_NAME"
+grep -qE "\"tv\", \"fireTv\" -> \"$TV_PACKAGE_NAME\"|\"tv\" -> \"$TV_PACKAGE_NAME\"" "$GRADLE_FILE" ||
+  fail "TV/Fire TV applicationId must be $TV_PACKAGE_NAME"
 grep -A5 '^hooks:' "$TV_PUBSPEC" | grep -q 'source: system' ||
   fail "TV pubspec must use packaged/system SQLite instead of a release-time download"
 grep -A6 '^hooks:' "$TV_PUBSPEC" | grep -q 'name: sqlite3' ||
