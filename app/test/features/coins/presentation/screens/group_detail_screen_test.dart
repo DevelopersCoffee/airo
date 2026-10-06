@@ -1,13 +1,8 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/group_providers.dart';
+import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
 import 'package:airo_app/features/coins/application/providers/settlement_providers.dart';
-import 'package:feature_coins_core/src/entities/group.dart';
-import 'package:feature_coins_core/src/entities/group_member.dart';
-import 'package:feature_coins_core/src/entities/settlement.dart';
-import 'package:feature_coins_core/src/entities/shared_expense.dart';
-import 'package:feature_coins_core/src/entities/split_entry.dart';
-import 'package:feature_coins_core/src/models/balance_summary.dart';
-import 'package:feature_coins_core/src/models/debt_entry.dart';
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:airo_app/features/coins/presentation/screens/group_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,7 +63,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currencyFormatterProvider.overrideWithValue(
+          coinsCurrencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('USD'),
           ),
           groupByIdProvider(groupId).overrideWith((ref) => Stream.value(group)),
@@ -157,7 +152,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currencyFormatterProvider.overrideWithValue(
+          coinsCurrencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('USD'),
           ),
           groupByIdProvider(groupId).overrideWith((ref) => Stream.value(group)),
@@ -227,7 +222,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currencyFormatterProvider.overrideWithValue(
+          coinsCurrencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('USD'),
           ),
           groupByIdProvider(groupId).overrideWith((ref) => Stream.value(group)),

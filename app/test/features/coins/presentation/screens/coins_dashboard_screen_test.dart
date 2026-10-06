@@ -1,11 +1,9 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/android_import_permission_provider.dart';
-import 'package:feature_coins_core/src/application/services/android_finance_import_service.dart';
+import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:airo_app/features/coins/application/providers/dashboard_providers.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
-import 'package:feature_coins_core/src/entities/transaction.dart';
-import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
-import 'package:feature_coins_core/src/models/safe_to_spend.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_expense_screen.dart';
 import 'package:airo_app/features/coins/presentation/screens/coins_dashboard_screen.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +11,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../coins_currency_test_overrides.dart';
+
 void main() {
+  late SharedPreferences coinsTestPrefs;
+
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    coinsTestPrefs = await SharedPreferences.getInstance();
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -24,6 +31,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -44,7 +52,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currencyFormatterProvider.overrideWithValue(
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
+          coinsCurrencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('USD'),
           ),
           dashboardDataProvider.overrideWith(
@@ -90,6 +99,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -115,6 +125,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -135,6 +146,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -160,6 +172,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -192,6 +205,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           transactionRepositoryProvider.overrideWithValue(repository),
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(pendingTransactionReviews: [pending]),
@@ -222,6 +236,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(
               recentExpenses: [
@@ -265,6 +280,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -289,6 +305,7 @@ void main() {
   ) async {
     final container = ProviderContainer(
       overrides: [
+        coinsCurrencyProviderTestOverride(coinsTestPrefs),
         dashboardDataProvider.overrideWith(
           (ref) async => const DashboardData(),
         ),

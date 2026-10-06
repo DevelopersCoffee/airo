@@ -364,10 +364,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
             continue;
           }
         }
-        await _handlePlaybackFailure(
-          e.toString(),
-          engineError: engineError,
-        );
+        await _handlePlaybackFailure(e.toString(), engineError: engineError);
         return;
       }
     }
@@ -887,11 +884,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     if (sessionId != _playbackSessionId) return;
     final channel = _state.currentChannel;
     if (channel == null) return;
-    await _playChannel(
-      channel,
-      preserveFailover: true,
-      resetRetryCount: false,
-    );
+    await _playChannel(channel, preserveFailover: true, resetRetryCount: false);
   }
 
   Future<void> _handleError(
@@ -933,7 +926,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         : retriesExhausted
         ? _deadStreamTerminalMessage
         : 'Playback failed: $message';
-    final terminalDiagnostic = retriesExhausted && !keepDiagnosticCopy
+    final resolvedDiagnostic = retriesExhausted && !keepDiagnosticCopy
         ? AiroPlaybackDiagnostic(
             code: diagnostic.code,
             severity: diagnostic.severity,
@@ -946,7 +939,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       _state.copyWith(
         playbackState: PlaybackState.error,
         errorMessage: userMessage,
-        diagnostic: terminalDiagnostic,
+        diagnostic: resolvedDiagnostic,
         clearFailover: true,
         retryCount: newRetryCount,
         lastError: DateTime.now(),

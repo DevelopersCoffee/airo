@@ -7,6 +7,8 @@ import 'package:feature_mind/feature_mind.dart';
 import '../error/global_error_handler.dart';
 import '../providers/app_theme_provider.dart';
 import '../platform/platform_config.dart';
+import '../routing/route_names.dart';
+import '../../features/coins/presentation/widgets/coins_nfc_capture_launcher.dart';
 
 class AiroApp extends ConsumerStatefulWidget {
   const AiroApp({required this.router, super.key});
@@ -47,6 +49,11 @@ class _AiroAppState extends ConsumerState<AiroApp> {
       ),
       themeMode: themeDefinition.themeMode,
       routerConfig: widget.router,
+      builder: (context, child) => CoinsNfcCaptureLauncher(
+        captureRoute: RouteNames.coinsQuickCapturePath,
+        requireSuperAppLogin: true,
+        child: child ?? const SizedBox.shrink(),
+      ),
       debugShowCheckedModeBanner: false,
       // Platform-specific scroll behavior
       scrollBehavior: const MaterialScrollBehavior().copyWith(
