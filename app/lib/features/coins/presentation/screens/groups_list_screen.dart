@@ -6,7 +6,7 @@ import '../../application/services/coins_platform_support.dart';
 import '../../application/services/coins_invite_link_service.dart';
 import '../../domain/entities/group.dart';
 import '../../application/providers/group_providers.dart';
-import 'group_detail_screen.dart';
+import 'group_detail_super_app.dart';
 
 /// Groups List Screen
 ///
@@ -192,7 +192,7 @@ class GroupsListScreen extends ConsumerWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => GroupDetailScreen(groupId: group.id),
+                        builder: (_) => buildSuperAppGroupDetail(group.id),
                       ),
                     );
                   }
@@ -305,7 +305,7 @@ class GroupsListScreen extends ConsumerWidget {
     Navigator.pop(dialogContext);
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => GroupDetailScreen(groupId: group.id)),
+      MaterialPageRoute(builder: (_) => buildSuperAppGroupDetail(group.id)),
     );
   }
 
@@ -492,7 +492,7 @@ class _GroupCard extends ConsumerWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => GroupDetailScreen(groupId: group.id),
+              builder: (_) => buildSuperAppGroupDetail(group.id),
             ),
           );
         },
