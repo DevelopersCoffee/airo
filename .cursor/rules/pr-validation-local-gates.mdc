@@ -1,0 +1,57 @@
+---
+description: Run PR Checks locally before push or marking a draft PR ready — save GitHub Actions minutes
+alwaysApply: true
+---
+
+# PR validation local gates
+
+GitHub Actions minutes are accountable. **Before the first push** that opens or updates a pull request, and **before marking a draft PR ready for review**, run the same gates as `.github/workflows/pr-checks.yml` locally and fix failures. **Skipped, missing, or failed checks are not green** — do not push, do not mark ready, do not merge.
+
+Use **Flutter 3.44.4** stable (bundled **Dart 3.12.2+**; verify with `flutter --version`). Format with that SDK’s `dart`, not a different install.
+
+## `pr-validation` job (repo root)
+
+```bash
+scripts/check-docs-completeness.sh --base origin/main --head HEAD
+scripts/check-bundled-model-artifacts.sh
+scripts/test-check-android-sdk-baseline.sh
+scripts/check-android-sdk-baseline.sh
+scripts/check-proguard-keep-budget.sh
+ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
+  .github/workflows/release-orchestrator.yml \
+  .github/workflows/aika-stream-release.yml \
+  .github/workflows/airo-mobile-tablet-release.yml \
+  .github/workflows/virustotal-scan.yml
+python3 -m py_compile scripts/check-ci-cache-policy.py scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py scripts/resolve_release_tv_apk.py scripts/test_resolve_release_tv_apk.py
+python3 scripts/test_resolve_release_tv_apk.py
+python3 scripts/check-ci-cache-policy.py
+python3 scripts/check-build-profiles.py
+scripts/test-generate-release-manifest.sh
+scripts/test-generate-release-qualification-report.sh
+scripts/test-publish-framework.sh
+ruby -e 'require "yaml"; Dir.glob("packages/*/module.yaml").each { |f| YAML.load_file(f); puts "yaml ok #{f}" }'
+scripts/test-check-module-manifests.sh
+python3 scripts/check-module-manifests.py
+python3 scripts/test-check-edge-import-boundaries.py
+python3 scripts/check-edge-import-boundaries.py
+python3 scripts/check-package-reachability.py
+python3 scripts/check-private-src-imports.py
+python3 scripts/report-dead-providers.py || true
+```
+
+PR title must satisfy the semantic PR check (`amannn/action-semantic-pull-request` in CI).
+
+## `code-quality` job (Dart / Flutter changes)
+
+After `melos bootstrap` / pub get as needed:
+
+```bash
+scripts/run-ci-codegen.sh
+cd app && cp -n lib/firebase_options.dart.template lib/firebase_options.dart 2>/dev/null || cp lib/firebase_options.dart.template lib/firebase_options.dart
+cd app && flutter analyze --no-fatal-infos --no-fatal-warnings
+cd app && find lib test -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -print0 | xargs -0 dart format --set-exit-if-changed
+```
+
+## Other PR Checks jobs
+
+If the change touches Mind flavour code, also run the `tests` and `airo-mind-shell` job steps in the same workflow file before push. Prefer the **narrowest** gate that covers your diff; never rely on CI to discover a failure you could run locally.
