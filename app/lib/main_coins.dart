@@ -1,24 +1,18 @@
-/// Entrypoint for the Airo Coins shell.
+/// Entrypoint for the standalone Airo Coin phone app.
 ///
-/// The standalone Airo Coins app opens on a lean, content-first money summary
-/// ([CoinsStandaloneHome]: recent transactions plus a Secure Vault entry)
-/// rather than dropping straight onto the vault gate, so it feels like the
-/// super-app's Coins tab instead of a biometric wall.
+/// Mirrors the Aika Stream / Airo TV pattern: a dedicated Dart entrypoint
+/// (`main_coins.dart`) paired with [`pubspec_coins.yaml`] and the Android
+/// `coins` product flavor (`CoinsActivity`, `io.airo.app.coins`). Swap the
+/// pubspec before building, same as TV:
+/// ```bash
+/// cp pubspec_coins.yaml pubspec.yaml && flutter pub get
+/// ```
 ///
-/// It registers [CoinVaultModule] — the ADR-0010 package-first vault from
-/// `package:feature_coin` — scoped to [ShellId.coins], mounted at
-/// `/money/vault` to match the super-app's vault path.
-///
-/// ADR-0010 exception (interim debt): the home reuses the legacy
-/// `app/lib/features/coins` read path (recent transactions + display card),
-/// which ADR-0010 otherwise keeps as a migration source only. The heavy
-/// add/split/group/budget flows stay out of the standalone until the money
-/// dashboard is migrated package-first into `feature_coin` (Airo Coin phased
-/// epic #938–#942). See ADR-0010's "Standalone shell interim exception" note.
-/// The read path self-wires from `appDatabaseProvider` (Drift, native), so no
-/// extra bootstrap is required here.
-///
-/// Build command (no dedicated store build target yet):
+/// Build command:
+/// ```bash
+/// bash scripts/build-coins.sh
+/// ```
+/// or manually:
 /// ```bash
 /// flutter build apk --release \
 ///   --target=lib/main_coins.dart \
@@ -28,6 +22,7 @@ library;
 
 import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_app_shell/core_app_shell.dart';
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_coin/feature_coin.dart';
@@ -37,7 +32,19 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/coins/coins_standalone_home.dart';
+import 'core/coins/coins_standalone_identity.dart';
+import 'core/coins/coins_standalone_groups_list_screen.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
+import 'features/coins/application/providers/coins_currency_provider.dart';
+import 'features/coins/application/providers/coins_identity_provider.dart';
+import 'features/coins/presentation/screens/coins_settings_screen.dart';
+import 'features/coins/presentation/screens/group_detail_screen.dart';
+import 'features/coins/presentation/screens/nfc_quick_expense_capture_screen.dart';
+import 'features/coins/presentation/widgets/coins_nfc_capture_launcher.dart';
+
+/// Standalone coins quick-capture route (mirrors [RouteNames.coinsStandaloneQuickCapturePath]
+/// in the super-app router without importing the mind-backed route table).
+const String _coinsStandaloneQuickCapturePath = '/quick-capture';
 
 void main() {
   late ModuleRegistry registry;
@@ -63,10 +70,10 @@ void main() {
           'the standalone vault has no auth surface today',
     ),
     composeApp: () async {
-      await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
       await pro_bootstrap.prepareProEntitlements();
       registry = buildCoinsModuleRegistry();
-      return AiroCoinsApp(registry: registry);
+      return AiroCoinsApp(registry: registry, prefs: prefs);
     },
     afterRunApp: () {
       scheduleDeferredStartupTask(
@@ -78,7 +85,7 @@ void main() {
   );
 }
 
-/// Builds the Airo Coins shell's module registry. Split out (and returning
+/// Builds the Airo Coin shell's module registry. Split out (and returning
 /// a fresh instance per call) so tests can exercise the exact registration
 /// this entrypoint performs without sharing static state.
 @visibleForTesting
@@ -92,12 +99,13 @@ ModuleRegistry buildCoinsModuleRegistry() {
   return registry;
 }
 
-/// Root widget for the Airo Coins shell: opens on the money dashboard, with
-/// the vault reachable from it. Vault routes come from the module registry.
+/// Root widget for the Airo Coin shell: hub home with shared expenses and
+/// vault routes from the module registry.
 class AiroCoinsApp extends StatefulWidget {
-  const AiroCoinsApp({super.key, required this.registry});
+  const AiroCoinsApp({super.key, required this.registry, required this.prefs});
 
   final ModuleRegistry registry;
+  final SharedPreferences prefs;
 
   @override
   State<AiroCoinsApp> createState() => _AiroCoinsAppState();
@@ -106,10 +114,35 @@ class AiroCoinsApp extends StatefulWidget {
 class _AiroCoinsAppState extends State<AiroCoinsApp> {
   late final GoRouter _router = GoRouter(
     initialLocation: '/',
+    redirect: (context, state) {
+      if (NfcExpenseCaptureLink.matches(state.uri)) {
+        return _coinsStandaloneQuickCapturePath;
+      }
+      return null;
+    },
     routes: <RouteBase>[
       GoRoute(
         path: '/',
         builder: (context, state) => const CoinsStandaloneHome(),
+      ),
+      GoRoute(
+        path: '/groups',
+        builder: (context, state) => const CoinsStandaloneGroupsListScreen(),
+      ),
+      GoRoute(
+        path: '/groups/:groupId',
+        builder: (context, state) {
+          final groupId = state.pathParameters['groupId']!;
+          return GroupDetailScreen(groupId: groupId);
+        },
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const CoinsSettingsScreen(),
+      ),
+      GoRoute(
+        path: _coinsStandaloneQuickCapturePath,
+        builder: (context, state) => const NfcQuickExpenseCaptureScreen(),
       ),
       ...widget.registry.allRoutes,
     ],
@@ -124,15 +157,25 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
-      overrides: widget.registry.allProviderOverrides,
+      overrides: [
+        ...widget.registry.allProviderOverrides,
+        coinsIdentityProvider.overrideWithValue(const LocalCoinsIdentity()),
+        coinsCurrencyProvider.overrideWith(
+          (ref) => CoinsCurrencyNotifier(widget.prefs),
+        ),
+      ],
       child: MaterialApp.router(
-        title: 'Airo Coins',
+        title: 'Airo Coin',
         theme: AiroTheme.defaultDark,
         routerConfig: _router,
-        builder: (context, child) => AiroDisplayScale(
-          child: AiroDomainTheme(
-            domain: AiroDomain.money,
-            child: child ?? const SizedBox.shrink(),
+        builder: (context, child) => CoinsNfcCaptureLauncher(
+          captureRoute: _coinsStandaloneQuickCapturePath,
+          requireSuperAppLogin: false,
+          child: AiroDisplayScale(
+            child: AiroDomainTheme(
+              domain: AiroDomain.money,
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
       ),

@@ -56,6 +56,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private lateinit var mediaAssetAnalyzerPlugin: AiroMediaAssetAnalyzerPlugin
     private lateinit var localMediaPlugin: AiroLocalMediaPlugin
     private lateinit var castReceiverMultiviewPlugin: AiroCastReceiverMultiviewPlugin
+    private var coinsNfcCapturePlugin: CoinsNfcCapturePlugin? = null
 
     // Android 15 (targetSdk 35) enforces edge-to-edge by default; calling this
     // explicitly (rather than relying on the enforcement fallback) is what
@@ -63,6 +64,13 @@ class MainActivity : AudioServiceFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        coinsNfcCapturePlugin?.onLaunchIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        coinsNfcCapturePlugin?.onLaunchIntent(intent)
     }
 
     override fun shouldDestroyEngineWithHost(): Boolean {
@@ -70,6 +78,11 @@ class MainActivity : AudioServiceFragmentActivity() {
     }
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        coinsNfcCapturePlugin = CoinsNfcCapturePlugin().also {
+            flutterEngine.plugins.add(it)
+        }
+        coinsNfcCapturePlugin?.onLaunchIntent(intent)
 
         // Register Gemini Nano plugin
         val plugin = GeminiNanoPlugin(this)

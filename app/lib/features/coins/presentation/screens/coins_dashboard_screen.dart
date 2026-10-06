@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:feature_coin/feature_coin.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/routing/route_names.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../application/providers/android_import_permission_provider.dart';
 import '../../application/providers/dashboard_providers.dart';
 import '../../application/providers/expense_providers.dart';
@@ -267,7 +267,7 @@ class _TransactionReviewTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.fact_check_outlined),
@@ -479,7 +479,7 @@ class _SafeToSpendCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     final safeToSpend = data.safeToSpend;
     final amount = safeToSpend == null
         ? formatter.formatCents(0)
@@ -615,7 +615,7 @@ class _FinancialSnapshotSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     final budgetRemaining = data.budgetStatuses.fold<int>(
       0,
       (sum, status) =>

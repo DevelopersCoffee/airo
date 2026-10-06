@@ -5,7 +5,12 @@ enum SupportedCurrency {
   inr('INR', '₹', 'en_IN'),
   usd('USD', '\$', 'en_US'),
   eur('EUR', '€', 'de_DE'),
-  gbp('GBP', '£', 'en_GB');
+  gbp('GBP', '£', 'en_GB'),
+  jpy('JPY', '¥', 'ja_JP'),
+  cad('CAD', '\$', 'en_CA'),
+  aud('AUD', '\$', 'en_AU'),
+  sgd('SGD', '\$', 'en_SG'),
+  aed('AED', 'د.إ', 'ar_AE');
 
   final String code;
   final String symbol;
@@ -110,12 +115,13 @@ class CurrencyFormatter {
 
   /// Create formatter for a specific currency
   factory CurrencyFormatter.forCurrency(SupportedCurrency currency) {
+    final decimalDigits = currency == SupportedCurrency.jpy ? 0 : 2;
     return CurrencyFormatter._(
       currency: currency,
       formatter: NumberFormat.currency(
         locale: currency.locale,
         symbol: currency.symbol,
-        decimalDigits: 2,
+        decimalDigits: decimalDigits,
       ),
       compactFormatter: NumberFormat.compactCurrency(
         locale: currency.locale,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../domain/entities/budget.dart';
 import '../../application/providers/budget_providers.dart';
 import 'add_budget_screen.dart';
@@ -136,7 +136,7 @@ class _BudgetCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     // TODO: Get actual budget status from provider
     const percentUsed = 0.6; // Placeholder
 

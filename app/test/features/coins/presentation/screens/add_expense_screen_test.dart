@@ -1,15 +1,23 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
-import 'package:feature_coins_core/src/entities/account.dart';
-import 'package:feature_coins_core/src/entities/transaction.dart';
-import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
-import 'package:feature_coins_core/src/services/quick_add_expense_parser.dart';
+import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../coins_currency_test_overrides.dart';
 
 void main() {
+  late SharedPreferences coinsTestPrefs;
+
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    coinsTestPrefs = await SharedPreferences.getInstance();
+  });
+
   testWidgets('saves an expense after choosing category and account', (
     tester,
   ) async {
@@ -18,7 +26,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currencyFormatterProvider.overrideWithValue(
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
+          coinsCurrencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('USD'),
           ),
           transactionRepositoryProvider.overrideWithValue(repository),
@@ -62,6 +71,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
           expenseAccountOptionsProvider.overrideWith(
             (ref) async => [
               Account(
@@ -95,8 +105,9 @@ void main() {
 
   testWidgets('prefills an expense from a quick-add draft', (tester) async {
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
+      ProviderScope(
+        overrides: [coinsCurrencyProviderTestOverride(coinsTestPrefs)],
+        child: const MaterialApp(
           home: AddExpenseScreen(
             initialDraft: QuickExpenseDraft(
               description: 'Netflix',

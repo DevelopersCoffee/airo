@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../../../core/utils/locale_settings.dart';
-import '../../application/providers/cloud_mode_provider.dart';
+import '../../application/providers/coins_currency_provider.dart';
 import '../../application/services/coins_invite_link_service.dart';
 import '../../domain/entities/group.dart';
-import '../../../bill_split/domain/models/receipt_item.dart';
-import '../../../bill_split/presentation/screens/itemized_split_screen.dart';
 import '../../domain/entities/settlement.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../application/providers/group_providers.dart';
 import '../../application/providers/settlement_providers.dart';
-import '../../application/providers/split_providers.dart';
 import '../../application/services/coins_platform_support.dart';
-import '../../application/use_cases/add_split_use_case.dart';
-import '../../domain/entities/split_entry.dart';
 import 'add_split_expense_screen.dart';
 
 /// Group Detail Screen
@@ -27,10 +21,27 @@ import 'add_split_expense_screen.dart';
 ///
 /// Phase: 2 (Split Engine)
 /// See: docs/features/coins/UI_WIREFRAMES.md (Screen 6)
+typedef GroupItemizedBillSplitOpener =
+    Future<void> Function(BuildContext context, WidgetRef ref, String groupId);
+
+typedef GroupInviteShareHandler =
+    Future<void> Function(BuildContext context, WidgetRef ref, Group group);
+
 class GroupDetailScreen extends ConsumerWidget {
+  const GroupDetailScreen({
+    super.key,
+    required this.groupId,
+    this.openItemizedBillSplit,
+    this.shareGroupInvite,
+  });
+
   final String groupId;
 
-  const GroupDetailScreen({super.key, required this.groupId});
+  /// When null, the "Upload bill" OCR path is hidden (standalone Airo Coin).
+  final GroupItemizedBillSplitOpener? openItemizedBillSplit;
+
+  /// When null, invites share locally without cloud sign-in.
+  final GroupInviteShareHandler? shareGroupInvite;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,7 +87,8 @@ class GroupDetailScreen extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.ios_share_outlined),
                   tooltip: 'Share invite',
-                  onPressed: () => _shareGroupInvite(context, ref, group),
+                  onPressed: () =>
+                      _shareGroupInvite(context, ref, group, shareGroupInvite),
                 ),
                 IconButton(
                   icon: const Icon(Icons.person_add_outlined),
@@ -122,7 +134,12 @@ class GroupDetailScreen extends ConsumerWidget {
               ],
             ),
             floatingActionButton: FloatingActionButton.extended(
-              onPressed: () => _showAddExpenseActions(context, ref, groupId),
+              onPressed: () => _showAddExpenseActions(
+                context,
+                ref,
+                groupId,
+                openItemizedBillSplit,
+              ),
               icon: const Icon(Icons.add),
               label: const Text('Add Expense'),
             ),
@@ -136,45 +153,11 @@ class GroupDetailScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     Group group,
+    GroupInviteShareHandler? shareHandler,
   ) async {
-    final cloudState = ref.read(coinsCloudModeControllerProvider).value;
-    var isCloudMode = cloudState?.isCloudMode == true;
-    var user = cloudState?.user;
-
-    if (!isCloudMode || user?.isGoogleIdentity != true) {
-      final shouldEnable = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Switch to cloud sharing?'),
-          content: const Text(
-            'Group invites need your Google identity so peers can sync shared expenses. Personal transactions stay local.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Not now'),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              icon: const Icon(Icons.cloud_outlined),
-              label: const Text('Use Cloud'),
-            ),
-          ],
-        ),
-      );
-      if (shouldEnable != true || !context.mounted) return;
-
-      isCloudMode = await ref
-          .read(coinsCloudModeControllerProvider.notifier)
-          .enableCloudMode();
-      user = ref.read(coinsCloudModeControllerProvider).value?.user;
-      if (!context.mounted) return;
-      if (!isCloudMode || user?.isGoogleIdentity != true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Google sign-in is required to share')),
-        );
-        return;
-      }
+    if (shareHandler != null) {
+      await shareHandler(context, ref, group);
+      return;
     }
 
     var inviteCode = group.inviteCode;
@@ -195,13 +178,13 @@ class GroupDetailScreen extends ConsumerWidget {
     final link = const CoinsInviteLinkService().buildInviteLink(
       groupId: group.id,
       inviteCode: inviteCode,
-      ownerUserId: user!.id,
-      cloudMode: true,
+      ownerUserId: 'local_user',
+      cloudMode: false,
     );
     await SharePlus.instance.share(
       ShareParams(
-        text: 'Join ${group.name} on Airo Coins: $link',
-        subject: 'Airo Coins group invite',
+        text: 'Join ${group.name} on Airo Coin: $link',
+        subject: 'Airo Coin group invite',
       ),
     );
   }
@@ -210,7 +193,18 @@ class GroupDetailScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     String groupId,
+    GroupItemizedBillSplitOpener? openItemizedBillSplit,
   ) {
+    if (openItemizedBillSplit == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AddSplitExpenseScreen(groupId: groupId),
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -237,172 +231,13 @@ class GroupDetailScreen extends ConsumerWidget {
               subtitle: const Text('Scan items, assign owners, save split'),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _openItemizedBillSplit(context, ref, groupId);
+                openItemizedBillSplit(context, ref, groupId);
               },
             ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _openItemizedBillSplit(
-    BuildContext context,
-    WidgetRef ref,
-    String groupId,
-  ) async {
-    try {
-      final members = await ref.read(groupMembersProvider(groupId).future);
-      if (!context.mounted) return;
-      if (members.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Add group members before splitting')),
-        );
-        return;
-      }
-
-      final participants = members
-          .map(
-            (member) => ItemParticipant(
-              id: member.userId,
-              name: member.displayName,
-              avatarUrl: member.avatarUrl,
-            ),
-          )
-          .toList();
-
-      final result = await Navigator.push<ItemizedSplitResult>(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              ItemizedSplitScreen(initialParticipants: participants),
-        ),
-      );
-      if (!context.mounted || result == null) return;
-
-      await _saveItemizedSplit(context, ref, groupId, result);
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to open bill upload: $e')));
-    }
-  }
-
-  Future<void> _saveItemizedSplit(
-    BuildContext context,
-    WidgetRef ref,
-    String groupId,
-    ItemizedSplitResult result,
-  ) async {
-    final summary = result.summary;
-    final totalAmountCents = summary.values.fold<int>(
-      0,
-      (sum, amount) => sum + amount,
-    );
-    if (summary.isEmpty || totalAmountCents <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No split amounts found in this bill')),
-      );
-      return;
-    }
-
-    final payerId = summary.keys.first;
-    final itemizedItems = _buildItemizedInputs(result, totalAmountCents);
-
-    final saveResult = await ref
-        .read(addSplitUseCaseProvider)
-        .execute(
-          AddSplitParams(
-            groupId: groupId,
-            description: result.description,
-            totalAmountCents: totalAmountCents,
-            currencyCode: ref.read(currencyFormatterProvider).currency.code,
-            paidByUserId: payerId,
-            splitType: SplitType.itemized,
-            participantIds: summary.keys.toList(growable: false),
-            itemizedItems: itemizedItems,
-          ),
-        );
-
-    if (!context.mounted) return;
-    if (saveResult.error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(saveResult.error!)));
-      return;
-    }
-
-    ref.invalidate(groupExpensesProvider(groupId));
-    ref.invalidate(groupBalanceSummaryProvider(groupId));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Itemized bill saved to Coins')),
-    );
-  }
-
-  List<ItemizedSplitInput> _buildItemizedInputs(
-    ItemizedSplitResult result,
-    int totalAmountCents,
-  ) {
-    final inputs = <ItemizedSplitInput>[];
-    final itemOnlyTotals = <String, int>{
-      for (final id in result.summary.keys) id: 0,
-    };
-
-    for (var i = 0; i < result.itemizedDetails.length; i++) {
-      final item = result.itemizedDetails[i];
-      final itemId = 'item_${i}_${_slugForItemId(item.name)}';
-      inputs.add(
-        ItemizedSplitInput(
-          itemId: itemId,
-          name: item.name,
-          amountCents: item.pricePaise,
-          participantIds: item.participantIds.toList(growable: false),
-        ),
-      );
-
-      final participantIds = item.participantIds.toList(growable: false);
-      if (participantIds.isEmpty) continue;
-      final share = item.pricePaise ~/ participantIds.length;
-      final remainder = item.pricePaise % participantIds.length;
-      for (var index = 0; index < participantIds.length; index++) {
-        itemOnlyTotals[participantIds[index]] =
-            (itemOnlyTotals[participantIds[index]] ?? 0) +
-            share +
-            (index < remainder ? 1 : 0);
-      }
-    }
-
-    var currentTotal = inputs.fold<int>(
-      0,
-      (sum, item) => sum + item.amountCents,
-    );
-    if (currentTotal < totalAmountCents) {
-      for (final entry in result.summary.entries) {
-        final adjustment = entry.value - (itemOnlyTotals[entry.key] ?? 0);
-        if (adjustment <= 0) continue;
-        inputs.add(
-          ItemizedSplitInput(
-            itemId: 'fees_${entry.key}',
-            name: 'Fees and adjustments',
-            amountCents: adjustment,
-            participantIds: [entry.key],
-          ),
-        );
-        currentTotal += adjustment;
-      }
-    }
-
-    return inputs;
-  }
-
-  String _slugForItemId(String name) {
-    final slug = name
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_|_$'), '');
-    return slug.isEmpty ? 'line' : slug;
   }
 
   void _showAddMemberDialog(
@@ -505,7 +340,7 @@ class _ExpenseListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
     return ListTile(
       leading: CircleAvatar(
         child: Text(expense.description.substring(0, 1).toUpperCase()),
@@ -532,7 +367,7 @@ class _BalancesTab extends ConsumerWidget {
     final balancesAsync = ref.watch(groupBalanceSummaryProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
     final settlementsAsync = ref.watch(groupSettlementsProvider(groupId));
-    final formatter = ref.watch(currencyFormatterProvider);
+    final formatter = ref.watch(coinsCurrencyFormatterProvider);
 
     return balancesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
