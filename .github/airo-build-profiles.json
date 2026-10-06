@@ -145,6 +145,92 @@
       }
     },
     {
+      "id": "fire-tv",
+      "releaseLine": "v2",
+      "description": "Aika Stream for Fire OS via the Amazon Appstore (GMS-free gates).",
+      "entrypoint": "app/lib/main_tv.dart",
+      "pubspec": "app/pubspec_tv.yaml",
+      "appId": "com.developerscoffee.tv.midas",
+      "platformAppIds": {
+        "android": "com.developerscoffee.tv.midas"
+      },
+      "appVariant": "fireTv",
+      "appPlatform": "androidTv",
+      "deviceClass": "tv",
+      "ciBuild": true,
+      "edgeProfile": true,
+      "requiredPackages": [
+        "airo",
+        "audio_service"
+      ],
+      "featureModules": [
+        "feature_iptv"
+      ],
+      "allowedNativePlugins": [
+        "audio_service",
+        "flutter_chrome_cast",
+        "shared_preferences",
+        "video_player",
+        "wakelock_plus"
+      ],
+      "heavyPackages": [
+        "stockfish",
+        "chess",
+        "flame",
+        "google_mlkit_text_recognition",
+        "just_audio",
+        "audioplayers",
+        "flutter_tts",
+        "image_picker",
+        "file_picker",
+        "share_plus",
+        "flutter_image_compress",
+        "flutter_contacts",
+        "permission_handler",
+        "flutter_local_notifications",
+        "timezone",
+        "pdfx"
+      ],
+      "legacyKotlinGradlePluginRiskPackages": [
+        "flutter_image_compress",
+        "flutter_tts",
+        "package_info_plus",
+        "pdfx",
+        "wakelock_plus"
+      ],
+      "requiredDependencyOverrides": {
+        "stockfish": "../packages/stubs/stockfish_stub",
+        "chess": "../packages/stubs/chess_stub",
+        "flame": "../packages/stubs/flame_stub",
+        "google_mlkit_text_recognition": "../packages/stubs/mlkit_stub",
+        "just_audio": "../packages/stubs/just_audio_stub",
+        "audioplayers": "../packages/stubs/audioplayers_stub",
+        "flutter_tts": "../packages/stubs/flutter_tts_stub",
+        "image_picker": "../packages/stubs/image_picker_stub",
+        "file_picker": "../packages/stubs/file_picker_stub",
+        "share_plus": "../packages/stubs/share_plus_stub",
+        "flutter_image_compress": "../packages/stubs/flutter_image_compress_stub",
+        "flutter_contacts": "../packages/stubs/flutter_contacts_stub",
+        "permission_handler": "../packages/stubs/permission_handler_stub",
+        "flutter_local_notifications": "../packages/stubs/flutter_local_notifications_stub",
+        "timezone": "../packages/stubs/timezone_stub",
+        "pdfx": "../packages/stubs/pdfx_stub",
+        "package_info_plus": "../packages/stubs/package_info_plus_stub",
+        "wakelock_plus": "../packages/stubs/wakelock_plus_stub",
+        "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
+      },
+      "assetAllowlist": [
+        "assets/airo_icon.png"
+      ],
+      "android": {
+        "apkArtifact": "app-arm64-v8a-release.apk",
+        "abiStrategy": "single-arm64-apk",
+        "releaseBudgetMb": 35,
+        "debugBudgetMb": 650,
+        "enforceReleaseBudget": true
+      }
+    },
+    {
       "id": "coins",
       "releaseLine": "v2",
       "description": "Focused Airo Coins local-first vault app.",
