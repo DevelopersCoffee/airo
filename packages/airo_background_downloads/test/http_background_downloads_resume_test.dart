@@ -9,9 +9,29 @@ void main() {
   late Directory tempDir;
 
   setUpAll(() async {
+    final certDir = await Directory.systemTemp.createTemp('airo-bg-dl-certs-');
+    final certPath = '${certDir.path}/server.crt';
+    final keyPath = '${certDir.path}/server.key';
+    final result = await Process.run('openssl', [
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-nodes',
+      '-keyout',
+      keyPath,
+      '-out',
+      certPath,
+      '-days',
+      '1',
+      '-subj',
+      '/CN=localhost',
+    ]);
+    expect(result.exitCode, equals(0), reason: result.stderr.toString());
+
     serverContext = SecurityContext()
-      ..useCertificateChain('test/fixtures/server.crt')
-      ..usePrivateKey('test/fixtures/server.key');
+      ..useCertificateChain(certPath)
+      ..usePrivateKey(keyPath);
   });
 
   setUp(() async {
