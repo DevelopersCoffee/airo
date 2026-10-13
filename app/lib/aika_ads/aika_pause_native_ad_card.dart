@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'aika_ad_manager_binding.dart';
 import 'aika_ad_personalization.dart';
 import 'aika_ads.dart';
 
@@ -12,10 +14,15 @@ class AikaPauseNativeAdCard extends StatefulWidget {
     super.key,
     this.isLeanback = false,
     this.isCasting = false,
+    @visibleForTesting this.debugBodyOverride,
   });
 
   final bool isLeanback;
   final bool isCasting;
+
+  /// Skips Mobile Ads load and renders this body when set (widget tests only).
+  @visibleForTesting
+  final Widget? debugBodyOverride;
 
   @override
   State<AikaPauseNativeAdCard> createState() => _AikaPauseNativeAdCardState();
@@ -26,6 +33,8 @@ class _AikaPauseNativeAdCardState extends State<AikaPauseNativeAdCard> {
   bool _isAdLoaded = false;
   bool _dismissed = false;
 
+  Widget? get _debugBody => kDebugMode ? widget.debugBodyOverride : null;
+
   @override
   void initState() {
     super.initState();
@@ -33,7 +42,7 @@ class _AikaPauseNativeAdCardState extends State<AikaPauseNativeAdCard> {
   }
 
   Future<void> _startLoad() async {
-    await AikaAdManager.instance.initialize();
+    await resolveAikaAdManager().initialize();
     if (!mounted) {
       return;
     }
@@ -41,10 +50,16 @@ class _AikaPauseNativeAdCardState extends State<AikaPauseNativeAdCard> {
   }
 
   void _loadAd() {
-    if (!AikaAdManager.instance.shouldShowAd(
+    if (!resolveAikaAdManager().shouldShowAd(
       isLeanback: widget.isLeanback,
       isCasting: widget.isCasting,
     )) {
+      return;
+    }
+
+    final debugBody = _debugBody;
+    if (debugBody != null) {
+      setState(() => _isAdLoaded = true);
       return;
     }
 
@@ -94,7 +109,7 @@ class _AikaPauseNativeAdCardState extends State<AikaPauseNativeAdCard> {
           }
         },
         onAdImpression: (ad) {
-          AikaAdManager.instance.recordAdImpression();
+          resolveAikaAdManager().recordAdImpression();
         },
       ),
     )..load();
@@ -103,7 +118,7 @@ class _AikaPauseNativeAdCardState extends State<AikaPauseNativeAdCard> {
   void _dismiss() {
     _nativeAd?.dispose();
     _nativeAd = null;
-    AikaAdManager.instance.recordAdImpression();
+    resolveAikaAdManager().recordAdImpression();
     setState(() {
       _dismissed = true;
       _isAdLoaded = false;
@@ -112,7 +127,10 @@ class _AikaPauseNativeAdCardState extends State<AikaPauseNativeAdCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_dismissed || !_isAdLoaded || _nativeAd == null) {
+    final debugBody = _debugBody;
+    if (_dismissed ||
+        !_isAdLoaded ||
+        (_nativeAd == null && debugBody == null)) {
       return const SizedBox.shrink();
     }
 
@@ -129,7 +147,7 @@ class _AikaPauseNativeAdCardState extends State<AikaPauseNativeAdCard> {
             SizedBox(
               height: 250,
               width: double.infinity,
-              child: AdWidget(ad: _nativeAd!),
+              child: _nativeAd != null ? AdWidget(ad: _nativeAd!) : debugBody!,
             ),
             Positioned(
               top: 0,

@@ -12,14 +12,14 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, __) => const CoinsNfcCaptureLauncher(
+          builder: (_, _) => const CoinsNfcCaptureLauncher(
             captureRoute: '/quick-capture',
             child: Text('Home'),
           ),
         ),
         GoRoute(
           path: '/quick-capture',
-          builder: (_, __) => const Scaffold(body: Text('Capture')),
+          builder: (_, _) => const Scaffold(body: Text('Capture')),
         ),
       ],
     );

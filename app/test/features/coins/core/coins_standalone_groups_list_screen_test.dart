@@ -32,7 +32,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => const CoinsStandaloneGroupsListScreen(),
+            builder: (_, _) => const CoinsStandaloneGroupsListScreen(),
           ),
         ],
       ),
@@ -69,7 +69,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => const CoinsStandaloneGroupsListScreen(),
+            builder: (_, _) => const CoinsStandaloneGroupsListScreen(),
           ),
           GoRoute(
             path: '/groups/:id',
@@ -106,7 +106,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => const CoinsStandaloneGroupsListScreen(),
+            builder: (_, _) => const CoinsStandaloneGroupsListScreen(),
           ),
         ],
       ),
@@ -118,6 +118,28 @@ void main() {
 
     expect(find.text('Create Group'), findsWidgets);
     expect(find.text('Description'), findsOneWidget);
+  });
+
+  testWidgets('shows loading indicator while groups stream resolves', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coinsCurrencyProviderTestOverride(prefs),
+          allGroupsProvider.overrideWith((ref) async* {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+            yield const <Group>[];
+          }),
+        ],
+        child: const MaterialApp(home: CoinsStandaloneGroupsListScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('No groups yet'), findsOneWidget);
   });
 
   testWidgets('shows retry UI when group loading fails', (tester) async {
