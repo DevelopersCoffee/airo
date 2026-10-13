@@ -40,8 +40,10 @@ related:
     url: /iptv-player-for-fire-tv/
     icon: flame
 faq:
+  - q: "My new Fire TV Stick cannot sideload. Where do I install Aika Stream?"
+    a: "Vega OS sticks, including the Fire TV Stick 4K Select, cannot install Android APKs. Install Aika Stream from Google Play on a Google TV or Android TV device. The package name is com.developerscoffee.tv.midas."
   - q: "Do I need the Play Store to install Aika Stream on Android TV?"
-    a: "No. A direct-install APK is published alongside the Play Store AAB, so you can sideload it on devices without Play Store access."
+    a: "Google Play is the supported install. A direct-install APK is also published for Android TV and Google TV devices. Do not install a player from a Downloader code or an APK someone sends you."
   - q: "Does Aika Stream include IPTV channels for Android TV?"
     a: "No. Aika Stream ships no channels, playlists, subscriptions, or media catalog on any platform. You load an M3U/M3U8 playlist from a source you're already authorized to use."
   - q: "Will my existing IPTV playlist work on the Android TV version?"
