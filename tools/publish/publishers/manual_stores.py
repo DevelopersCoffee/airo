@@ -25,11 +25,11 @@ class AmazonAppstorePublisher(ManualPublisher):
     description: ClassVar[str] = "Amazon Appstore (manual until Developer Services API is wired)"
     console_url: ClassVar[str] = "https://developer.amazon.com/apps-and-games/console/apps/list"
     checklist: ClassVar[tuple[str, ...]] = (
-        "Open the Amazon Developer Console and select the Airo TV app.",
-        "Create a new upcoming version and set the version name and code from the artifact table above.",
-        "Upload the APK and wait for the binary checks to pass.",
-        "Paste the release notes into 'Release notes for this version'.",
-        "Confirm the Fire TV device support list still matches the qualification evidence.",
+        "Open the Amazon Developer Console and create or open Aika Stream (com.developerscoffee.tv.midas).",
+        "Target Fire OS only. Do not include Vega OS devices such as the Fire TV Stick 4K Select.",
+        "Create a new upcoming version and set the version name and code from the Fire OS artifact (APP_VARIANT=fireTv), not the Play AAB.",
+        "Upload the signed Fire OS APK or AAB and wait for the binary checks to pass.",
+        "Paste the release notes from docs/release/AIKA_STREAM_STORE_LISTING.md.",
         "Submit for review and record the submission id in the release issue.",
     )
 

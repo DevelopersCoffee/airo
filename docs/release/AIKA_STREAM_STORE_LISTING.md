@@ -102,6 +102,48 @@ https://developerscoffee.github.io/airo/aika-stream/
 Screenshot capture guidance is maintained in
 [Aika Stream Release Media Assets](./AIKA_STREAM_MEDIA_ASSETS.md).
 
+## Amazon Appstore (Fire OS only)
+
+Not submitted. Paste this when the Amazon Developer Console listing is created.
+Do not target Vega OS. The binary is the Fire OS build
+(`APP_VARIANT=fireTv`), package `com.developerscoffee.tv.midas`, not the
+Play AAB and not a Vega build.
+
+| Field | Final metadata |
+| --- | --- |
+| App name | `Aika Stream` |
+| Package | `com.developerscoffee.tv.midas` |
+| Category | Video Players & Editors |
+| Device support | Fire OS devices only. Exclude Vega OS, including Fire TV Stick 4K Select. |
+| Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
+| Website | `https://developerscoffee.github.io/airo/aika-stream/` |
+
+### Amazon description
+
+```text
+Aika Stream is a media player for Fire OS. Your sources. Your screen.
+
+Add an M3U or M3U8 playlist you are authorized to use, then browse, search,
+and play it with a remote. The app does not include channels, playlists,
+subscriptions, or a media catalog.
+
+Aika Stream does not run on Vega OS. Fire TV Stick 4K Select and other Vega
+OS devices cannot install Android apps.
+
+Aika Stream is a player only. It does not provide, host, sell, or distribute
+TV channels or IPTV services.
+
+Playback depends on your source, codec, device, and network. If playback
+buffers, clear the app cache only. Clearing app data removes the playlist
+saved on the device.
+```
+
+### Amazon release notes
+
+```text
+Fire OS player for authorized M3U/M3U8 playlists. Not supported on Vega OS.
+```
+
 ## Apple App Store Draft
 
 iOS/iPadOS publication is not part of the first v2 Android release wave. Keep
@@ -133,6 +175,9 @@ right to access.
 
 ## Console Fields Requiring Human Action
 
+- Amazon Developer Console app record for `com.developerscoffee.tv.midas`,
+  Fire OS device targeting, content rating, and the signed Fire OS binary.
+  Vega OS stays excluded.
 - Google Play IARC/content rating questionnaire.
 - Google Play Data Safety form.
 - Final Play listing upload and stakeholder approval.
