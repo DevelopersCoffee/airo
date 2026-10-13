@@ -1,30 +1,18 @@
 ---
 layout: landing
 permalink: /iptv-player-for-fire-tv/
-title: "IPTV Player for Fire TV — Fire OS vs Vega OS | Aika Stream"
-description: "Vega OS Fire TV sticks cannot sideload Android apps. Aika Stream's Fire OS build is not on the Amazon Appstore yet. Use Google Play on Android TV or Google TV."
+title: "IPTV Player for Fire TV — Compatible APK, Honest Status | Aika Stream"
+description: "Aika Stream runs on Fire TV through a compatible APK path. Experimental, with known issues stated plainly. Open source, no bundled IPTV channels."
 eyebrow: "IPTV player for Fire TV"
 hero_title: "Fire TV support, stated honestly."
-lede: "Vega OS sticks cannot install Android apps. On Fire OS, a separate Aika Stream build exists and is not listed on the Amazon Appstore yet. Android TV and Google TV on Google Play are the supported path today."
+lede: "Aika Stream runs on Fire TV through a compatible APK path. It is not a fully qualified target the way Android TV is, and the known rough edges are listed below rather than left for you to discover."
 primary_cta: "Download Aika Stream"
-steps_title: "Playback buffers"
-steps_subtitle: "About a minute"
-steps:
-  - "Clear the app cache only. Leave app data alone — clearing data removes the playlist saved on the device."
-  - "Free storage on the device."
-  - "If the player offers a decoder choice, try the hardware decoder."
-  - "Restart the device."
-  - "Open the same playlist on another device. If it buffers there too, the source or the network is the limit."
 capabilities_title: "Fire TV status, as published"
 capabilities:
-  - title: Vega OS
-    text: Fire TV Stick 4K Select and other Vega OS models cannot install Android APKs, including through Downloader. Aika Stream has no Vega build.
-    status: planned
-    status_label: Unsupported
-  - title: Fire OS build
-    text: A Fire OS build sits beside the Google Play Android TV build. It is not submitted to the Amazon Appstore yet, so there is no store install to use.
+  - title: Compatible APK path
+    text: The Android TV build installs and runs on Fire TV through a compatible APK, without a separate Fire TV-specific build.
     status: qualifying
-    status_label: Not listed yet
+    status_label: Experimental
   - title: Playlist playback
     text: M3U/M3U8 playlist loading, search, and favorites work the same as on Android TV once installed.
     status: available
@@ -44,11 +32,11 @@ capabilities:
 related_title: "Set it up"
 related:
   - title: Fire TV install guide
-    text: See the Fire OS device guide. Vega OS sticks are not an install target.
-    url: /airo-tv/guides/#fire-tv
+    text: Use the compatible APK path safely and understand the experimental status.
+    url: /aika-stream/guides/#fire-tv
     icon: flame
-  - title: Android TV or Google TV
-    text: The supported install for Vega OS owners, from Google Play.
+  - title: Prefer Android TV or Google TV?
+    text: The fully supported platform, same app.
     url: /iptv-player-for-android-tv/
     icon: tv
   - title: "Track issue #1430: BACK key on browse grid"
@@ -60,44 +48,31 @@ related:
     url: https://github.com/DevelopersCoffee/airo/issues/1243
     icon: bug
 faq:
-  - q: "Can I sideload Aika Stream on a Vega OS Fire TV Stick?"
-    a: "No. Vega OS, including the Fire TV Stick 4K Select, does not install Android APKs and does not run Downloader installs. For your own playlist, install Aika Stream from Google Play on a Google TV or Android TV device. Package name com.developerscoffee.tv.midas."
-  - q: "Is a Downloader code a safe way to install a player?"
-    a: "No. Do not install a player from a code or APK someone sends you. Check the store listing and the package name. Never grant a media app Accessibility or SMS permission."
-  - q: "Does clearing the cache fix Fire TV buffering?"
-    a: "Clear cache only, then free storage, try the hardware decoder, restart, and test the same playlist on another device. Clearing data removes the playlist saved on the device. Cache is not the usual cause when the stream buffers on a second device too."
   - q: "Is Aika Stream fully supported on Fire TV?"
-    a: "No. The Fire OS build is not on the Amazon Appstore yet, and Vega OS cannot install it at all. Android TV and Google TV from Google Play are the supported path."
+    a: "No. Fire TV runs through a compatible APK path, tracked as experimental rather than fully qualified. Android TV and Google TV are the primary supported targets."
   - q: "What actually goes wrong on Fire TV right now?"
     a: "Two known issues are open: the BACK key is intermittently swallowed on the channel-browse grid after returning from playback, and live playback writes frequent vendor log messages that are cosmetic and don't affect playback."
   - q: "Should I still try Aika Stream on my Fire TV?"
-    a: "On Vega OS, no. That stick cannot install the app. On Fire OS, use the official release on this page, not a Downloader code or an APK from a message. The Amazon Appstore listing is not live yet. Android TV and Google TV from Google Play are the qualified path."
+    a: "Core playback, playlist loading, search, and favorites work. If an occasional unresponsive BACK press on the browse grid is something you can work around, it's usable today; if you need a fully qualified experience, Android TV is the better target for now."
   - q: "Does Aika Stream include IPTV channels on Fire TV?"
     a: "No. Aika Stream ships no channels, playlists, subscriptions, or media catalog on any platform, including Fire TV."
 ---
 
-Check Settings, My Fire TV, About. If the software version starts with 1
-or 2, the stick is on Vega OS. Vega OS does not install Android APKs, and
-Downloader cannot put a player on it. Aika Stream has no Vega build. Use
-[Aika Stream on Google Play](https://play.google.com/store/apps/details?id=com.developerscoffee.tv.midas)
-on a Google TV or Android TV device. The package name is
-`com.developerscoffee.tv.midas`.
+Most player pages either skip Fire TV entirely or claim full support
+they haven't actually verified there. Aika Stream does neither — it runs on
+Fire TV through the same Android TV build via a compatible APK path, and
+that status is labeled *experimental*, not *supported*, because that's
+what the qualification work actually shows so far.
 
-Fire OS is the older Android-based system. A separate Fire OS build of
-Aika Stream now exists beside the Play build, and it is not on the Amazon
-Appstore yet. Until that listing is live, do not install a player from a
-Downloader code or an APK someone messages you. Confirm the Play listing
-and the package name, and never give a media app Accessibility or SMS
-permission.
+In practice that means core functionality works: install the compatible
+APK, load your M3U/M3U8 playlist, search, favorite channels, play. Two
+issues are open and worth knowing about before you install. The BACK key
+is intermittently swallowed on the channel-browse grid right after you
+return from playback — annoying, not blocking, and it's being tracked.
+Separately, live playback writes a stream of vendor property-denial
+messages to the device log; that one is purely cosmetic and doesn't
+touch playback.
 
-If a stream buffers, clear the app cache only. Clearing data wipes the
-playlist stored on the device. Then free storage, try the hardware
-decoder, restart, and open the same playlist on another device.
-
-Two Fire OS issues stay open on the compatible path. The BACK key is
-intermittently swallowed on the channel-browse grid right after you
-return from playback. Live playback also writes vendor property-denial
-messages to the device log; that noise does not change playback.
-
-Android TV and Google TV remain the qualified target, and the same
+If either of those matters more to you than getting started today,
+Android TV or Google TV is the fully qualified target and the same
 playlist works there without changes.

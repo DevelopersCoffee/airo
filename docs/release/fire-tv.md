@@ -95,6 +95,25 @@ Optional Firebase placeholders use the same TV CI pattern (`FIREBASE_OPTIONS_DAR
 RevenueCat / Play Billing: the open-source bootstrap still exposes
 `NoEntitlements`; Fire builds do not add a billing SDK.
 
+## Support answers
+
+Approved in [#2103](https://github.com/DevelopersCoffee/airo/issues/2103).
+Do not add a separate HTML landing or guide page for these points. The wiki
+troubleshooting page carries the same answers.
+
+- Vega OS, including the Fire TV Stick 4K Select, cannot install Android APKs
+  or Downloader. There is no Vega build. For a user's own playlist, the
+  supported install is Google Play on Android TV or Google TV, package
+  `com.developerscoffee.tv.midas`.
+- Do not install a player from a Downloader code or an APK sent in a message.
+  Match the store listing and the package name. Do not grant a media app
+  Accessibility or SMS permission.
+- If playback buffers, clear the app cache only. Clearing app data removes the
+  playlist saved on the device. Then free storage, try the hardware decoder,
+  restart, and open the same playlist on another device.
+- The Fire OS binary is not on the Amazon Appstore yet. Do not tell users that
+  listing is available.
+
 ## Amazon Appstore submission (manual)
 
 1. Build a signed AAB or APK with production Fire signing secrets configured locally or in CI.
