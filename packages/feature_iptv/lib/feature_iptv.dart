@@ -27,6 +27,7 @@ export "application/providers/browse_grid_tv_peek_provider.dart";
 export "application/providers/guide_providers.dart";
 export "application/providers/epg_catalog_provider.dart";
 export "application/providers/local_iptv_search_providers.dart";
+export "application/providers/edge_intelligence_providers.dart";
 export "application/providers/picture_in_picture_preference_provider.dart";
 export "application/providers/spatial_audio_mode_provider.dart";
 export "application/providers/playback_settings_extension_point.dart";

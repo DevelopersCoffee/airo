@@ -47,6 +47,7 @@ import 'aika_ads/aika_ads.dart';
 import 'aika_ads/aika_ads_gate.dart';
 import 'aika_ads/aika_ads_runtime.dart';
 import 'core/app/airo_tv_app.dart';
+import 'core/config/tv_distribution.dart';
 import 'core/audio/tv_audio_service.dart';
 import 'core/config/firebase_status.dart';
 import 'core/config/platform_features.dart';
@@ -59,6 +60,7 @@ import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/cast_multiview_receiver_provider_override.dart';
 import 'features/iptv/cast_multiview_sender_provider_override.dart';
+import 'features/iptv/fire_tv_cast_overrides.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
 import 'firebase_options.dart';
@@ -174,7 +176,9 @@ void main() {
           moduleRegistry: moduleRegistry,
           streamingTelemetryService: streamingTelemetryService,
         ),
-        child: const AikaAdsGate(child: AiroTvApp()),
+        child: isFireTvAppVariant
+            ? const AiroTvApp()
+            : const AikaAdsGate(child: AiroTvApp()),
       );
     },
     afterRunApp: () {
@@ -196,7 +200,9 @@ void main() {
       } else {
         scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
       }
-      scheduleAikaAdsInitialization();
+      if (!isFireTvAppVariant) {
+        scheduleAikaAdsInitialization();
+      }
     },
   );
 }
@@ -243,9 +249,17 @@ List<Override> buildTvProviderOverrides({
     // Phones running the TV build fall back to the mobile IPTV screen
     // (tv_router.dart compact layout), whose cast UI needs the real
     // controller — without this override casting silently no-ops.
-    realIptvCastControllerOverride(),
-    realCastMultiviewSenderOverride(),
-    realCastMultiviewReceiverOverride(),
+    if (isFireTvAppVariant)
+      ...fireTvCastProviderOverrides()
+    else ...[
+      realIptvCastControllerOverride(),
+      realCastMultiviewSenderOverride(),
+      realCastMultiviewReceiverOverride(),
+    ],
+    if (isFireTvAppVariant)
+      edgeIptvConfigProvider.overrideWithValue(
+        const EdgeIptvConfig(backend: EdgeIptvBackend.ruleBased),
+      ),
     iptvBackupDocumentGatewayProvider.overrideWith(
       (ref) => ref.watch(tvLanBackupDocumentGatewayProvider),
     ),

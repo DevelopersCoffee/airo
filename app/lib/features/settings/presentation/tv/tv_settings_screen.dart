@@ -6,6 +6,7 @@ import 'package:core_ui/core_ui.dart';
 
 import 'tv_privacy_section.dart';
 import 'tv_theme_section.dart';
+import '../../../../core/product/tv_sibling_apps.dart';
 import '../widgets/app_info_tile.dart';
 import '../widgets/sibling_app_card.dart';
 
@@ -35,16 +36,15 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
 
   /// The cross-app cards worth showing. Empty until a store listing goes
   /// live, since a card with no listing renders an inert "Coming soon".
-  static final _publishedSiblings = publishedSiblingAppsFor(ShellId.tv);
+  List<SiblingApp> get _publishedSiblings =>
+      publishedTvSiblingAppsFor(ShellId.tv);
 
   /// With no sibling cards this pane holds only the build-version tile, so
   /// promising "More Airo Apps" would be a rail stop that shows no apps.
-  static final String _airoAppsLabel = _publishedSiblings.isEmpty
-      ? 'About'
-      : 'More Airo Apps';
-  static final IconData _airoAppsIcon = _publishedSiblings.isEmpty
-      ? Icons.info_outline
-      : Icons.apps;
+  String get _airoAppsLabel =>
+      _publishedSiblings.isEmpty ? 'About' : 'More Airo Apps';
+  IconData get _airoAppsIcon =>
+      _publishedSiblings.isEmpty ? Icons.info_outline : Icons.apps;
 
   /// The sections this screen renders, in shared-manifest order, filtered to
   /// those declared visible on the TV shell.
