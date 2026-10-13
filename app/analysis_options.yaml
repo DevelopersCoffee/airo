@@ -76,12 +76,6 @@ analyzer:
     - "lib/main_mind.dart"
     - "lib/core/mind/**"
     - "test_mind/**"
-    - android/**
-    - ios/**
-    - web/**
-    - windows/**
-    - macos/**
-    - linux/**
 
   # Treat warnings as info to prevent CI failures on non-critical issues
   # Errors will still cause CI to fail
