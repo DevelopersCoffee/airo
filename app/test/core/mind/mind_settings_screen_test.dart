@@ -63,9 +63,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(mindDesktopThemeModeProvider), ThemeMode.light);
-    expect(
-      container.read(mindDesktopThemeModeProvider),
-      isNot(ThemeMode.dark),
-    );
+    expect(container.read(mindDesktopThemeModeProvider), isNot(ThemeMode.dark));
   });
 }

@@ -5,12 +5,11 @@ import 'package:flutter/material.dart';
 /// Minimal host double for app-layer widget tests.
 class FakeAssistantHostAdapter extends AssistantHostAdapter {
   FakeAssistantHostAdapter({
-    SafetyProfile safetyProfile = SafetyProfile.strict,
+    this.safetyProfile = SafetyProfile.strict,
     this.autoFallbackEnabled = true,
-    int modelContextLength = 2048,
+    this.modelContextLength = 2048,
     this.isAndroidHost = false,
-  }) : safetyProfile = safetyProfile,
-       modelContextLength = modelContextLength;
+  });
 
   final List<String> calls = <String>[];
 

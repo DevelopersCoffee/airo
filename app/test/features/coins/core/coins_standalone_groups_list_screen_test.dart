@@ -32,7 +32,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => const CoinsStandaloneGroupsListScreen(),
+            builder: (_, _) => const CoinsStandaloneGroupsListScreen(),
           ),
         ],
       ),
@@ -69,7 +69,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => const CoinsStandaloneGroupsListScreen(),
+            builder: (_, _) => const CoinsStandaloneGroupsListScreen(),
           ),
           GoRoute(
             path: '/groups/:id',
@@ -106,7 +106,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => const CoinsStandaloneGroupsListScreen(),
+            builder: (_, _) => const CoinsStandaloneGroupsListScreen(),
           ),
         ],
       ),

@@ -30,5 +30,4 @@ void main() {
     expect(find.text('Coins settings'), findsOneWidget);
     expect(find.textContaining('smart default'), findsOneWidget);
   });
-
 }

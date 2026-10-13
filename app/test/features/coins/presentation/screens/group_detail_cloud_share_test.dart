@@ -51,7 +51,7 @@ void main() {
         identity: identity,
         cloudState: const CoinsCloudModeState(
           mode: CoinsStorageMode.local,
-          user: const CoinsUser(
+          user: CoinsUser(
             id: 'local',
             username: 'You',
             isGoogleIdentity: false,
@@ -100,7 +100,7 @@ void main() {
         identity: identity,
         cloudState: const CoinsCloudModeState(
           mode: CoinsStorageMode.local,
-          user: const CoinsUser(
+          user: CoinsUser(
             id: 'local',
             username: 'You',
             isGoogleIdentity: false,

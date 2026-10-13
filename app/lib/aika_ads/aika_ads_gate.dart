@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/ads_personalization_consent_provider.dart';
 import 'aika_ad_manager_binding.dart';
-import 'aika_ads.dart';
 import 'aika_ads_runtime.dart';
 
 /// Arms in-app native ads on phone/tablet as soon as the Mobile Ads SDK is
