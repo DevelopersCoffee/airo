@@ -20,7 +20,7 @@ import '../../features/coins/presentation/screens/coins_settings_screen.dart';
 import '../../features/coins/presentation/screens/nfc_quick_expense_capture_screen.dart';
 import '../../features/coins/presentation/screens/budget_management_screen.dart';
 import '../../features/coins/presentation/screens/groups_list_screen.dart';
-import '../../features/coins/presentation/screens/group_detail_screen.dart';
+import '../../features/coins/presentation/screens/group_detail_super_app.dart';
 import '../../features/coins/presentation/screens/add_split_expense_screen.dart';
 import '../../features/life_track/presentation/screens/track_detail_screen.dart';
 import '../../features/life_track/presentation/screens/track_list_screen.dart';
@@ -232,7 +232,7 @@ class AppRouter {
                           name: RouteNames.coinsGroupDetail,
                           builder: (context, state) {
                             final groupId = state.pathParameters['groupId']!;
-                            return GroupDetailScreen(groupId: groupId);
+                            return buildSuperAppGroupDetail(groupId);
                           },
                           routes: [
                             GoRoute(

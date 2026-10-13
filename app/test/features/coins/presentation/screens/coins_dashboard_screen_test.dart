@@ -12,8 +12,15 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-List<Override> _dashboardOverrides(List<Override> more, {String code = 'INR'}) {
+import '../../coins_currency_test_overrides.dart';
+
+List<Override> _dashboardOverrides(
+  SharedPreferences prefs,
+  List<Override> more, {
+  String code = 'INR',
+}) {
   return [
+    coinsCurrencyProviderTestOverride(prefs),
     coinsCurrencyFormatterProvider.overrideWithValue(
       CurrencyFormatter.fromCode(code),
     ),
@@ -22,6 +29,13 @@ List<Override> _dashboardOverrides(List<Override> more, {String code = 'INR'}) {
 }
 
 void main() {
+  late SharedPreferences coinsTestPrefs;
+
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    coinsTestPrefs = await SharedPreferences.getInstance();
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -31,7 +45,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -51,7 +65,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(
               safeToSpend: SafeToSpend(
@@ -94,7 +108,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -119,7 +133,7 @@ void main() {
   testWidgets('shows the secure vault dashboard entry', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -139,7 +153,7 @@ void main() {
     var openedAddExpense = false;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -164,7 +178,7 @@ void main() {
   testWidgets('quick add opens a prefilled expense draft', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -196,7 +210,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           transactionRepositoryProvider.overrideWithValue(repository),
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(pendingTransactionReviews: [pending]),
@@ -226,7 +240,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           dashboardDataProvider.overrideWith(
             (ref) async => DashboardData(
               recentExpenses: [
@@ -269,7 +283,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: _dashboardOverrides([
+        overrides: _dashboardOverrides(coinsTestPrefs, [
           dashboardDataProvider.overrideWith(
             (ref) async => const DashboardData(),
           ),
@@ -293,7 +307,7 @@ void main() {
     tester,
   ) async {
     final container = ProviderContainer(
-      overrides: _dashboardOverrides([
+      overrides: _dashboardOverrides(coinsTestPrefs, [
         dashboardDataProvider.overrideWith(
           (ref) async => const DashboardData(),
         ),

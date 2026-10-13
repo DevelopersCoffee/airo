@@ -5,7 +5,9 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/coins/application/providers/auth_coins_identity.dart';
 import '../../features/coins/application/providers/coins_currency_provider.dart';
+import '../../features/coins/application/providers/coins_identity_provider.dart';
 import '../../features/iptv/cast_multiview_sender_provider_override.dart';
 import '../../features/iptv/iptv_cast_provider_override.dart';
 import '../../features/settings/application/ai_model_management.dart';
@@ -26,6 +28,7 @@ List<Override> buildMainProviderOverrides({
   EpgReminderNotificationGateway? epgReminderGateway,
 }) {
   return [
+    coinsIdentityProvider.overrideWithValue(const AuthServiceCoinsIdentity()),
     sharedPreferencesProvider.overrideWithValue(prefs),
     coinsCurrencyProvider.overrideWith((ref) => CoinsCurrencyNotifier(prefs)),
     secureStoreProvider.overrideWithValue(SecureStoreFactory.createSecure()),

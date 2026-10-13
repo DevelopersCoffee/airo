@@ -40,20 +40,22 @@ val singleAbi: String? =
         }
 
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
+val isFireTvVariant = appVariant == "fireTv"
 val isTvVariant = appVariant == "tv"
+val isTvLikeVariant = isTvVariant || isFireTvVariant
 val isCoinsVariant = appVariant == "coins"
 val isMindVariant = appVariant == "mind"
 val isAnyaVariant = appVariant == "anya"
 val isLeanStandaloneVariant = isCoinsVariant || isAnyaVariant
 val variantApplicationId = when (appVariant) {
-    "tv" -> "com.developerscoffee.tv.midas"
+    "tv", "fireTv" -> "com.developerscoffee.tv.midas"
     "coins" -> "io.airo.app.coins"
     "mind" -> "io.airo.app.mind"
     "anya" -> "io.airo.app.anya"
     else -> "io.airo.app"
 }
 val variantAppLabel = when (appVariant) {
-    "tv" -> "Aika Stream"
+    "tv", "fireTv" -> "Aika Stream"
     "coins" -> "Airo Coins"
     "mind" -> "Airo Mind"
     "anya" -> "Anya"
@@ -71,7 +73,8 @@ val variantAppLabel = when (appVariant) {
 // play-services-cast-tv 20.0.0 SDK's own CastReceiverContext.start() calls
 // registerReceiver() without RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED, which
 // that OS version enforces as a fatal SecurityException.
-val enableCastReceiver = isTvVariant && !dartDefine("CAST_MULTIVIEW_RECEIVER_APP_ID").isNullOrBlank()
+val enableCastReceiver =
+    isTvVariant && !dartDefine("CAST_MULTIVIEW_RECEIVER_APP_ID").isNullOrBlank()
 
 plugins {
     id("com.android.application")
@@ -241,9 +244,15 @@ android {
 
     sourceSets {
         getByName("main") {
-            if (isTvVariant) {
-                manifest.srcFile("src/tv/AndroidManifest.xml")
-                res.srcDir("src/tv/res")
+            when {
+                isFireTvVariant -> {
+                    manifest.srcFile("src/fireTv/AndroidManifest.xml")
+                    res.srcDir("src/tv/res")
+                }
+                isTvVariant -> {
+                    manifest.srcFile("src/tv/AndroidManifest.xml")
+                    res.srcDir("src/tv/res")
+                }
             }
             if (isMindVariant) {
                 // Mind reuses the product MainActivity (it extends
@@ -286,8 +295,19 @@ android {
             // registers this factory, so it's excluded like the LiteRT-LM split.
             if (!isLeanStandaloneVariant) {
                 kotlin.srcDir(
-                    if (isTvVariant) "src/tv/kotlin"
+                    if (isTvLikeVariant) "src/tv/kotlin"
                     else "src/streaming_engine_stub/kotlin",
+                )
+            }
+            when {
+                isTvVariant -> kotlin.srcDir("src/tvCast/kotlin")
+                isFireTvVariant -> kotlin.srcDir("src/castReceiverStub/kotlin")
+            }
+            val genaiPromptAvailable = !isFireTvVariant
+            if (!isLeanStandaloneVariant) {
+                kotlin.srcDir(
+                    if (genaiPromptAvailable) "src/withGenai/kotlin"
+                    else "src/withoutGenai/kotlin",
                 )
             }
             // Same mechanism as LiteRT-LM above, a separate flag and a
@@ -305,7 +325,7 @@ android {
             // dependency (below) cannot stay on TV's classpath the way
             // LiteRT-LM's does; the stub keeps TV compiling without it.
             val embeddingAvailable =
-                rootProject.extra.get("embeddingAvailable") as Boolean && !isTvVariant
+                rootProject.extra.get("embeddingAvailable") as Boolean && !isTvLikeVariant
             if (!isLeanStandaloneVariant) {
                 kotlin.srcDir(
                     if (embeddingAvailable) "src/withEmbedding/kotlin"
@@ -319,7 +339,7 @@ android {
         // for every variant's unit tests, so a test referencing an OkHttp type
         // would fail to compile on non-tv variants if it lived there instead.
         getByName("test") {
-            if (isTvVariant) {
+            if (isTvLikeVariant) {
                 kotlin.srcDir("src/testTv/kotlin")
             }
         }
@@ -355,7 +375,7 @@ android {
             // assistant surface drives the on-device model manager as a
             // first-class feature, so it is the one lean variant that must
             // keep the libraries.
-            if (isTvVariant || isLeanStandaloneVariant) {
+            if (isTvLikeVariant || isLeanStandaloneVariant) {
                 excludes += setOf(
                     "**/liblitertlm_jni.so",
                     "**/libLiteRt.so",
@@ -369,7 +389,7 @@ android {
             //   arrives transitively but is not intended to run. Stripping
             //   native libraries keeps the APK inside its 35 MB budget.
             // A codec failure yields a clean typed error, not a fallback.
-            if (isTvVariant) {
+            if (isTvLikeVariant) {
                 excludes += setOf(
                     "**/libmpv.so",
                     "**/libplayer.so",
@@ -400,7 +420,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
-    if (!isLeanStandaloneVariant) {
+    if (!isLeanStandaloneVariant && !isFireTvVariant) {
         implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
     }
 
@@ -431,7 +451,7 @@ dependencies {
     // reaches them, because the SDK doesn't ship its own protobuf runtime.
     // LiteRT-LM's dependency has no such gap and can stay on TV's classpath
     // unused; this one cannot.
-    if (!isLeanStandaloneVariant && !isTvVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
+    if (!isLeanStandaloneVariant && !isTvLikeVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
         implementation("com.google.ai.edge.localagents:localagents-rag:0.3.0")
         implementation("com.google.mediapipe:tasks-genai:0.10.35")
     }
@@ -451,7 +471,7 @@ dependencies {
     // no compatibility gate is needed beyond the variant check itself. See
     // tasks/tv-zero-copy-cast-phase2-task3-media3-proposal.md for the full
     // dependency proposal (versions, size, license) this was confirmed against.
-    if (isTvVariant) {
+    if (isTvLikeVariant) {
         implementation("androidx.media3:media3-exoplayer:1.11.1")
         implementation("androidx.media3:media3-common:1.11.1")
         implementation("androidx.media3:media3-datasource:1.11.1")
@@ -477,7 +497,9 @@ dependencies {
         // sample (github.com/googlecast/CastAndroidTvReceiver), paired with
         // the play-services-cast-framework version flutter_chrome_cast
         // already brings in transitively for the sender side.
-        implementation("com.google.android.gms:play-services-cast-tv:21.1.1")
+        if (isTvVariant) {
+            implementation("com.google.android.gms:play-services-cast-tv:21.1.1")
+        }
     }
 
 }
