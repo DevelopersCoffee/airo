@@ -1,0 +1,38 @@
+name: airo_background_downloads
+description: Cross-platform transfer engine with intent policies, native WorkManager & URLSession background execution, checksum processors, state machines, and telemetry.
+version: 1.2.1
+publish_to: none
+homepage: https://developerscoffee.com
+repository: https://github.com/DevelopersCoffee/airo_background_downloads
+issue_tracker: https://github.com/DevelopersCoffee/airo_background_downloads/issues
+documentation: https://github.com/DevelopersCoffee/airo_background_downloads#readme
+
+topics:
+  - downloads
+  - background
+  - resume
+  - flutter
+  - progressive
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.44.4"
+
+dependencies:
+  crypto: ^3.0.6
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: io.airo.platform_downloads
+        pluginClass: PlatformDownloadsPlugin
+      ios:
+        pluginClass: PlatformDownloadsPlugin

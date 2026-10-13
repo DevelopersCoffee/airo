@@ -1,0 +1,16 @@
+name: platform_downloads
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+  - Chief Performance Officer
+  - Chief QA Officer
+  - Chief Documentation Officer
+  - Chief Open Source Officer
+contracts:
+  - background-download-contract/v1
+forbidden_dependencies:
+  - app
+  - core_ai
+  - feature_coin
+quality_gates: {}
