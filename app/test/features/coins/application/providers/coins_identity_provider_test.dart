@@ -1,4 +1,5 @@
 import 'package:airo_app/core/auth/auth_service.dart';
+import 'package:airo_app/features/coins/application/providers/auth_coins_identity.dart';
 import 'package:airo_app/features/coins/application/providers/coins_identity_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,7 +23,13 @@ void main() {
       await prefs.setBool('is_logged_in', true);
       await AuthService.instance.initialize();
 
-      final container = ProviderContainer();
+      final container = ProviderContainer(
+        overrides: [
+          coinsIdentityProvider.overrideWithValue(
+            const AuthServiceCoinsIdentity(),
+          ),
+        ],
+      );
       addTearDown(container.dispose);
       final identity = container.read(coinsIdentityProvider);
 

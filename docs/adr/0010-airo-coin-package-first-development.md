@@ -100,6 +100,13 @@ Constraints while the exception stands:
   shell adds no extra bootstrap.
 - The vault stays package-first in `feature_coin`, mounted at `/money/vault`.
 
+**Update (2026-10-03):** Product owner decision supersedes the read-only
+standalone home above. The Airo Coin shell (`main_coins.dart`) must expose full
+on-device shared expenses (groups, add/split, balances, settle-up) plus the
+package-first vault; cloud sync, accounts, and NFC quick capture remain separate
+tracks. Split flows may still live in the legacy app layer until migrated into
+packages per this ADR's package-first rule.
+
 ## Related Decisions
 
 - ADR-0001: Modular Package Structure

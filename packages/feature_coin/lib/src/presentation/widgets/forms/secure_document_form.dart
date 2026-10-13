@@ -13,6 +13,7 @@ const Map<DocumentCategory, String> documentCategoryLabels = {
   DocumentCategory.incomeProof: 'Income proof (Form 16/16A)',
   DocumentCategory.taxCredit: 'Tax credit (26AS/AIS/TIS)',
   DocumentCategory.investmentProof: 'Investment proof (80C/80D)',
+  DocumentCategory.insurance: 'Insurance (health, life, vehicle)',
   DocumentCategory.hra: 'HRA / rent receipts',
   DocumentCategory.capitalGains: 'Capital gains',
   DocumentCategory.homeLoan: 'Home loan',
