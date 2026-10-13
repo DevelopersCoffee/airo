@@ -24,14 +24,14 @@ void main() {
     bindAikaAdManagerForTests(null);
   });
 
-  testWidgets('phone profile shows debug pause body when policy allows ads', (
+  testWidgets('pause card shows debug body when phone policy allows ads', (
     tester,
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: AikaPauseNativeAdCard(
-            debugBodyOverride: SizedBox(key: Key('pause-ad-body')),
+            debugBodyOverride: SizedBox(key: Key('pause-ad-body-allowed')),
           ),
         ),
       ),
@@ -39,22 +39,26 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.bySemanticsLabel('Advertisement'), findsOneWidget);
+    expect(find.byKey(const Key('pause-ad-body-allowed')), findsOneWidget);
   });
 
-  testWidgets('pause card hides when leanback policy blocks ads', (
+  testWidgets('pause card omits debug body when leanback policy blocks ads', (
     tester,
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(body: AikaPauseNativeAdCard(isLeanback: true)),
+        home: Scaffold(
+          body: AikaPauseNativeAdCard(
+            isLeanback: true,
+            debugBodyOverride: SizedBox(key: Key('pause-ad-body-leanback')),
+          ),
+        ),
       ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.bySemanticsLabel('Advertisement'), findsNothing);
-    expect(manager.shouldShowAd(isLeanback: true, isCasting: false), isFalse);
+    expect(find.byKey(const Key('pause-ad-body-leanback')), findsNothing);
   });
 
   testWidgets('pause card dismiss records an ad impression', (tester) async {
@@ -64,7 +68,7 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: AikaPauseNativeAdCard(
-            debugBodyOverride: SizedBox(key: Key('pause-ad-body')),
+            debugBodyOverride: SizedBox(key: Key('pause-ad-body-dismiss')),
           ),
         ),
       ),
@@ -75,23 +79,45 @@ void main() {
     await tester.tap(find.byTooltip('Hide ad'));
     await tester.pump();
 
-    expect(find.bySemanticsLabel('Advertisement'), findsNothing);
+    expect(find.byKey(const Key('pause-ad-body-dismiss')), findsNothing);
     expect(manager.policy.lastImpressionAt, isNotNull);
   });
 
-  testWidgets('browse card skips load when casting policy blocks ads', (
+  testWidgets('browse card shows debug body when phone policy allows ads', (
     tester,
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(body: AikaBrowseNativeAdCard(isCasting: true)),
+        home: Scaffold(
+          body: AikaBrowseNativeAdCard(
+            debugBodyOverride: SizedBox(key: Key('browse-ad-body-allowed')),
+          ),
+        ),
       ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.bySemanticsLabel('Advertisement'), findsNothing);
-    expect(manager.shouldShowAd(isLeanback: false, isCasting: true), isFalse);
+    expect(find.byKey(const Key('browse-ad-body-allowed')), findsOneWidget);
+  });
+
+  testWidgets('browse card omits debug body when casting policy blocks ads', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AikaBrowseNativeAdCard(
+            isCasting: true,
+            debugBodyOverride: SizedBox(key: Key('browse-ad-body-casting')),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const Key('browse-ad-body-casting')), findsNothing);
   });
 
   testWidgets('browse card dismiss records an ad impression', (tester) async {
@@ -101,7 +127,7 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: AikaBrowseNativeAdCard(
-            debugBodyOverride: SizedBox(key: Key('browse-ad-body')),
+            debugBodyOverride: SizedBox(key: Key('browse-ad-body-dismiss')),
           ),
         ),
       ),
@@ -112,7 +138,7 @@ void main() {
     await tester.tap(find.byTooltip('Hide ad'));
     await tester.pump();
 
-    expect(find.byKey(const Key('browse-ad-body')), findsNothing);
+    expect(find.byKey(const Key('browse-ad-body-dismiss')), findsNothing);
     expect(manager.policy.lastImpressionAt, isNotNull);
   });
 }

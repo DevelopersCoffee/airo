@@ -65,7 +65,7 @@ void main() {
     expect(container.read(mindDesktopThemeModeProvider), ThemeMode.light);
     expect(
       container.read(mindDesktopThemeModeProvider),
-      isNot(ThemeMode.system),
+      isNot(ThemeMode.dark),
     );
   });
 }
