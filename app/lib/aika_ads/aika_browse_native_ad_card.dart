@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -40,13 +41,11 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
   bool _isAdLoaded = false;
   bool _dismissed = false;
 
+  Widget? get _debugBody => kDebugMode ? widget.debugBodyOverride : null;
+
   @override
   void initState() {
     super.initState();
-    if (widget.debugBodyOverride != null) {
-      _isAdLoaded = true;
-      return;
-    }
     unawaited(_startLoad());
   }
 
@@ -63,6 +62,12 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
       isLeanback: widget.isLeanback,
       isCasting: widget.isCasting,
     )) {
+      return;
+    }
+
+    final debugBody = _debugBody;
+    if (debugBody != null) {
+      setState(() => _isAdLoaded = true);
       return;
     }
 
@@ -130,7 +135,7 @@ class _AikaBrowseNativeAdCardState extends State<AikaBrowseNativeAdCard> {
 
   @override
   Widget build(BuildContext context) {
-    final debugBody = widget.debugBodyOverride;
+    final debugBody = _debugBody;
     if (_dismissed ||
         !_isAdLoaded ||
         (_nativeAd == null && debugBody == null)) {

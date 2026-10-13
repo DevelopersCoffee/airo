@@ -16,6 +16,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    AikaAdPersonalization.instance.enabled = true;
     final manager = AikaAdManager.test(
       sdk: AikaAdSdk(initializeFn: () async => true),
     );
@@ -27,7 +28,9 @@ void main() {
 
   tearDown(() {
     bindAikaAdManagerForTests(null);
+    DeviceFormFactorDetector.debugFormFactorOverride = null;
     DeviceFormFactorDetector.clearCache();
+    AikaAdPersonalization.instance.enabled = true;
   });
 
   testWidgets('arms browse and pause placements on phone after SDK init', (
@@ -58,6 +61,8 @@ void main() {
   });
 
   testWidgets('reads ads personalization consent while arming', (tester) async {
+    expect(AikaAdPersonalization.instance.enabled, isTrue);
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(adsPersonalizationConsentStorageKey, false);
 

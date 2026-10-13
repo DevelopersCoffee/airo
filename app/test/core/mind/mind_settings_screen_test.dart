@@ -3,7 +3,6 @@ import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../support/fake_assistant_host_adapter.dart';
 
@@ -38,16 +37,23 @@ void main() {
     expect(find.text('Offline models'), findsOneWidget);
   });
 
-  testWidgets('selecting light theme updates the segmented control', (
+  testWidgets('selecting light theme updates mindDesktopThemeModeProvider', (
     tester,
   ) async {
+    final container = ProviderContainer(
+      overrides: [
+        assistantHostAdapterProvider.overrideWithValue(
+          FakeAssistantHostAdapter(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(mindDesktopThemeModeProvider), ThemeMode.dark);
+
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          assistantHostAdapterProvider.overrideWithValue(
-            FakeAssistantHostAdapter(),
-          ),
-        ],
+      UncontrolledProviderScope(
+        container: container,
         child: const MaterialApp(home: MindSettingsScreen()),
       ),
     );
@@ -55,6 +61,11 @@ void main() {
 
     await tester.tap(find.text('Light'));
     await tester.pumpAndSettle();
-    expect(find.text('Light'), findsWidgets);
+
+    expect(container.read(mindDesktopThemeModeProvider), ThemeMode.light);
+    expect(
+      container.read(mindDesktopThemeModeProvider),
+      isNot(ThemeMode.system),
+    );
   });
 }
