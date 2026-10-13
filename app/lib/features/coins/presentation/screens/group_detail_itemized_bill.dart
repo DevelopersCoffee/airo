@@ -8,6 +8,7 @@ import '../../application/providers/group_providers.dart';
 import '../../application/providers/settlement_providers.dart';
 import '../../application/providers/split_providers.dart';
 import '../../application/use_cases/add_split_use_case.dart';
+import '../../domain/entities/group_member.dart';
 import '../../domain/entities/split_entry.dart';
 
 /// Opens receipt OCR itemized split for the super-app Coins profile only.
@@ -18,7 +19,13 @@ Future<void> openGroupItemizedBillSplit(
   String groupId,
 ) async {
   try {
-    final members = await ref.read(groupMembersProvider(groupId).future);
+    final membersResult = await ref
+        .read(groupRepositoryProvider)
+        .getMembers(groupId);
+    if (membersResult.error != null) {
+      throw StateError(membersResult.error!);
+    }
+    final members = membersResult.data ?? const <GroupMember>[];
     if (!context.mounted) return;
     if (members.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
