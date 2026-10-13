@@ -1,20 +1,18 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/group_providers.dart';
+import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
 import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/coins_currency_test_overrides.dart';
-
 void main() {
   test('createGroupFromInput uses the current user currency', () async {
     final repository = _CapturingGroupRepository();
-    final currencyOverride = await coinsCurrencyProviderTestOverride(
-      currencyCode: 'USD',
-    );
     final container = ProviderContainer(
       overrides: [
-        currencyOverride,
+        coinsCurrencyFormatterProvider.overrideWithValue(
+          CurrencyFormatter.fromCode('USD'),
+        ),
         groupRepositoryProvider.overrideWithValue(repository),
       ],
     );

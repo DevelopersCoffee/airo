@@ -1,26 +1,35 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
+import 'package:airo_app/features/coins/application/providers/coins_currency_provider.dart';
 import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../support/coins_currency_test_overrides.dart';
+import '../../coins_currency_test_overrides.dart';
 
 void main() {
+  late SharedPreferences coinsTestPrefs;
+
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    coinsTestPrefs = await SharedPreferences.getInstance();
+  });
+
   testWidgets('saves an expense after choosing category and account', (
     tester,
   ) async {
     final repository = _CapturingTransactionRepository();
-    final currencyOverride = await coinsCurrencyProviderTestOverride(
-      currencyCode: 'USD',
-    );
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currencyOverride,
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
+          coinsCurrencyFormatterProvider.overrideWithValue(
+            CurrencyFormatter.fromCode('USD'),
+          ),
           transactionRepositoryProvider.overrideWithValue(repository),
           expenseAccountOptionsProvider.overrideWith(
             (ref) async => [
@@ -59,11 +68,13 @@ void main() {
   testWidgets('surfaces finance-focused entry aids and inline errors', (
     tester,
   ) async {
-    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currencyOverride,
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
+          coinsCurrencyFormatterProvider.overrideWithValue(
+            CurrencyFormatter.fromCode('INR'),
+          ),
           expenseAccountOptionsProvider.overrideWith(
             (ref) async => [
               Account(
@@ -96,10 +107,14 @@ void main() {
   });
 
   testWidgets('prefills an expense from a quick-add draft', (tester) async {
-    final currencyOverride = await coinsCurrencyProviderTestOverride();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [currencyOverride],
+        overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
+          coinsCurrencyFormatterProvider.overrideWithValue(
+            CurrencyFormatter.fromCode('INR'),
+          ),
+        ],
         child: const MaterialApp(
           home: AddExpenseScreen(
             initialDraft: QuickExpenseDraft(
