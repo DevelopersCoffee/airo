@@ -682,6 +682,22 @@ void main() {
       expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
     },
   );
+
+  testWidgets('10-foot settings route renders TV settings screen', (
+    tester,
+  ) async {
+    DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+    addTearDown(DeviceFormFactorDetector.clearCache);
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpTvRouter(tester, initialLocation: TvRouteNames.settings);
+
+    expect(find.text('Theme'), findsOneWidget);
+    expect(find.text('About'), findsOneWidget);
+  });
 }
 
 class _FakePairingServer implements TvPlaylistPairingServer {

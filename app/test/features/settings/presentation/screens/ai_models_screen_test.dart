@@ -9,6 +9,49 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('search filters the catalog by model name', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final registry =
+        _FakeModelRegistry(
+          compatibilityByModelId: {
+            'alpha': ModelCompatibilityResult.compatible(MemorySeverity.safe),
+            'beta': ModelCompatibilityResult.compatible(MemorySeverity.safe),
+          },
+        )..registerModels([
+          const OfflineModelInfo(
+            id: 'alpha',
+            name: 'Alpha Model',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 1024,
+            provider: AIProvider.gemma,
+          ),
+          const OfflineModelInfo(
+            id: 'beta',
+            name: 'Beta Model',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 2048,
+            provider: AIProvider.gemma,
+          ),
+        ]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [modelRegistryProvider.overrideWithValue(registry)],
+        child: const MaterialApp(home: AIModelsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alpha Model'), findsOneWidget);
+    expect(find.text('Beta Model'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Beta');
+    await tester.pump();
+
+    expect(find.text('Beta Model'), findsOneWidget);
+    expect(find.text('Alpha Model'), findsNothing);
+  });
+
   testWidgets('compatible-only filter hides incompatible models', (
     tester,
   ) async {

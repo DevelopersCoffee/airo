@@ -1,3 +1,4 @@
+import 'package:airo_app/core/providers/ads_personalization_consent_provider.dart';
 import 'package:airo_app/features/settings/application/aika_stream_local_data_deletion.dart';
 import 'package:airo_app/features/settings/presentation/tv/tv_privacy_section.dart';
 import 'package:core_data/core_data.dart';
@@ -128,6 +129,49 @@ void main() {
     expect(find.text('Share streaming quality data'), findsNothing);
     expect(find.text("Don't share"), findsNothing);
     expect(find.text('Delete local data'), findsOneWidget);
+  });
+
+  testWidgets('telemetry consent toggles persist through the provider', (
+    tester,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: TvPrivacySection())),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text("Don't share"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Share streaming quality data'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Share streaming quality data'), findsOneWidget);
+  });
+
+  testWidgets('ads personalization switch updates consent', (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: TvPrivacySection(showAdsPersonalization: true)),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    expect(prefs.getBool(adsPersonalizationConsentStorageKey), isFalse);
   });
 
   testWidgets('confirm dialog autofocuses Cancel', (tester) async {

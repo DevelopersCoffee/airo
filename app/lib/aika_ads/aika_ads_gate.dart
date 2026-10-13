@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/ads_personalization_consent_provider.dart';
+import 'aika_ad_manager_binding.dart';
 import 'aika_ads.dart';
 import 'aika_ads_runtime.dart';
 
@@ -28,14 +29,14 @@ class _AikaAdsGateState extends ConsumerState<AikaAdsGate> {
   Future<void> _arm() async {
     ref.read(adsPersonalizationConsentProvider);
     final formFactor = await detectAikaAdFormFactor();
-    await AikaAdManager.instance.initialize(formFactor: formFactor);
+    await resolveAikaAdManager().initialize(formFactor: formFactor);
     if (!mounted) return;
-    if (!shouldArmAikaPhoneAds(formFactor, AikaAdManager.instance)) {
+    if (!shouldArmAikaPhoneAds(formFactor, resolveAikaAdManager())) {
       return;
     }
-    allowImmediateAikaPhoneAds(AikaAdManager.instance);
+    allowImmediateAikaPhoneAds(resolveAikaAdManager());
     if (!mounted) return;
-    if (!AikaAdManager.instance.shouldShowAd(
+    if (!resolveAikaAdManager().shouldShowAd(
       isLeanback: false,
       isCasting: false,
     )) {

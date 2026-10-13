@@ -64,6 +64,35 @@ void main() {
     expect(find.text('Quick capture'), findsOneWidget);
     expect(find.text('Unlocking'), findsWidgets);
   });
+
+  testWidgets('valid amount advances to the category step', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          coinsCurrencyProviderTestOverride(prefs),
+          coinsCurrencyFormatterProvider.overrideWithValue(
+            CurrencyFormatter.fromCode('USD'),
+          ),
+          vaultSessionProvider.overrideWith(TestVaultSessionNotifier.new),
+        ],
+        child: const MaterialApp(home: NfcQuickExpenseCaptureScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('nfc_capture_amount_field')),
+      '18.75',
+    );
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose a category'), findsOneWidget);
+    await tester.tap(find.text('Food'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add a note (optional)'), findsOneWidget);
+  });
 }
 
 class _LockedVaultSessionNotifier extends VaultSessionNotifier {
