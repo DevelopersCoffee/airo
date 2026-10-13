@@ -72,6 +72,9 @@ void main() {
       ProviderScope(
         overrides: [
           coinsCurrencyProviderTestOverride(coinsTestPrefs),
+          coinsCurrencyFormatterProvider.overrideWithValue(
+            CurrencyFormatter.fromCode('INR'),
+          ),
           expenseAccountOptionsProvider.overrideWith(
             (ref) async => [
               Account(
@@ -106,7 +109,12 @@ void main() {
   testWidgets('prefills an expense from a quick-add draft', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [coinsCurrencyProviderTestOverride(coinsTestPrefs)],
+        overrides: [
+          coinsCurrencyProviderTestOverride(coinsTestPrefs),
+          coinsCurrencyFormatterProvider.overrideWithValue(
+            CurrencyFormatter.fromCode('INR'),
+          ),
+        ],
         child: const MaterialApp(
           home: AddExpenseScreen(
             initialDraft: QuickExpenseDraft(
