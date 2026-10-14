@@ -11,7 +11,8 @@ environment:
   flutter: ">=3.44.4"
 
 dependencies:
-  airo_background_downloads: ^1.2.0
+  airo_background_downloads:
+    path: ../airo_background_downloads
   flutter:
     sdk: flutter
 

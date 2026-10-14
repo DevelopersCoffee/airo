@@ -21,11 +21,15 @@
 
 ## 2. Monorepo Integration & Dependency Update
 
+Active development of the transfer engine lives in `packages/airo_background_downloads`
+(path dependency) while changes are staged; `platform_downloads` re-exports the package.
+
 In `packages/platform_downloads/pubspec.yaml`:
 
 ```yaml
 dependencies:
-  airo_background_downloads: ^1.2.0
+  airo_background_downloads:
+    path: ../airo_background_downloads
 ```
 
 In `packages/platform_downloads/lib/platform_downloads.dart`:
