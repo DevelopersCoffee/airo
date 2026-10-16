@@ -434,7 +434,7 @@ dependencies {
     // Kotlin API surface (Backend.CPU/GPU/NPU factories, engine.close(),
     // Contents.of, ConversationConfig) per developers.google.com/edge/litert-lm.
     if (!isLeanStandaloneVariant && rootProject.extra.get("liteRtLmAvailable") as Boolean) {
-        implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.1")
+        implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
     }
 
     // AI Edge RAG SDK, for on-device text embeddings (semantic search --
