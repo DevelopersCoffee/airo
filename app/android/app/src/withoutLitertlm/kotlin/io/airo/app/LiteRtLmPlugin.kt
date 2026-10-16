@@ -2,6 +2,7 @@ package io.airo.app
 
 import android.content.Context
 import androidx.annotation.NonNull
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
@@ -18,10 +19,16 @@ import io.flutter.plugin.common.MethodChannel
  */
 class LiteRtLmPlugin(@Suppress("UNUSED_PARAMETER") private val context: Context) :
     MethodChannel.MethodCallHandler {
+    fun getStreamHandler(): EventChannel.StreamHandler =
+        object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {}
+            override fun onCancel(arguments: Any?) {}
+        }
+
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: MethodChannel.Result) {
         when (call.method) {
             "isAvailable" -> result.success(false)
-            "initialize", "generateContent", "installModel" ->
+            "initialize", "generateContent", "generateContentStream", "describeModel", "installModel" ->
                 result.error(
                     "LITERTLM_UNAVAILABLE",
                     "LiteRT-LM is not linked in this build.",

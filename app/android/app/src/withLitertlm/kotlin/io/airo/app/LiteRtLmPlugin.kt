@@ -12,10 +12,13 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
+import com.google.ai.edge.litertlm.ModelInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.BufferedInputStream
@@ -47,12 +50,17 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
     private var initializedModelPath: String? = null
     private var visionEnabled: Boolean = false
     private var installedModelPath: String? = null
+    private val streamHandler = LiteRtLmStreamHandler()
+
+    fun getStreamHandler(): EventChannel.StreamHandler = streamHandler
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: MethodChannel.Result) {
         when (call.method) {
             "isAvailable" -> isAvailable(call, result)
             "initialize" -> initialize(call, result)
             "generateContent" -> generateContent(call, result)
+            "generateContentStream" -> generateContentStream(call, result)
+            "describeModel" -> describeModel(call, result)
             "installModel" -> installModel(call, result)
             else -> result.notImplemented()
         }
@@ -191,6 +199,113 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
         }
     }
 
+    private fun generateContentStream(call: MethodCall, result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                val prompt = call.argument<String>("prompt")
+                    ?: throw IllegalArgumentException("prompt is required")
+                val systemPrompt = call.argument<String>("systemPrompt")
+                val imagePath = call.argument<String>("imagePath")
+                val maxTokens = call.argument<Int>("maxTokens") ?: 2048
+                val reuseConversation = call.argument<Boolean>("reuseConversation") ?: true
+
+                withContext(Dispatchers.IO) {
+                    val activeEngine = engine
+                        ?: throw IllegalStateException("LiteRT-LM engine is not initialized")
+                    val activeConversation = if (!reuseConversation) {
+                        conversation?.close()
+                        conversation = null
+                        conversationSystemPrompt = null
+                        conversationMaxTokens = null
+                        createConversation(
+                            activeEngine,
+                            systemPrompt?.takeIf { it.isNotBlank() },
+                            maxTokens.takeIf { it > 0 },
+                        )
+                    } else {
+                        conversationFor(activeEngine, systemPrompt, maxTokens)
+                    }
+                    try {
+                        streamConversation(activeConversation, prompt, imagePath)
+                    } finally {
+                        if (!reuseConversation) {
+                            activeConversation.close()
+                        }
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    streamHandler.endStream()
+                }
+                result.success(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "LiteRT-LM streaming failed: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    streamHandler.sendError(e.message ?: "LiteRT-LM streaming failed")
+                }
+                result.error("GENERATION_FAILED", e.message, null)
+            }
+        }
+    }
+
+    private suspend fun streamConversation(
+        activeConversation: Conversation,
+        prompt: String,
+        imagePath: String?,
+    ) {
+        var snapshot = ""
+        activeConversation.sendMessageAsync(promptContents(prompt, imagePath)).collect { message ->
+            val rendered = activeConversation.renderMessageIntoString(message)
+            snapshot = mergeStreamText(snapshot, rendered)
+            if (snapshot.isNotEmpty()) {
+                val chunk = snapshot
+                withContext(Dispatchers.Main) {
+                    streamHandler.sendChunk(chunk)
+                }
+            }
+        }
+    }
+
+    private fun describeModel(call: MethodCall, result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                val modelPath = call.argument<String>("modelPath") ?: installedModelPath
+                    ?: throw IllegalArgumentException("modelPath is required")
+                val described = withContext(Dispatchers.IO) {
+                    val info = ModelInfo.from(modelPath)
+                    try {
+                        val modalities = info.inputModalities()
+                        val payload = hashMapOf<String, Any?>(
+                            "modelType" to info.modelType.name,
+                            "maxContextTokens" to info.maxContextTokens(),
+                            "maxVisionTokenBudget" to info.maxVisionTokenBudget(),
+                            "dynamicContext" to info.isDynamicContext(),
+                            "text" to modalities.text,
+                            "vision" to modalities.vision,
+                            "audio" to modalities.audio,
+                            "video" to modalities.video,
+                            "functionCalling" to false,
+                            "thinking" to false,
+                            "speculativeDecoding" to false,
+                        )
+                        val llm = info as? ModelInfo.Llm
+                        if (llm != null) {
+                            payload["functionCalling"] = llm.supportsFunctionCalling()
+                            payload["thinking"] = llm.supportsThinking()
+                            payload["speculativeDecoding"] = llm.hasSpeculativeDecodingSupport()
+                        }
+                        payload
+                    } finally {
+                        info.close()
+                    }
+                }
+                result.success(described)
+            } catch (e: Exception) {
+                Log.e(TAG, "LiteRT-LM model description failed: ${e.message}", e)
+                result.error("DESCRIBE_FAILED", e.message, null)
+            }
+        }
+    }
+
     private fun conversationFor(
         engine: Engine,
         systemPrompt: String?,
@@ -239,21 +354,30 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
         prompt: String,
         imagePath: String?,
     ): String {
-        val message = if (imagePath.isNullOrBlank()) {
-            activeConversation.sendMessage(prompt)
-        } else {
-            val imageFile = File(imagePath)
-            if (!imageFile.isFile) {
-                throw IllegalArgumentException("imagePath is not a file")
-            }
-            activeConversation.sendMessage(
-                Contents.of(
-                    Content.ImageFile(imagePath),
-                    Content.Text(prompt),
-                ),
-            )
-        }
+        val message = activeConversation.sendMessage(promptContents(prompt, imagePath))
         return activeConversation.renderMessageIntoString(message)
+    }
+
+    private fun promptContents(prompt: String, imagePath: String?): Contents {
+        if (imagePath.isNullOrBlank()) {
+            return Contents.of(prompt)
+        }
+        val imageFile = File(imagePath)
+        if (!imageFile.isFile) {
+            throw IllegalArgumentException("imagePath is not a file")
+        }
+        return Contents.of(
+            Content.ImageFile(imagePath),
+            Content.Text(prompt),
+        )
+    }
+
+    private fun mergeStreamText(previous: String, rendered: String): String {
+        if (rendered.isEmpty()) return previous
+        if (previous.isEmpty()) return rendered
+        if (rendered.startsWith(previous)) return rendered
+        if (previous.endsWith(rendered)) return previous
+        return previous + rendered
     }
 
     private fun backendFromName(name: String): Backend {
@@ -339,5 +463,60 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
         engine = null
         initializedModelPath = null
         visionEnabled = false
+    }
+}
+
+private class LiteRtLmStreamHandler : EventChannel.StreamHandler {
+    private var eventSink: EventChannel.EventSink? = null
+    private val pendingChunks = mutableListOf<String>()
+    private var ended = false
+    private var pendingError: String? = null
+
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        eventSink = events
+        pendingChunks.forEach { events?.success(it) }
+        pendingChunks.clear()
+        val error = pendingError
+        if (error != null) {
+            events?.error("GENERATION_FAILED", error, null)
+            pendingError = null
+            ended = false
+            return
+        }
+        if (ended) {
+            events?.endOfStream()
+            ended = false
+        }
+    }
+
+    override fun onCancel(arguments: Any?) {
+        eventSink = null
+    }
+
+    fun sendChunk(chunk: String) {
+        val sink = eventSink
+        if (sink == null) {
+            pendingChunks.add(chunk)
+        } else {
+            sink.success(chunk)
+        }
+    }
+
+    fun sendError(message: String) {
+        val sink = eventSink
+        if (sink == null) {
+            pendingError = message
+        } else {
+            sink.error("GENERATION_FAILED", message, null)
+        }
+    }
+
+    fun endStream() {
+        val sink = eventSink
+        if (sink == null) {
+            ended = true
+        } else {
+            sink.endOfStream()
+        }
     }
 }

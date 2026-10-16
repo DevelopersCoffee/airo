@@ -78,6 +78,57 @@ abstract class LiteRtLmClient {
     String? imagePath,
     bool reuseConversation = true,
   });
+
+  Stream<String> generateStream({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  });
+
+  Future<LiteRtLmModelFacts?> describeModel({String? modelPath});
+}
+
+class LiteRtLmModelFacts {
+  const LiteRtLmModelFacts({
+    required this.modelType,
+    required this.maxContextTokens,
+    required this.vision,
+    required this.audio,
+    required this.functionCalling,
+    required this.thinking,
+    required this.speculativeDecoding,
+  });
+
+  final String modelType;
+  final int maxContextTokens;
+  final bool vision;
+  final bool audio;
+  final bool functionCalling;
+  final bool thinking;
+  final bool speculativeDecoding;
+
+  static LiteRtLmModelFacts? fromChannel(Object? raw) {
+    if (raw is! Map) return null;
+    int readInt(Object? value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return 0;
+    }
+
+    bool readBool(Object? value) => value == true;
+    return LiteRtLmModelFacts(
+      modelType: raw['modelType']?.toString() ?? 'UNKNOWN',
+      maxContextTokens: readInt(raw['maxContextTokens']),
+      vision: readBool(raw['vision']),
+      audio: readBool(raw['audio']),
+      functionCalling: readBool(raw['functionCalling']),
+      thinking: readBool(raw['thinking']),
+      speculativeDecoding: readBool(raw['speculativeDecoding']),
+    );
+  }
 }
 
 class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
@@ -119,7 +170,7 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
   RuntimeCapabilities capabilitiesForModel(OfflineModelInfo model) {
     return RuntimeCapabilities(
       supportedBackends: _supportedBackends,
-      supportsStreaming: false,
+      supportsStreaming: true,
       supportsImages: model.supportsVision,
       supportsAudio: model.supportsAudio,
       supportsToolCalling: model.supportsFunctionCalling,
@@ -196,12 +247,45 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
   }
 
   @override
-  Stream<String> generateStream(String prompt) async* {
-    final text = await generateText(RuntimeGenerationRequest(prompt: prompt));
-    if (text == null) {
-      return;
+  Stream<String> generateStream(String prompt) {
+    return generateTextStream(RuntimeGenerationRequest(prompt: prompt));
+  }
+
+  Stream<String> generateTextStream(
+    RuntimeGenerationRequest request, {
+    OfflineModelInfo? model,
+  }) async* {
+    if (request.prompt.trim().isEmpty) return;
+    if (model != null) {
+      _validateCapabilityRequest(model, request);
+      await prepareModel(model: model);
+    } else {
+      final imagePath = request.imagePath?.trim();
+      final initialized = await _ensureInitializedForRequest(
+        modelPath: runtimeConfig.hasModelPath
+            ? runtimeConfig.modelPath.trim()
+            : null,
+        backend: runtimeConfig.backend,
+        maxTokens: runtimeConfig.maxTokens,
+        installUrl: runtimeConfig.hasModelUrl
+            ? runtimeConfig.modelUrl.trim()
+            : null,
+        modelKind: runtimeConfig.modelKind,
+        vision: imagePath != null && imagePath.isNotEmpty,
+      );
+      if (!initialized) return;
     }
-    yield text;
+    final hydrated = model == null ? null : await hydrateDownloadedModel(model);
+    yield* _client.generateStream(
+      prompt: request.prompt,
+      systemPrompt: request.systemPrompt,
+      backend: hydrated == null
+          ? runtimeConfig.backend
+          : _backendFor(hydrated.backendPreference),
+      maxTokens: runtimeConfig.maxTokens,
+      imagePath: request.imagePath,
+      reuseConversation: request.reuseConversation,
+    );
   }
 
   @override
@@ -416,7 +500,22 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
       // as runnable on the next launch.
       return model.copyWith(clearFilePath: true);
     }
-    return model.copyWith(filePath: modelPath);
+    final hydrated = model.copyWith(filePath: modelPath);
+    try {
+      final facts = await _client.describeModel(modelPath: modelPath);
+      if (facts == null) return hydrated;
+      return hydrated.copyWith(
+        contextLength: facts.maxContextTokens > 0
+            ? facts.maxContextTokens
+            : hydrated.contextLength,
+        supportsVision: hydrated.supportsVision || facts.vision,
+        supportsFunctionCalling:
+            hydrated.supportsFunctionCalling || facts.functionCalling,
+      );
+    } catch (e) {
+      debugPrint('LiteRT-LM model description skipped: $e');
+      return hydrated;
+    }
   }
 
   Future<String?> downloadedModelPath(
@@ -549,10 +648,13 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
   MethodChannelLiteRtLmClient({
     required this._config,
     this._channel = const MethodChannel('com.airo.litert_lm'),
-  });
+    EventChannel? eventChannel,
+  }) : _eventChannel =
+           eventChannel ?? const EventChannel('com.airo.litert_lm/stream');
 
   final LiteRtLmConfig _config;
   final MethodChannel _channel;
+  final EventChannel _eventChannel;
   String? _installedModelPath;
 
   String? get _activeModelPath {
@@ -605,6 +707,80 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
         })
         .timeout(_config.operationTimeout);
     return response ?? '';
+  }
+
+  @override
+  Stream<String> generateStream({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  }) async* {
+    final controller = StreamController<String>();
+    final subscription = _eventChannel.receiveBroadcastStream().listen(
+      (event) {
+        if (event is String && event.isNotEmpty) {
+          controller.add(event);
+        }
+      },
+      onError: controller.addError,
+      onDone: () {
+        if (!controller.isClosed) controller.close();
+      },
+    );
+    try {
+      unawaited(
+        _channel
+            .invokeMethod<bool>('generateContentStream', {
+              'prompt': prompt,
+              'systemPrompt': systemPrompt,
+              'backend': backend.name,
+              'maxTokens': maxTokens,
+              'imagePath': imagePath,
+              'reuseConversation': reuseConversation,
+            })
+            .timeout(_config.operationTimeout)
+            .catchError((Object error, StackTrace stackTrace) {
+              if (!controller.isClosed) {
+                controller.addError(error, stackTrace);
+                controller.close();
+              }
+              return false;
+            }),
+      );
+      yield* controller.stream;
+    } finally {
+      await subscription.cancel();
+      if (!controller.isClosed) {
+        await controller.close();
+      }
+    }
+  }
+
+  @override
+  Future<LiteRtLmModelFacts?> describeModel({String? modelPath}) async {
+    final resolvedModelPath = (modelPath?.trim().isNotEmpty ?? false)
+        ? modelPath!.trim()
+        : _activeModelPath;
+    if (resolvedModelPath == null) return null;
+    try {
+      final raw = await _channel
+          .invokeMethod<Object?>('describeModel', {
+            'modelPath': resolvedModelPath,
+          })
+          .timeout(_config.operationTimeout);
+      return LiteRtLmModelFacts.fromChannel(raw);
+    } on PlatformException catch (e) {
+      debugPrint('LiteRT-LM model description failed: ${e.message}');
+      return null;
+    } on MissingPluginException {
+      return null;
+    } on TimeoutException {
+      debugPrint('LiteRT-LM model description timed out.');
+      return null;
+    }
   }
 
   @override
