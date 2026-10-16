@@ -99,6 +99,37 @@ void main() {
       expect(result.modelId, isNull);
     });
 
+    test(
+      'image embedding uses the vision package, not the text package',
+      () async {
+        final client = _FakeEmbeddingClient(vector: const [0.4]);
+        final text = _model('text-embed').copyWith(fileSizeBytes: 100);
+        final vision = _model('vision-embed', tags: const ['image']).copyWith(
+          fileSizeBytes: 400,
+          modalities: const [ModelModality.text, ModelModality.image],
+          downloadUrl: 'https://example.com/vision.litertlm',
+          filePath: '/models/vision.litertlm',
+        );
+        final service = EmbeddingService(
+          client: client,
+          downloadService: _FakeModelDownloadService(
+            downloaded: {
+              'text-embed': '/models/text.tflite',
+              'tokenizer-model': '/models/sentencepiece.model',
+              'vision-embed': '/models/vision.litertlm',
+            },
+          ),
+          catalog: [text, tokenizerModel, vision],
+        );
+
+        final result = await service.embedImage('/photos/note.jpg');
+
+        expect(result.modelId, 'vision-embed');
+        expect(client.lastImagePath, '/photos/note.jpg');
+        expect(result.vector, [0.4]);
+      },
+    );
+
     test('loads a LiteRT embedding package without a tokenizer', () async {
       final client = _FakeEmbeddingClient();
       final litert =
@@ -219,6 +250,20 @@ class _FakeEmbeddingClient implements EmbeddingClient {
 
   @override
   Future<bool> isReady() async => initializeCalls > 0;
+
+  String? lastImagePath;
+  String? lastAudioPath;
+
+  @override
+  Future<List<double>> embedMedia({
+    String? imagePath,
+    String? audioPath,
+  }) async {
+    lastImagePath = imagePath;
+    lastAudioPath = audioPath;
+    if (embedError != null) throw embedError!;
+    return vector;
+  }
 
   @override
   Future<List<double>> embed({

@@ -115,6 +115,31 @@ void main() {
       },
     );
 
+    test('embedMedia sends the image path on the LiteRT channel', () async {
+      const liteRt = MethodChannel('test.litert_lm.media');
+      MethodCall? captured;
+      messenger.setMockMethodCallHandler(liteRt, (call) async {
+        captured = call;
+        if (call.method == 'embedMedia') return [0.2, 0.3];
+        return true;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(liteRt, null));
+
+      final client = MethodChannelEmbeddingClient(
+        channel: channel,
+        liteRtChannel: liteRt,
+      );
+      await client.initialize(
+        modelPath: '/models/embeddinggemma-2-text-vision-440m.litertlm',
+        tokenizerPath: '',
+      );
+      final vector = await client.embedMedia(imagePath: '/photos/note.jpg');
+
+      expect(captured?.method, 'embedMedia');
+      expect(captured?.arguments, {'imagePath': '/photos/note.jpg'});
+      expect(vector, [0.2, 0.3]);
+    });
+
     test('embed throws when the native side returns nothing', () async {
       messenger.setMockMethodCallHandler(channel, (call) async => null);
 
