@@ -78,6 +78,8 @@ class _FakeClient implements LiteRtLmClient {
     required LiteRtLmBackend backend,
     required int maxTokens,
     String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
   }) async {
     this.prompt = prompt;
     this.systemPrompt = systemPrompt;
@@ -90,6 +92,7 @@ class _FakeClient implements LiteRtLmClient {
     String? modelPath,
     LiteRtLmBackend? backend,
     int? maxTokens,
+    bool vision = false,
   }) async {
     initializedPath = modelPath;
     initializedBackend = backend;

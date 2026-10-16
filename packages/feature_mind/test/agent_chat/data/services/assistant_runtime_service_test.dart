@@ -1952,6 +1952,8 @@ class _UrlOnlyLiteRtClient implements LiteRtLmClient {
     required LiteRtLmBackend backend,
     required int maxTokens,
     String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
   }) async => 'should-not-run';
 
   @override
@@ -1960,6 +1962,7 @@ class _UrlOnlyLiteRtClient implements LiteRtLmClient {
     String? modelPath,
     LiteRtLmBackend? backend,
     int? maxTokens,
+    bool vision = false,
   }) async {}
 
   @override

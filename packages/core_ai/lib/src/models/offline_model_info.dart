@@ -30,6 +30,17 @@ enum ModelQuantization {
   /// Full precision (FP16)
   fp16('FP16', 16, 'Full precision, largest size'),
 
+  /// Google's Gemma mobile scheme: a mixture of 2-bit, 4-bit, and 8-bit
+  /// weights already baked into the published `.litertlm` file.
+  ///
+  /// [bits] stays at 4 so memory estimates match the dominant weight width.
+  /// The display name is what the model library shows.
+  mixed(
+    'Mixed 2/4/8',
+    4,
+    'Google pre-quantized mixture of 2-bit, 4-bit, and 8-bit weights',
+  ),
+
   /// Unknown quantization
   unknown('Unknown', 0, 'Unknown quantization level');
 

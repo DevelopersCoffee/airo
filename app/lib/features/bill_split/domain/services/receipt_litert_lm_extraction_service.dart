@@ -22,10 +22,20 @@ class ReceiptLiteRtLmExtractionService {
     final normalizedText = rawText.trim();
     if (normalizedText.isEmpty || !await _llm.isAvailable()) return null;
 
-    final response = await _llm.generateText(
-      _buildPrompt(normalizedText),
-      systemPrompt: _systemPrompt,
-    );
+    String? response;
+    try {
+      response = await _llm.generateText(
+        _buildPrompt(normalizedText),
+        systemPrompt: _systemPrompt,
+        imagePath: imagePath,
+      );
+    } catch (_) {
+      if (imagePath == null || imagePath.trim().isEmpty) rethrow;
+      response = await _llm.generateText(
+        _buildPrompt(normalizedText),
+        systemPrompt: _systemPrompt,
+      );
+    }
     if (response == null || response.trim().isEmpty) return null;
 
     return _parseResponse(response, imagePath: imagePath);

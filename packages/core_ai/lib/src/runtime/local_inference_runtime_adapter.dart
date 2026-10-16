@@ -53,6 +53,8 @@ class RuntimeGenerationRequest {
   const RuntimeGenerationRequest({
     required this.prompt,
     this.systemPrompt,
+    this.imagePath,
+    this.reuseConversation = true,
     this.requiresVision = false,
     this.requiresAudio = false,
     this.requiresToolCalling = false,
@@ -61,6 +63,13 @@ class RuntimeGenerationRequest {
 
   final String prompt;
   final String? systemPrompt;
+
+  /// Local image file for a multimodal `.litertlm` package.
+  final String? imagePath;
+
+  /// When false, the native bridge uses a throwaway conversation so warmup
+  /// tokens do not stay in the session KV cache.
+  final bool reuseConversation;
   final bool requiresVision;
   final bool requiresAudio;
   final bool requiresToolCalling;

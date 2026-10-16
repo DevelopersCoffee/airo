@@ -64,14 +64,23 @@ class LiteRtLmService {
   Future<bool> isAvailable() =>
       _isWeb ? _webAdapter!.isAvailable() : _nativeAdapter!.isAvailable();
 
-  Future<String?> generateText(String prompt, {String? systemPrompt}) {
+  Future<String?> generateText(
+    String prompt, {
+    String? systemPrompt,
+    String? imagePath,
+  }) {
     if (_isWeb) {
       throw UnsupportedError(
         'Browser runtime requires a model; call generateTextForModel instead.',
       );
     }
     return _nativeAdapter!.generateText(
-      RuntimeGenerationRequest(prompt: prompt, systemPrompt: systemPrompt),
+      RuntimeGenerationRequest(
+        prompt: prompt,
+        systemPrompt: systemPrompt,
+        imagePath: imagePath,
+        requiresVision: imagePath != null && imagePath.trim().isNotEmpty,
+      ),
     );
   }
 
@@ -91,10 +100,13 @@ class LiteRtLmService {
     OfflineModelInfo model,
     String prompt, {
     String? systemPrompt,
+    String? imagePath,
   }) {
     final request = RuntimeGenerationRequest(
       prompt: prompt,
       systemPrompt: systemPrompt,
+      imagePath: imagePath,
+      requiresVision: imagePath != null && imagePath.trim().isNotEmpty,
     );
     if (_isWeb) {
       return _webAdapter!.generateText(request, model: model);
