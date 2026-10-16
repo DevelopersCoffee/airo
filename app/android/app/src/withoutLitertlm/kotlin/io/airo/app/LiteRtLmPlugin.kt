@@ -27,8 +27,8 @@ class LiteRtLmPlugin(@Suppress("UNUSED_PARAMETER") private val context: Context)
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: MethodChannel.Result) {
         when (call.method) {
-            "isAvailable" -> result.success(false)
-            "initialize", "generateContent", "generateContentStream", "describeModel", "installModel" ->
+            "isAvailable", "embedReady" -> result.success(false)
+            "initialize", "generateContent", "generateContentStream", "describeModel", "installModel", "embedInitialize", "embedText" ->
                 result.error(
                     "LITERTLM_UNAVAILABLE",
                     "LiteRT-LM is not linked in this build.",

@@ -439,13 +439,11 @@ dependencies {
         implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
     }
 
-    // AI Edge RAG SDK, for on-device text embeddings (semantic search --
-    // docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md). A
-    // separate dependency from LiteRT-LM above: different Gradle coordinate,
-    // different native API (GeckoEmbeddingModel/Embedder<String>, not
-    // Engine/Conversation). Pinned explicitly, same reasoning as LiteRT-LM's
-    // pin above — see this file's LiteRT-LM comment for the incident that
-    // pin exists to prevent.
+    // AI Edge RAG SDK, for the older EmbeddingGemma 300M .tflite file.
+    // EmbeddingGemma 2 uses LiteRT-LM's EmbeddingEngine in LiteRtLmPlugin
+    // instead. This SDK stays pinned for installs that already downloaded
+    // the 300M weights. See this file's LiteRT-LM comment for why the pin
+    // is explicit.
     //
     // Excluded from TV as well as Coins, unlike LiteRT-LM: this SDK's bundled
     // protobuf classes (com.google.ai.edge.localagents.rag.models.proto.*)

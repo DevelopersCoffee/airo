@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../models/offline_model_info.dart';
+
 /// How the native embedder should treat [EmbeddingClient.embed]'s text.
 ///
 /// Maps to Google's AI Edge RAG SDK `EmbedData.TaskType`. Query vs document
@@ -25,14 +27,32 @@ enum EmbeddingTaskType {
   final String wireName;
 }
 
+/// A `.litertlm` embedding package, such as EmbeddingGemma 2.
+bool isLiteRtEmbeddingPackage(OfflineModelInfo? model, {String? modelPath}) {
+  final source =
+      '${model?.id ?? ''} ${model?.filePath ?? ''} ${model?.downloadUrl ?? ''} ${modelPath ?? ''}'
+          .toLowerCase();
+  return source.contains('.litertlm') || source.contains('litertlm');
+}
+
+/// EmbeddingGemma 2 expects these prefixes. The older TFLite embedder uses
+/// Gecko task types instead, so only the LiteRT path applies this.
+String liteRtEmbeddingPrompt(String text, EmbeddingTaskType taskType) {
+  final body = text.trim();
+  final prefix = switch (taskType) {
+    EmbeddingTaskType.retrievalQuery => 'task: search query | text: ',
+    EmbeddingTaskType.retrievalDocument => 'task: search result | text: ',
+    EmbeddingTaskType.semanticSimilarity =>
+      'task: sentence similarity | text: ',
+  };
+  return '$prefix$body';
+}
+
 /// Loads an on-device text embedding model and turns text into vectors.
 ///
-/// Backed by a **separate** native plugin from `LiteRtLmClient`'s
-/// (`docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md`):
-/// EmbeddingGemma is not published as a `.litertlm` package, so it cannot go
-/// through `LiteRtLmPlugin.kt`'s `Engine`/`Conversation` API. This wraps
-/// Google's AI Edge RAG SDK (`GeckoEmbeddingModel`) instead, over its own
-/// method channel.
+/// EmbeddingGemma 2 is a `.litertlm` package and goes through LiteRT-LM's
+/// `EmbeddingEngine`. The older EmbeddingGemma 300M `.tflite` file still
+/// goes through the AI Edge RAG SDK on `com.airo.embedding`.
 abstract class EmbeddingClient {
   /// Loads the model. [modelPath] and [tokenizerPath] are supplied by the
   /// caller (the already-downloaded files' locations) — this client never
@@ -64,10 +84,15 @@ class MethodChannelEmbeddingClient implements EmbeddingClient {
   MethodChannelEmbeddingClient({
     this.operationTimeout = const Duration(seconds: 30),
     MethodChannel? channel,
-  }) : _channel = channel ?? const MethodChannel('com.airo.embedding');
+    MethodChannel? liteRtChannel,
+  }) : _channel = channel ?? const MethodChannel('com.airo.embedding'),
+       _liteRtChannel =
+           liteRtChannel ?? const MethodChannel('com.airo.litert_lm');
 
   final Duration operationTimeout;
   final MethodChannel _channel;
+  final MethodChannel _liteRtChannel;
+  bool _liteRt = false;
 
   @override
   Future<void> initialize({
@@ -75,10 +100,12 @@ class MethodChannelEmbeddingClient implements EmbeddingClient {
     required String tokenizerPath,
     bool useGpu = false,
   }) async {
-    await _channel
-        .invokeMethod<void>('initialize', {
+    _liteRt = isLiteRtEmbeddingPackage(null, modelPath: modelPath);
+    final channel = _liteRt ? _liteRtChannel : _channel;
+    await channel
+        .invokeMethod<void>(_liteRt ? 'embedInitialize' : 'initialize', {
           'modelPath': modelPath,
-          'tokenizerPath': tokenizerPath,
+          if (!_liteRt) 'tokenizerPath': tokenizerPath,
           'useGpu': useGpu,
         })
         .timeout(operationTimeout);
@@ -87,8 +114,8 @@ class MethodChannelEmbeddingClient implements EmbeddingClient {
   @override
   Future<bool> isReady() async {
     try {
-      final ready = await _channel
-          .invokeMethod<bool>('isReady')
+      final ready = await (_liteRt ? _liteRtChannel : _channel)
+          .invokeMethod<bool>(_liteRt ? 'embedReady' : 'isReady')
           .timeout(operationTimeout);
       return ready ?? false;
     } on PlatformException catch (e) {
@@ -109,9 +136,10 @@ class MethodChannelEmbeddingClient implements EmbeddingClient {
     required String text,
     EmbeddingTaskType taskType = EmbeddingTaskType.semanticSimilarity,
   }) async {
-    final result = await _channel
-        .invokeMethod<List<Object?>>('embed', {
-          'text': text,
+    final channel = _liteRt ? _liteRtChannel : _channel;
+    final result = await channel
+        .invokeMethod<List<Object?>>(_liteRt ? 'embedText' : 'embed', {
+          'text': _liteRt ? liteRtEmbeddingPrompt(text, taskType) : text,
           'taskType': taskType.wireName,
         })
         .timeout(operationTimeout);
