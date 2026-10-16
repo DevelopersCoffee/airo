@@ -14,10 +14,11 @@ OfflineModelInfo _model(
   ModelTask? task,
   PlatformSupport? platformSupport,
   int contextLength = 2048,
+  ModelFamily family = ModelFamily.other,
 }) => OfflineModelInfo(
   id: id,
   name: id,
-  family: ModelFamily.other,
+  family: family,
   fileSizeBytes: size,
   filePath: downloaded ? '/tmp/$id' : null,
   downloadUrl: downloadUrl,
@@ -201,6 +202,94 @@ void main() {
       );
 
       expect(selection.model?.id, 'small-speech');
+    });
+
+    test('prefers a Gemma package when another family can also chat', () {
+      final gemma = _model('gemma-chat', family: ModelFamily.gemma);
+      final qwen = _model('qwen-chat', family: ModelFamily.qwen);
+
+      final selection = query.select(
+        capability: ModelCapability.chat,
+        catalog: [qwen, gemma],
+      );
+
+      expect(selection.model?.id, 'gemma-chat');
+      expect(
+        selection.why?.reasons.map((reason) => reason.code),
+        contains(WhySelectedCode.preferredFamily),
+      );
+      expect(selection.candidates.map((candidate) => candidate.model.id), [
+        'gemma-chat',
+        'qwen-chat',
+      ]);
+    });
+
+    test(
+      'keeps an installed non-Gemma model ahead of an uninstalled Gemma',
+      () {
+        final gemma = _model('gemma-chat', family: ModelFamily.gemma);
+        final qwen = _model(
+          'qwen-chat',
+          family: ModelFamily.qwen,
+          downloaded: true,
+        );
+
+        final selection = query.select(
+          capability: ModelCapability.chat,
+          catalog: [gemma, qwen],
+        );
+
+        expect(selection.model?.id, 'qwen-chat');
+      },
+    );
+
+    test('override can still select a non-Gemma model', () {
+      final gemma = _model(
+        'gemma-chat',
+        family: ModelFamily.gemma,
+        downloaded: true,
+      );
+      final mistral = _model(
+        'mistral-chat',
+        family: ModelFamily.mistral,
+        downloaded: true,
+      );
+
+      final selection = query.select(
+        capability: ModelCapability.chat,
+        catalog: [gemma, mistral],
+        overrideModelId: 'mistral-chat',
+      );
+
+      expect(selection.model?.id, 'mistral-chat');
+    });
+
+    test('does not prefer Gemma over a speech model for transcription', () {
+      final gemmaAudio = _model(
+        'gemma-audio',
+        family: ModelFamily.gemma,
+        capabilities: const [ModelCapability.audioUnderstanding],
+        modalities: const [ModelModality.audio, ModelModality.text],
+        runtime: InferenceRuntime.litertLm,
+        size: 500_000_000,
+        downloaded: true,
+      );
+      final whisper = _model(
+        'whisper-tiny',
+        capabilities: const [ModelCapability.audioUnderstanding],
+        modalities: const [ModelModality.audio],
+        runtime: InferenceRuntime.whisper,
+        task: ModelTask.speechToText,
+        size: 70_000_000,
+        downloaded: true,
+      );
+
+      final selection = query.select(
+        capability: ModelCapability.audioUnderstanding,
+        catalog: [gemmaAudio, whisper],
+      );
+
+      expect(selection.model?.id, 'whisper-tiny');
     });
 
     test('hides android-only packages from a non-matching platform', () {

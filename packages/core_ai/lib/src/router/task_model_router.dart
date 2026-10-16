@@ -28,7 +28,9 @@ class UnroutableTaskException implements Exception {
 /// 1. An explicit per-task override in [taskOverrides] (a model id), if
 ///    configured and present in [available].
 /// 2. Otherwise [IntelligenceQuery] ranks models that serve the task's
-///    [AiTask.requiredCapability] (installed first, then memory/size).
+///    [AiTask.requiredCapability]. Installed models win first. Among models
+///    that can serve the task, Gemma and related packages are preferred.
+///    Other families stay eligible and an explicit override still wins.
 ///
 /// Speech stays out of this router. Callers that need transcription must
 /// query [IntelligenceQuery] with [ModelCapability.audioUnderstanding] /

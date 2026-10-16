@@ -178,7 +178,7 @@ class IntelligenceQuery {
       matching.add(
         IntelligenceCandidate(
           model: model,
-          score: _score(model, constraints),
+          score: _score(model, constraints, capability),
           installable: _isInstallable(model),
           fitsMemory: _fitsMemory(model, constraints.memory),
         ),
@@ -269,9 +269,21 @@ class IntelligenceQuery {
     return model.estimatedMinMemoryBytes <= memory.availableBytes;
   }
 
-  int _score(OfflineModelInfo model, IntelligenceConstraints constraints) {
+  /// Gemma-family packages (Gemma 4, Gemma 3n, FunctionGemma, EmbeddingGemma)
+  /// rank ahead of other families when both can serve the task. This stays
+  /// below the installed-model bonus, so a downloaded Qwen or Mistral still
+  /// wins until a Gemma package is installed. Speech selection does not use
+  /// this bonus.
+  static const preferredFamilyBonus = 90;
+
+  int _score(
+    OfflineModelInfo model,
+    IntelligenceConstraints constraints,
+    ModelCapability capability,
+  ) {
     var score = 0;
     if (constraints.preferInstalled && model.isDownloaded) score += 1000;
+    if (_prefersGemmaFamily(model, capability)) score += preferredFamilyBonus;
     if (_isInstallable(model)) score += 40;
     if (model.credibility == ModelCredibility.official) score += 80;
 
@@ -310,6 +322,12 @@ class IntelligenceQuery {
         }
     }
     return score;
+  }
+
+  bool _prefersGemmaFamily(OfflineModelInfo model, ModelCapability capability) {
+    return model.family == ModelFamily.gemma &&
+        capability != ModelCapability.audioUnderstanding &&
+        model.effectiveTask != ModelTask.speechToText;
   }
 
   int _compactBonus(int fileSizeBytes) {
@@ -397,6 +415,14 @@ class IntelligenceQuery {
         const WhySelectedReason(
           code: WhySelectedCode.official,
           message: 'From an official catalog source.',
+        ),
+      );
+    }
+    if (automatic && _prefersGemmaFamily(model, capability)) {
+      reasons.add(
+        const WhySelectedReason(
+          code: WhySelectedCode.preferredFamily,
+          message: 'Preferred Gemma family model. Other models stay available.',
         ),
       );
     }

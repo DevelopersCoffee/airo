@@ -11,6 +11,7 @@ enum WhySelectedCode {
   compact,
   official,
   override,
+  preferredFamily,
 }
 
 /// One human-readable selection reason. Codes stay stable; [message] is
