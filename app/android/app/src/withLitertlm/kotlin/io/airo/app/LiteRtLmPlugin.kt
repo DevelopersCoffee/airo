@@ -77,6 +77,7 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
             "embedInitialize" -> embedInitialize(call, result)
             "embedReady" -> result.success(embeddingEngine?.isInitialized == true)
             "embedText" -> embedText(call, result)
+            "embedMedia" -> embedMedia(call, result)
             else -> result.notImplemented()
         }
     }
@@ -641,6 +642,46 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
                 result.success(vector)
             } catch (e: Exception) {
                 Log.e(TAG, "LiteRT-LM embedding failed: ${e.message}", e)
+                result.error("EMBEDDING_FAILED", e.message, null)
+            }
+        }
+    }
+
+    private fun embedMedia(call: MethodCall, result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                val imagePath = call.argument<String>("imagePath")
+                val audioPath = call.argument<String>("audioPath")
+                val vector = withContext(Dispatchers.IO) {
+                    val engine = embeddingEngine
+                        ?: throw IllegalStateException("Embedding model is not initialized")
+                    val input = when {
+                        !imagePath.isNullOrBlank() -> {
+                            val file = File(imagePath)
+                            if (!file.isFile) {
+                                throw IllegalArgumentException("imagePath is not a file")
+                            }
+                            InputData.Image(file.readBytes())
+                        }
+                        !audioPath.isNullOrBlank() -> {
+                            val file = File(audioPath)
+                            if (!file.isFile) {
+                                throw IllegalArgumentException("audioPath is not a file")
+                            }
+                            InputData.Audio(file.readBytes())
+                        }
+                        else -> throw IllegalArgumentException(
+                            "imagePath or audioPath is required",
+                        )
+                    }
+                    engine.computeEmbedding(
+                        listOf(input),
+                        EmbeddingOptions(normalize = true),
+                    ).embedding.map { it.toDouble() }
+                }
+                result.success(vector)
+            } catch (e: Exception) {
+                Log.e(TAG, "LiteRT-LM media embedding failed: ${e.message}", e)
                 result.error("EMBEDDING_FAILED", e.message, null)
             }
         }

@@ -122,16 +122,30 @@ void main() {
       expect(model.downloadUrl, endsWith('.tflite'));
     });
 
-    test('TaskModelRouter resolves AiTask.embeddings to the embed entry, '
-        'never the tokenizer', () {
-      const router = TaskModelRouter();
-
-      final resolved = router.resolve(
-        AiTask.embeddings,
+    test('text search prefers the smallest text embedding package', () {
+      final selected = selectEmbeddingModel(
         ModelCatalog.bundledModels,
+        EmbeddingInputKind.text,
       );
 
-      expect(resolved?.id, 'embeddinggemma-2-text-270m-litertlm');
+      expect(selected?.id, 'embeddinggemma-2-text-270m-litertlm');
+    });
+
+    test('image and audio embeddings pick the smallest covering package', () {
+      expect(
+        selectEmbeddingModel(
+          ModelCatalog.bundledModels,
+          EmbeddingInputKind.image,
+        )?.id,
+        'embeddinggemma-2-text-vision-440m-litertlm',
+      );
+      expect(
+        selectEmbeddingModel(
+          ModelCatalog.bundledModels,
+          EmbeddingInputKind.audio,
+        )?.id,
+        'embeddinggemma-2-740m-litertlm',
+      );
     });
 
     test('the tokenizer entry is not routable via any AiTask', () {
