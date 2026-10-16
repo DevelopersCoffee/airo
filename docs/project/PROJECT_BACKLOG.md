@@ -1,6 +1,6 @@
 # Airo / Aika Stream — project backlog
 
-**Last verified:** 2026-10-15 against `origin/main` @ `ce8fcaa6280582dbf59812036d8da4e970e09a7f`.
+**Last verified:** 2026-10-16 against `origin/main` @ `6e86787985490a6b1c4a86eb801c3334b4bc8bcd`.
 
 Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verification** only.
 
@@ -12,9 +12,9 @@ Priority is top-down within each section; cross-track items name their release l
 
 | ID | Item | Status | Evidence / next step |
 | --- | --- | --- | --- |
-| B-001 | Keep `main` CI green on all Android variants (full, tv, fire-tv, coins) | **Done** | [CI run 38605508681](https://github.com/DevelopersCoffee/airo/actions/runs/38605508681) success 2026-10-14. |
+| B-001 | Keep `main` CI green on all Android variants (full, tv, fire-tv, coins) | **Done** | [CI run 38715870317](https://github.com/DevelopersCoffee/airo/actions/runs/38715870317) success on pack SHA (2026-10-15). |
 | B-002 | Re-run `feature_iptv` + TV shell tests on developer host | **Needs verification** | Commands from Sept 2026 test plan: `cd packages/feature_iptv && flutter test`; `cd app && flutter test test/core/app/tv_shell_test.dart`. CI passed; local Flutter missing on Cloud Agent VM. |
-| B-003 | Close Dependabot Android bumps (#2111–#2109) or merge when vetted | **Pending** | Open PRs as of 2026-10-15. |
+| B-003 | Close Dependabot Android bumps (#2111–#2109) or merge when vetted | **Pending** | Open PRs as of 2026-10-16. |
 
 ---
 
@@ -55,7 +55,7 @@ Priority is top-down within each section; cross-track items name their release l
 
 | ID | Item | Status | Evidence / next step |
 | --- | --- | --- | --- |
-| B-040 | Maintain Fire OS CI leg (GMS-free gates) | **Done** | #2100 merged; CI fire-tv job green on run 38605508681. |
+| B-040 | Maintain Fire OS CI leg (GMS-free gates) | **Done** | #2100 merged; fire-tv job green on run 38715870317. |
 | B-041 | Amazon Appstore listing + submission | **Blocked** | Requires store account, signing, and completed B-011/B-014 qualification. |
 | B-042 | Fire TV–specific D-pad defects (e.g. issue #1272 lineage) | **Needs verification** | Remote branches `fix/firetv-playlist-modal-focus-1272`, `codex/issue-1272-firetv-dpad` — merge status not re-audited in this pass. |
 
@@ -78,7 +78,7 @@ Priority is top-down within each section; cross-track items name their release l
 
 | ID | Item | Status | Evidence / next step |
 | --- | --- | --- | --- |
-| B-060 | This project status pack (4 files under `docs/project/`) | **Pending** | Draft PR on branch `cursor/project-status-docs-recovery-03fe`; Principal Architect review required. |
+| B-060 | Project status pack under `docs/project/` | **Done** | [#2112](https://github.com/DevelopersCoffee/airo/pull/2112) merged → `6e867879`; index `docs/project/README.md`. |
 | B-061 | Refresh stale release evidence index | **Pending** | Many `docs/release/evidence/*` artifacts predate `0.0.4+28`. |
 | B-062 | Repository health preflight for next wave | **Needs verification** | `docs/release/REPOSITORY_HEALTH_STATUS.md` — requires maintainer env vars for green preflight. |
 

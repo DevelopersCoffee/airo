@@ -1,6 +1,6 @@
 # Airo / Aika Stream — execution plan
 
-**Last verified:** 2026-10-15 · Base SHA **`ce8fcaa6280582dbf59812036d8da4e970e09a7f`** (`origin/main`).
+**Last verified:** 2026-10-16 · Base SHA **`6e86787985490a6b1c4a86eb801c3334b4bc8bcd`** (`origin/main`, includes #2112 project pack).
 
 Execute phases **in order**. Do not promote Play or Amazon builds until Phase 3 sign-offs exist for the target artifact SHA.
 
@@ -14,7 +14,7 @@ Status vocabulary: Done, Pending, Blocked, Deferred, Needs verification.
 
 | Step | Action | Status | Evidence |
 | --- | --- | --- | --- |
-| 1.1 | Record `main` HEAD SHA | **Done** | `ce8fcaa6280582dbf59812036d8da4e970e09a7f` |
+| 1.1 | Record `main` HEAD SHA | **Done** | `6e86787985490a6b1c4a86eb801c3334b4bc8bcd` |
 | 1.2 | Record pubspec versions (phone, TV, coins) | **Done** | `app/pubspec.yaml` `0.1.0+13`; `app/pubspec_tv.yaml` `0.0.4+28`; `app/pubspec_coins.yaml` `0.0.7+12` |
 | 1.3 | List latest GitHub releases/tags | **Done** | `aika-stream-v0.0.2` (latest product release); `v0.0.6` aggregate |
 | 1.4 | Enumerate open PRs | **Done** | #2111, #2110, #2109 (Dependabot only) |
@@ -31,7 +31,7 @@ Status vocabulary: Done, Pending, Blocked, Deferred, Needs verification.
 
 | Step | Action | Status | Evidence / command |
 | --- | --- | --- | --- |
-| 2.1 | CI Continuous Integration on latest `main` push | **Done** | [38605508681](https://github.com/DevelopersCoffee/airo/actions/runs/38605508681) — all listed jobs success |
+| 2.1 | CI Continuous Integration on latest `main` push | **Done** | [38715870317](https://github.com/DevelopersCoffee/airo/actions/runs/38715870317) — all listed jobs success on pack SHA |
 | 2.2 | Local `flutter analyze` (phone app) | **Blocked** | Flutter SDK unavailable on Cloud Agent VM; run on host: `cd app && flutter analyze --no-fatal-infos --no-fatal-warnings` |
 | 2.3 | Local `packages/feature_iptv` tests | **Blocked** | Host: `cd packages/feature_iptv && flutter test` |
 | 2.4 | Local TV shell tests | **Blocked** | Host: `cd app && flutter test test/core/app/tv_shell_test.dart` |
@@ -53,7 +53,7 @@ Status vocabulary: Done, Pending, Blocked, Deferred, Needs verification.
 | 3.3 | D-pad stick evidence | **Needs verification** | `docs/release/evidence/airo-tv-dpad-fire-tv-stick-3rd-gen-2026-07-27.md` |
 | 3.4 | Automated test plan from TV+19 notes | **Needs verification** | `flutter test` commands in gstack test plan (Sept 2026); extend coverage for Watch pop, transport row, mini guide |
 | 3.5 | Long playback / memory | **Needs verification** | 2h live stream; record peak RSS; file new evidence md |
-| 3.6 | Post–#2100 Fire TV on-device smoke | **Needs verification** | Install CI fire-tv artifact from run 38605508681; cold start, playlist import, playback 15min |
+| 3.6 | Post–#2100 Fire TV on-device smoke | **Needs verification** | Install CI fire-tv artifact from run 38715870317; cold start, playlist import, playback 15min |
 
 **Exit criteria:** New evidence md per target release SHA, or explicit waiver in release checklist.
 
@@ -120,9 +120,9 @@ Execute tracks **in parallel** but **never mix artifacts** between Aika Stream P
 
 | Step | Action | Status |
 | --- | --- | --- |
-| 6.1 | Land project status pack (this PR) | **Pending** |
-| 6.2 | Principal Architect review | **Pending** |
-| 6.3 | PR Governor merge | **Pending** |
+| 6.1 | Land project status pack | **Done** | [#2112](https://github.com/DevelopersCoffee/airo/pull/2112) → `6e867879` |
+| 6.2 | Periodic refresh of status tables | **Pending** | After each Play drop or CI regression; use `docs/project/README.md` |
+| 6.3 | Next release sign-offs | **Pending** | See `PROJECT_RELEASE_CHECKLIST.md` |
 
 ---
 

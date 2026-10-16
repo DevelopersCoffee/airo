@@ -1,6 +1,8 @@
 # Airo / Aika Stream — project status
 
-**Last verified:** 2026-10-15 (Cloud Agent on `origin/main` at `ce8fcaa6280582dbf59812036d8da4e970e09a7f`)
+**Last verified:** 2026-10-16 (Cloud Agent on `origin/main` at `6e86787985490a6b1c4a86eb801c3334b4bc8bcd`)
+
+**Pack:** Landed via [#2112](https://github.com/DevelopersCoffee/airo/pull/2112) (merged 2026-10-15). This file is the living SSOT; refresh after major releases or CI regressions.
 
 **Method:** Historical agent notes (May–Sept 2026 gstack snapshots) were used for orientation only. Every status below is tied to current repo files, git refs, GitHub releases/PRs/CI, or in-repo QA evidence unless marked **Needs verification**.
 
@@ -12,13 +14,13 @@
 
 | Item | Status | Evidence |
 | --- | --- | --- |
-| Default branch | **Done** | `main`; local and remote both at `ce8fcaa6280582dbf59812036d8da4e970e09a7f` (`git rev-parse HEAD origin/main`, 2026-10-15). |
+| Default branch | **Done** | `main` @ `6e86787985490a6b1c4a86eb801c3334b4bc8bcd` (`git rev-parse HEAD origin/main`, 2026-10-16). Parent feature SHA `ce8fcaa6280582dbf59812036d8da4e970e09a7f` (#2108). |
 | Airo super-app version (phone) | **Done** | `app/pubspec.yaml` line 19: `version: 0.1.0+13`. |
 | Aika Stream TV version (SSOT) | **Done** | `app/pubspec_tv.yaml` line 14: `version: 0.0.4+28`. OKF: `docs/okf/aika-stream-play/references/version-ssot.md`. |
 | Airo Coins flavor | **Done** | `app/pubspec_coins.yaml`: `0.0.7+12`. |
 | Latest GitHub Release (org-wide) | **Done** | [Aika Stream 0.0.2](https://github.com/DevelopersCoffee/airo/releases/tag/aika-stream-v0.0.2) tag `aika-stream-v0.0.2` (2026-09-22). Prior TV-tagged release: `aika-stream-v0.0.1` (2026-09-15). Aggregate app line: `v0.0.6` (2026-08-03). |
-| Open pull requests | **Done** | Three open Dependabot PRs only (#2111, #2110, #2109) as of 2026-10-15 (`gh pr list --state open`). |
-| Remote branch surface | **Done** | ~458 remote-tracking branches (`git branch -r \| wc -l`). Active IPTV/TV lines include `origin/agent/iptv/aika-stream-*`, `origin/feat/aika-stream-obb-19*`, `origin/agent/tv/2014-aika-stream-tv-19`, `origin/cursor/fire-tv-build-pipeline-ff46` (merged via #2100). |
+| Open pull requests | **Done** | Three open Dependabot PRs only (#2111, #2110, #2109) as of 2026-10-16 (`gh pr list --state open`). |
+| Remote branch surface | **Done** | ~459 remote-tracking branches (`git branch -r \| wc -l`, 2026-10-16). Active IPTV/TV lines include `origin/agent/iptv/aika-stream-*`, `origin/feat/aika-stream-obb-19*`, `origin/agent/tv/2014-aika-stream-tv-19`, `origin/cursor/fire-tv-build-pipeline-ff46` (merged via #2100). |
 | Local worktrees on this VM | **Done** | Single checkout at `/workspace`; no additional agent worktrees mounted on this Cloud Agent VM. |
 
 ### Release tracks (keep separate)
@@ -27,7 +29,7 @@
 | --- | --- | --- |
 | **Aika Stream TV / Play** (`com.developerscoffee.tv.midas`) | **Needs verification** | Pubspec SSOT `0.0.4+28` on `main`. GitHub release tag stops at `aika-stream-v0.0.2`. Play `versionCode` spend and live Production state are human-gated — see `docs/okf/aika-stream-play/references/version-ssot.md` (codes 21–25 spent as of 2026-09-28 note). |
 | **Airo super-app (phone)** | **Pending** | `0.1.0+13` on `main`; not aligned with latest aggregate GitHub release `v0.0.6` naming — see `docs/release/VERSION_LINES.md`. |
-| **Fire TV / Amazon Appstore** | **Done** (pipeline) | [#2100](https://github.com/DevelopersCoffee/airo/pull/2100) merged: Fire OS build variant + CI leg. CI run [38605508681](https://github.com/DevelopersCoffee/airo/actions/runs/38605508681) job `build-android (fire-tv, …)` **success** on `main` (2026-10-14). Store submission state: **Needs verification** (no Appstore listing evidence in repo). |
+| **Fire TV / Amazon Appstore** | **Done** (pipeline) | [#2100](https://github.com/DevelopersCoffee/airo/pull/2100) merged: Fire OS build variant + CI leg. Latest full matrix on pack SHA: [38715870317](https://github.com/DevelopersCoffee/airo/actions/runs/38715870317) job `build-android (fire-tv, …)` **success** (2026-10-15). Store submission state: **Needs verification** (no Appstore listing evidence in repo). |
 
 > **Note on “Amiro Build 9”:** No release artifact or pubspec in this repository uses the label “Amiro Build 9”. Treat **Airo super-app** (`app/pubspec.yaml`, currently build **13**) and **Aika Stream TV** (`app/pubspec_tv.yaml`, currently build **28**) as distinct tracks. If “Build 9” refers to an external Play or internal codename, status is **Needs verification**.
 
@@ -37,11 +39,11 @@
 
 | Item | Status | Evidence |
 | --- | --- | --- |
-| CI on `main` (full matrix) | **Done** | [Workflow run 38605508681](https://github.com/DevelopersCoffee/airo/actions/runs/38605508681) **success**: `analyze`, `lint`, `test-core`, `test-app`, `build-web`, `build-android` variants **tv**, **fire-tv**, **full**, **coins**, `airo-mind-shell`, security scans. |
-| Phone app compile/analyze (this VM) | **Blocked** | `flutter` SDK not available on PATH in this Cloud Agent VM (`which flutter` empty, 2026-10-15). Cannot reproduce analyze locally here. |
+| CI on `main` (full matrix) | **Done** | [Workflow run 38715870317](https://github.com/DevelopersCoffee/airo/actions/runs/38715870317) **success** on `6e867879` (#2112 merge): `analyze`, `lint`, `test-core`, `test-app`, `build-web`, `build-android` **tv**, **fire-tv**, **full**, **coins**, `airo-mind-shell`, security scans. Prior green push: [38605508681](https://github.com/DevelopersCoffee/airo/actions/runs/38605508681) (#2108). |
+| Phone app compile/analyze (this VM) | **Blocked** | `flutter` SDK not available on PATH in this Cloud Agent VM (`which flutter` empty, 2026-10-16). Cannot reproduce analyze locally here. |
 | TV / Fire TV compile (this VM) | **Blocked** | Same Flutter SDK gap; rely on CI `build-android` tv + fire-tv jobs above. |
-| `feature_iptv` unit tests (this VM) | **Blocked** | Flutter SDK missing locally; CI `test-app` / package tests on run 38605508681 **success**. |
-| Repository script gates (docs change scope) | **Done** | `scripts/check-docs-completeness.sh --base origin/main --head HEAD` passed on clean tree (2026-10-15). |
+| `feature_iptv` unit tests (this VM) | **Blocked** | Flutter SDK missing locally; CI `test-app` on run 38715870317 **success**. |
+| Repository script gates (docs change scope) | **Done** | `scripts/check-docs-completeness.sh --base origin/main --head HEAD` passed (2026-10-16). |
 
 **CI commands reference (for humans re-running):** `.github/workflows/ci.yml` — matrix includes `fire-tv` with description “Fire OS / Amazon Appstore (Aika Stream, GMS-free gates)” (lines ~500–508, ~759).
 
