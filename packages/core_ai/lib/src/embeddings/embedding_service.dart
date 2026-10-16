@@ -73,7 +73,7 @@ class EmbeddingService {
   final TaskModelRouter _router;
   final List<OfflineModelInfo> _catalog;
 
-  bool _initialized = false;
+  String? _initializedModelId;
 
   /// Turns [text] into its embedding vector.
   ///
@@ -111,28 +111,32 @@ class EmbeddingService {
     }
 
     try {
-      if (!_initialized) {
-        final tokenizer = _catalog.firstWhere(
-          (candidate) =>
-              candidate.tags.contains('tokenizer') &&
-              candidate.tags.contains(resolved.id),
-          orElse: () => throw StateError(
-            'No tokenizer catalog entry tags itself for ${resolved.id}',
-          ),
-        );
+      if (_initializedModelId != resolved.id) {
         final modelPath = await _downloadService.getModelPath(
           resolved.id,
           model: resolved,
         );
-        final tokenizerPath = await _downloadService.getModelPath(
-          tokenizer.id,
-          model: tokenizer,
-        );
-        await _client.initialize(
-          modelPath: modelPath,
-          tokenizerPath: tokenizerPath,
-        );
-        _initialized = true;
+        if (isLiteRtEmbeddingPackage(resolved, modelPath: modelPath)) {
+          await _client.initialize(modelPath: modelPath, tokenizerPath: '');
+        } else {
+          final tokenizer = _catalog.firstWhere(
+            (candidate) =>
+                candidate.tags.contains('tokenizer') &&
+                candidate.tags.contains(resolved.id),
+            orElse: () => throw StateError(
+              'No tokenizer catalog entry tags itself for ${resolved.id}',
+            ),
+          );
+          final tokenizerPath = await _downloadService.getModelPath(
+            tokenizer.id,
+            model: tokenizer,
+          );
+          await _client.initialize(
+            modelPath: modelPath,
+            tokenizerPath: tokenizerPath,
+          );
+        }
+        _initializedModelId = resolved.id;
       }
 
       final vector = await _client.embed(text: text, taskType: taskType);

@@ -99,6 +99,41 @@ void main() {
       expect(result.modelId, isNull);
     });
 
+    test('loads a LiteRT embedding package without a tokenizer', () async {
+      final client = _FakeEmbeddingClient();
+      final litert =
+          _model(
+            'embeddinggemma-2-text-270m-litertlm',
+            tags: const ['litert-lm'],
+          ).copyWith(
+            downloadUrl:
+                'https://example.com/embeddinggemma-2-text-270m.litertlm',
+            filePath: '/models/embeddinggemma-2-text-270m.litertlm',
+          );
+      final service = EmbeddingService(
+        client: client,
+        downloadService: _FakeModelDownloadService(
+          downloaded: {
+            litert.id: '/models/embeddinggemma-2-text-270m.litertlm',
+          },
+        ),
+        catalog: [litert],
+      );
+
+      final result = await service.embed(
+        'hello',
+        taskType: EmbeddingTaskType.retrievalQuery,
+      );
+
+      expect(result.isReady, isTrue);
+      expect(result.modelId, litert.id);
+      expect(client.lastTokenizerPath, isEmpty);
+      expect(
+        client.lastModelPath,
+        '/models/embeddinggemma-2-text-270m.litertlm',
+      );
+    });
+
     test('only initializes the client once across repeated calls', () async {
       final client = _FakeEmbeddingClient();
       final service = EmbeddingService(
@@ -132,10 +167,7 @@ void main() {
         catalog: [embedModel, tokenizerModel],
       );
 
-      await service.embed(
-        'hello',
-        taskType: EmbeddingTaskType.retrievalQuery,
-      );
+      await service.embed('hello', taskType: EmbeddingTaskType.retrievalQuery);
 
       expect(client.lastTaskType, EmbeddingTaskType.retrievalQuery);
     });

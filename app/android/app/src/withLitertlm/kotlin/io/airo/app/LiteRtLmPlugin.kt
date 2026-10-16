@@ -8,8 +8,12 @@ import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
+import com.google.ai.edge.litertlm.EmbeddingEngine
+import com.google.ai.edge.litertlm.EmbeddingEngineConfig
+import com.google.ai.edge.litertlm.EmbeddingOptions
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.InputData
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.Message
@@ -56,6 +60,8 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
     private var initializedModelPath: String? = null
     private var visionEnabled: Boolean = false
     private var installedModelPath: String? = null
+    private var embeddingEngine: EmbeddingEngine? = null
+    private var embeddingModelPath: String? = null
     private val streamHandler = LiteRtLmStreamHandler()
 
     fun getStreamHandler(): EventChannel.StreamHandler = streamHandler
@@ -68,6 +74,9 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
             "generateContentStream" -> generateContentStream(call, result)
             "describeModel" -> describeModel(call, result)
             "installModel" -> installModel(call, result)
+            "embedInitialize" -> embedInitialize(call, result)
+            "embedReady" -> result.success(embeddingEngine?.isInitialized == true)
+            "embedText" -> embedText(call, result)
             else -> result.notImplemented()
         }
     }
@@ -576,12 +585,76 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
         return connection
     }
 
+    private fun embedInitialize(call: MethodCall, result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                val modelPath = call.argument<String>("modelPath")
+                    ?: throw IllegalArgumentException("modelPath is required")
+                val useGpu = call.argument<Boolean>("useGpu") ?: false
+                withContext(Dispatchers.IO) {
+                    if (embeddingModelPath == modelPath &&
+                        embeddingEngine?.isInitialized == true
+                    ) {
+                        return@withContext
+                    }
+                    embeddingEngine?.close()
+                    val backend = if (useGpu) Backend.GPU() else Backend.CPU()
+                    // 512 is one of EmbeddingGemma 2's published input lengths
+                    // and matches short search queries and meeting chunks.
+                    val created = EmbeddingEngine(
+                        EmbeddingEngineConfig(
+                            modelPath = modelPath,
+                            backend = backend,
+                            cacheDir = context.cacheDir.path,
+                            maxInputLength = 512,
+                        ),
+                    )
+                    created.initialize()
+                    embeddingEngine = created
+                    embeddingModelPath = modelPath
+                }
+                result.success(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "LiteRT-LM embedding init failed: ${e.message}", e)
+                embeddingEngine?.close()
+                embeddingEngine = null
+                embeddingModelPath = null
+                result.error("EMBEDDING_FAILED", e.message, null)
+            }
+        }
+    }
+
+    private fun embedText(call: MethodCall, result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                val text = call.argument<String>("text")
+                    ?: throw IllegalArgumentException("text is required")
+                val vector = withContext(Dispatchers.IO) {
+                    val engine = embeddingEngine
+                        ?: throw IllegalStateException("Embedding model is not initialized")
+                    val response = engine.computeEmbedding(
+                        listOf(InputData.Text(text)),
+                        EmbeddingOptions(normalize = true),
+                    )
+                    response.embedding.map { it.toDouble() }
+                }
+                result.success(vector)
+            } catch (e: Exception) {
+                Log.e(TAG, "LiteRT-LM embedding failed: ${e.message}", e)
+                result.error("EMBEDDING_FAILED", e.message, null)
+            }
+        }
+    }
+
     private fun closeActiveEngine() {
         clearConversation()
         engine?.close()
         engine = null
         initializedModelPath = null
         visionEnabled = false
+        embeddingEngine?.close()
+        embeddingEngine = null
+        embeddingModelPath = null
     }
 }
 

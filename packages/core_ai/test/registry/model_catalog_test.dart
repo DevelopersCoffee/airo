@@ -131,7 +131,7 @@ void main() {
         ModelCatalog.bundledModels,
       );
 
-      expect(resolved?.id, 'embeddinggemma-300m-embed');
+      expect(resolved?.id, 'embeddinggemma-2-text-270m-litertlm');
     });
 
     test('the tokenizer entry is not routable via any AiTask', () {
@@ -149,6 +149,37 @@ void main() {
           reason: 'the tokenizer must never answer for $task',
         );
       }
+    });
+
+    test('EmbeddingGemma 2 is the generic litertlm package', () {
+      final model = ModelCatalog.bundledModels.firstWhere(
+        (m) => m.id == 'embeddinggemma-2-text-270m-litertlm',
+      );
+
+      expect(model.fileSizeBytes, 164626432);
+      expect(
+        model.downloadUrl,
+        'https://huggingface.co/litert-community/embeddinggemma-2-text-270m-litert-lm/resolve/main/embeddinggemma-2-text-270m.litertlm',
+      );
+      expect(model.downloadUrl, isNot(contains('Qualcomm')));
+      expect(ModelCatalog.companionsFor(model), isEmpty);
+      expect(model.capabilities, [ModelCapability.embeddings]);
+    });
+
+    test('an installed EmbeddingGemma 300M still beats an uninstalled v2', () {
+      final installed = ModelCatalog.bundledModels
+          .firstWhere((m) => m.id == 'embeddinggemma-300m-embed')
+          .copyWith(filePath: '/models/embeddinggemma-300m.tflite');
+      final fresh = ModelCatalog.bundledModels.firstWhere(
+        (m) => m.id == 'embeddinggemma-2-text-270m-litertlm',
+      );
+
+      final resolved = const TaskModelRouter().resolve(AiTask.embeddings, [
+        fresh,
+        installed,
+      ]);
+
+      expect(resolved?.id, 'embeddinggemma-300m-embed');
     });
 
     test('companionsFor queues the tokenizer with the embed model', () {

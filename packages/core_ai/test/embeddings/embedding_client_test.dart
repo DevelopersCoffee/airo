@@ -50,32 +50,70 @@ void main() {
       expect(vector, [0.1, 0.2, 0.3]);
     });
 
-    test('embed forwards retrievalQuery / retrievalDocument task types', () async {
-      MethodCall? captured;
-      messenger.setMockMethodCallHandler(channel, (call) async {
-        captured = call;
-        return [0.0];
-      });
+    test(
+      'embed forwards retrievalQuery / retrievalDocument task types',
+      () async {
+        MethodCall? captured;
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          captured = call;
+          return [0.0];
+        });
 
-      final client = MethodChannelEmbeddingClient(channel: channel);
-      await client.embed(
-        text: 'query',
-        taskType: EmbeddingTaskType.retrievalQuery,
-      );
-      expect(captured?.arguments, {
-        'text': 'query',
-        'taskType': 'retrievalQuery',
-      });
+        final client = MethodChannelEmbeddingClient(channel: channel);
+        await client.embed(
+          text: 'query',
+          taskType: EmbeddingTaskType.retrievalQuery,
+        );
+        expect(captured?.arguments, {
+          'text': 'query',
+          'taskType': 'retrievalQuery',
+        });
 
-      await client.embed(
-        text: 'doc',
-        taskType: EmbeddingTaskType.retrievalDocument,
-      );
-      expect(captured?.arguments, {
-        'text': 'doc',
-        'taskType': 'retrievalDocument',
-      });
-    });
+        await client.embed(
+          text: 'doc',
+          taskType: EmbeddingTaskType.retrievalDocument,
+        );
+        expect(captured?.arguments, {
+          'text': 'doc',
+          'taskType': 'retrievalDocument',
+        });
+      },
+    );
+
+    test(
+      'LiteRT embeddings use the task prefix on the LiteRT channel',
+      () async {
+        const liteRt = MethodChannel('test.litert_lm.embed');
+        MethodCall? captured;
+        messenger.setMockMethodCallHandler(liteRt, (call) async {
+          captured = call;
+          if (call.method == 'embedText') return [0.5, 0.25];
+          return true;
+        });
+        addTearDown(() => messenger.setMockMethodCallHandler(liteRt, null));
+
+        final client = MethodChannelEmbeddingClient(
+          channel: channel,
+          liteRtChannel: liteRt,
+        );
+        await client.initialize(
+          modelPath: '/models/embeddinggemma-2-text-270m.litertlm',
+          tokenizerPath: '',
+        );
+        final vector = await client.embed(
+          text: '  kyoto  ',
+          taskType: EmbeddingTaskType.retrievalQuery,
+        );
+
+        expect(captured?.method, 'embedText');
+        expect(captured?.arguments['text'], 'task: search query | text: kyoto');
+        expect(vector, [0.5, 0.25]);
+        expect(
+          liteRtEmbeddingPrompt('note', EmbeddingTaskType.retrievalDocument),
+          'task: search result | text: note',
+        );
+      },
+    );
 
     test('embed throws when the native side returns nothing', () async {
       messenger.setMockMethodCallHandler(channel, (call) async => null);

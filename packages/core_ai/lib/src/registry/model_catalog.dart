@@ -368,16 +368,43 @@ class ModelCatalog {
     // publish a 1.7B variant at all, as of 2026-07-19. Re-check before
     // adding a web catalog entry for SmolLM2.
 
-    // EmbeddingGemma: the only catalog entry for AiTask.embeddings
-    // (docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md).
-    // Ships as raw .tflite + a separate sentencepiece.model tokenizer, not
-    // the .litertlm package format every other entry above uses -- it is
-    // loaded through a different native plugin (Google's AI Edge RAG SDK,
-    // GeckoEmbeddingModel), not the LiteRT-LM Engine/Conversation plugin.
-    // `seq256` (not the longer seq512/seq1024/seq2048 variants) because
-    // search queries and meeting-chunk text are short. The generic
-    // (no-chip-suffix) build, not a chip-specific one, for one consistent
-    // download regardless of device silicon.
+    // EmbeddingGemma 2 text is the preferred search package. Google publishes
+    // it as a generic .litertlm (tokenizer included). Chip-specific files in
+    // the same repo are not cataloged. The older 300M .tflite stays so an
+    // already downloaded copy still embeds through the RAG SDK.
+    const OfflineModelInfo(
+      id: 'embeddinggemma-2-text-270m-litertlm',
+      name: 'EmbeddingGemma 2 Text 270M',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 164626432,
+      downloadUrl:
+          'https://huggingface.co/litert-community/embeddinggemma-2-text-270m-litert-lm/resolve/main/embeddinggemma-2-text-270m.litertlm',
+      quantization: ModelQuantization.unknown,
+      parameterCount: 270000000,
+      contextLength: 8192,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'Preferred on-device text embeddings. Google\'s generic '
+          'EmbeddingGemma 2 LiteRT-LM package, not a chip-specific build. '
+          'Search uses a 512-token input. No separate tokenizer download.',
+      author: 'Google',
+      license: 'Apache-2.0',
+      huggingFaceId: 'litert-community/embeddinggemma-2-text-270m-litert-lm',
+      modalities: [ModelModality.text],
+      capabilities: [ModelCapability.embeddings],
+      backendPreference: ModelBackendPreference.cpu,
+      tags: ['embeddings', 'semantic-search', 'litert-lm', 'embeddinggemma-2'],
+      minMemoryBytes: 400000000,
+      recommendedMemoryBytes: 600000000,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      task: ModelTask.embedding,
+    ),
+    // EmbeddingGemma 300M: raw .tflite + a separate sentencepiece tokenizer,
+    // loaded by the AI Edge RAG SDK. Kept for devices that already downloaded
+    // it. `seq256` matches short search queries and meeting chunks. The
+    // generic (no-chip-suffix) build, not a chip-specific one.
     const OfflineModelInfo(
       id: 'embeddinggemma-300m-embed',
       name: 'EmbeddingGemma-300M',
