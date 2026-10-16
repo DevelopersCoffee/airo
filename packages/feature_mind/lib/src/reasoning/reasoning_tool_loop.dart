@@ -27,6 +27,55 @@ List<String> reasoningLookupToolNames(AgentConnectorRegistry registry) {
   ];
 }
 
+const List<LiteRtLmToolSpec> kLiteRtLookupToolSpecs = [
+  LiteRtLmToolSpec(
+    name: 'get_current_date_time',
+    description: 'Current local date, time, weekday, and timezone.',
+    parameters: {'type': 'object', 'properties': <String, Object?>{}},
+  ),
+  LiteRtLmToolSpec(
+    name: 'read_calendar_events',
+    description: 'Events on a local calendar day. date is YYYY-MM-DD.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'date': {'type': 'string', 'description': 'Start date, YYYY-MM-DD.'},
+        'end_date': {
+          'type': 'string',
+          'description': 'Optional inclusive end date, YYYY-MM-DD.',
+        },
+      },
+      'required': ['date'],
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'calendar_permission_status',
+    description: 'Whether calendar read access is granted. No arguments.',
+    parameters: {'type': 'object', 'properties': <String, Object?>{}},
+  ),
+  LiteRtLmToolSpec(
+    name: 'query_lifetrack_status',
+    description: 'Look up a local LifeTrack goal from a short query.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'query': {
+          'type': 'string',
+          'description': 'What the user wants to know about a LifeTrack.',
+        },
+      },
+      'required': ['query'],
+    },
+  ),
+];
+
+List<LiteRtLmToolSpec> liteRtLookupToolSpecs(AgentConnectorRegistry registry) {
+  return [
+    for (final spec in kLiteRtLookupToolSpecs)
+      if (registry.getConnector(spec.name) != null) spec,
+  ];
+}
+
 Map<String, dynamic> decodeToolArguments(String raw) {
   if (raw.trim().isEmpty) return const {};
   try {
@@ -39,6 +88,18 @@ Map<String, dynamic> decodeToolArguments(String raw) {
     return const {};
   }
   return const {};
+}
+
+Future<String> executeLiteRtLookupTool({
+  required AgentConnectorRegistry registry,
+  required String name,
+  required Map<String, Object?> arguments,
+}) {
+  return executeReasoningTool(
+    registry: registry,
+    name: name,
+    argumentsJson: jsonEncode(arguments),
+  );
 }
 
 Future<String> executeReasoningTool({

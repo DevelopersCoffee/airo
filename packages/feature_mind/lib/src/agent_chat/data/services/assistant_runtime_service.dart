@@ -850,6 +850,8 @@ class AssistantRuntimeService {
     int? topK,
     bool preferGpu = true,
     GenerationConstraint? constraint,
+    List<LiteRtLmToolSpec> liteRtTools = const [],
+    LiteRtToolExecutor? executeLiteRtTool,
   }) async* {
     await _ensureCheckpointsHydrated();
     lastGenerationStats = null;
@@ -867,6 +869,8 @@ class AssistantRuntimeService {
             package: package,
             prompt: constrainedPrompt,
             systemPrompt: systemPrompt,
+            tools: liteRtTools,
+            executeTool: executeLiteRtTool,
           );
           return;
         }
@@ -943,6 +947,8 @@ class AssistantRuntimeService {
     required OfflineModelInfo package,
     required String prompt,
     String? systemPrompt,
+    List<LiteRtLmToolSpec> tools = const [],
+    LiteRtToolExecutor? executeTool,
   }) async* {
     _emitDebugTrace(
       AssistantRuntimeDebugTrace(
@@ -954,6 +960,53 @@ class AssistantRuntimeService {
         detail: 'generateTextStream',
       ),
     );
+    if (package.supportsFunctionCalling &&
+        tools.isNotEmpty &&
+        executeTool != null) {
+      final text = await completeLiteRtWithTools(
+        prompt: prompt,
+        tools: tools,
+        execute: executeTool,
+        generate:
+            ({
+              required String prompt,
+              required List<LiteRtLmToolSpec> tools,
+              required List<LiteRtLmToolResponse> toolResponses,
+            }) async {
+              final reply = await _liteRtLm.generateReplyForModel(
+                package,
+                prompt,
+                systemPrompt: systemPrompt,
+                tools: tools,
+                toolResponses: toolResponses,
+              );
+              return reply ?? const LiteRtLmReply(text: '');
+            },
+      );
+      if (text.trim().isEmpty) {
+        _noteReliability(
+          FailureClassifier.recordChatCompletion(
+            executionId: runtimeId,
+            text: '',
+            engineOk: true,
+          ),
+        );
+        throw AssistantRuntimeUnavailableException(
+          runtimeId,
+          ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+        );
+      }
+      _emitResponseTrace(runtimeId, text, detail: 'tool-round');
+      _noteReliability(
+        FailureClassifier.recordChatCompletion(
+          executionId: runtimeId,
+          text: text,
+          engineOk: true,
+        ),
+      );
+      yield text;
+      return;
+    }
     var latest = '';
     await for (final chunk in _liteRtLm.generateTextStreamForModel(
       package,

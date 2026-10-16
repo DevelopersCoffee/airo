@@ -96,6 +96,40 @@ class LiteRtLmService {
     return _nativeAdapter!.warmupModel(model);
   }
 
+  Future<LiteRtLmReply?> generateReplyForModel(
+    OfflineModelInfo model,
+    String prompt, {
+    String? systemPrompt,
+    String? imagePath,
+    List<LiteRtLmToolSpec> tools = const [],
+    List<LiteRtLmToolResponse> toolResponses = const [],
+  }) {
+    final request = RuntimeGenerationRequest(
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      imagePath: imagePath,
+      requiresVision: imagePath != null && imagePath.trim().isNotEmpty,
+      requiresToolCalling: tools.isNotEmpty,
+    );
+    if (_isWeb) {
+      if (tools.isNotEmpty || toolResponses.isNotEmpty) {
+        throw UnsupportedError(
+          'LiteRT-LM tool calling is not available in the browser runtime.',
+        );
+      }
+      return _webAdapter!.generateText(request, model: model).then((text) {
+        if (text == null) return null;
+        return LiteRtLmReply(text: text);
+      });
+    }
+    return _nativeAdapter!.generateReply(
+      request,
+      model: model,
+      tools: tools,
+      toolResponses: toolResponses,
+    );
+  }
+
   Future<String?> generateTextForModel(
     OfflineModelInfo model,
     String prompt, {

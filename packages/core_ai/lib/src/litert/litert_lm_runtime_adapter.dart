@@ -79,6 +79,29 @@ abstract class LiteRtLmClient {
     bool reuseConversation = true,
   });
 
+  /// Native builds return tool calls alongside text. Fakes that only implement
+  /// [generate] keep the previous text-only behavior.
+  Future<LiteRtLmReply> generateReply({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+    List<LiteRtLmToolSpec> tools = const [],
+    List<LiteRtLmToolResponse> toolResponses = const [],
+  }) async {
+    final text = await generate(
+      prompt: prompt,
+      backend: backend,
+      maxTokens: maxTokens,
+      systemPrompt: systemPrompt,
+      imagePath: imagePath,
+      reuseConversation: reuseConversation,
+    );
+    return LiteRtLmReply(text: text);
+  }
+
   Stream<String> generateStream({
     required String prompt,
     required LiteRtLmBackend backend,
@@ -89,6 +112,66 @@ abstract class LiteRtLmClient {
   });
 
   Future<LiteRtLmModelFacts?> describeModel({String? modelPath});
+}
+
+class LiteRtLmToolSpec {
+  const LiteRtLmToolSpec({
+    required this.name,
+    required this.description,
+    this.parameters = const {
+      'type': 'object',
+      'properties': <String, Object?>{},
+    },
+  });
+
+  final String name;
+  final String description;
+  final Map<String, Object?> parameters;
+}
+
+class LiteRtLmToolCall {
+  const LiteRtLmToolCall({required this.name, this.arguments = const {}});
+
+  final String name;
+  final Map<String, Object?> arguments;
+}
+
+class LiteRtLmToolResponse {
+  const LiteRtLmToolResponse({required this.name, required this.response});
+
+  final String name;
+  final String response;
+}
+
+class LiteRtLmReply {
+  const LiteRtLmReply({required this.text, this.toolCalls = const []});
+
+  final String text;
+  final List<LiteRtLmToolCall> toolCalls;
+
+  static LiteRtLmReply fromChannel(Object? raw) {
+    if (raw is String) return LiteRtLmReply(text: raw);
+    if (raw is! Map) return const LiteRtLmReply(text: '');
+    final calls = <LiteRtLmToolCall>[];
+    final rawCalls = raw['toolCalls'];
+    if (rawCalls is List) {
+      for (final item in rawCalls) {
+        if (item is! Map) continue;
+        final name = item['name']?.toString().trim() ?? '';
+        if (name.isEmpty) continue;
+        final arguments = item['arguments'];
+        calls.add(
+          LiteRtLmToolCall(
+            name: name,
+            arguments: arguments is Map
+                ? arguments.map((key, value) => MapEntry(key.toString(), value))
+                : const {},
+          ),
+        );
+      }
+    }
+    return LiteRtLmReply(text: raw['text']?.toString() ?? '', toolCalls: calls);
+  }
 }
 
 class LiteRtLmModelFacts {
@@ -293,9 +376,31 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
     RuntimeGenerationRequest request, {
     OfflineModelInfo? model,
   }) async {
-    if (request.prompt.trim().isEmpty) return null;
+    final reply = await generateReply(request, model: model);
+    return reply?.text;
+  }
+
+  Future<LiteRtLmReply?> generateReply(
+    RuntimeGenerationRequest request, {
+    OfflineModelInfo? model,
+    List<LiteRtLmToolSpec> tools = const [],
+    List<LiteRtLmToolResponse> toolResponses = const [],
+  }) async {
+    if (request.prompt.trim().isEmpty && toolResponses.isEmpty) return null;
+    final toolRequest = tools.isEmpty
+        ? request
+        : RuntimeGenerationRequest(
+            prompt: request.prompt,
+            systemPrompt: request.systemPrompt,
+            imagePath: request.imagePath,
+            reuseConversation: request.reuseConversation,
+            requiresVision: request.requiresVision,
+            requiresAudio: request.requiresAudio,
+            requiresToolCalling: true,
+            localOnly: request.localOnly,
+          );
     if (model != null) {
-      _validateCapabilityRequest(model, request);
+      _validateCapabilityRequest(model, toolRequest);
       await prepareModel(model: model);
       final hydratedModel = await hydrateDownloadedModel(model);
       final modelPath = hydratedModel.filePath?.trim();
@@ -303,13 +408,15 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
         return null;
       }
 
-      return _client.generate(
+      return _client.generateReply(
         prompt: request.prompt,
         systemPrompt: request.systemPrompt,
         backend: _backendFor(hydratedModel.backendPreference),
         maxTokens: runtimeConfig.maxTokens,
         imagePath: request.imagePath,
         reuseConversation: request.reuseConversation,
+        tools: tools,
+        toolResponses: toolResponses,
       );
     }
 
@@ -339,13 +446,15 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
       estimatedMemoryBytes: 1024 * 1024 * 1024,
     );
 
-    return _client.generate(
+    return _client.generateReply(
       prompt: request.prompt,
       systemPrompt: request.systemPrompt,
       backend: runtimeConfig.backend,
       maxTokens: runtimeConfig.maxTokens,
       imagePath: request.imagePath,
       reuseConversation: request.reuseConversation,
+      tools: tools,
+      toolResponses: toolResponses,
     );
   }
 
@@ -644,7 +753,7 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
   }
 }
 
-class MethodChannelLiteRtLmClient implements LiteRtLmClient {
+class MethodChannelLiteRtLmClient extends LiteRtLmClient {
   MethodChannelLiteRtLmClient({
     required this._config,
     this._channel = const MethodChannel('com.airo.litert_lm'),
@@ -696,17 +805,51 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
     String? imagePath,
     bool reuseConversation = true,
   }) async {
+    final reply = await generateReply(
+      prompt: prompt,
+      backend: backend,
+      maxTokens: maxTokens,
+      systemPrompt: systemPrompt,
+      imagePath: imagePath,
+      reuseConversation: reuseConversation,
+    );
+    return reply.text;
+  }
+
+  @override
+  Future<LiteRtLmReply> generateReply({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+    List<LiteRtLmToolSpec> tools = const [],
+    List<LiteRtLmToolResponse> toolResponses = const [],
+  }) async {
     final response = await _channel
-        .invokeMethod<String>('generateContent', {
+        .invokeMethod<Object?>('generateContent', {
           'prompt': prompt,
           'systemPrompt': systemPrompt,
           'backend': backend.name,
           'maxTokens': maxTokens,
           'imagePath': imagePath,
           'reuseConversation': reuseConversation,
+          'tools': [
+            for (final tool in tools)
+              {
+                'name': tool.name,
+                'description': tool.description,
+                'parameters': tool.parameters,
+              },
+          ],
+          'toolResponses': [
+            for (final response in toolResponses)
+              {'name': response.name, 'response': response.response},
+          ],
         })
         .timeout(_config.operationTimeout);
-    return response ?? '';
+    return LiteRtLmReply.fromChannel(response);
   }
 
   @override

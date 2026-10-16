@@ -37,6 +37,7 @@ export 'src/runtime/gemini_nano_service.dart';
 export 'src/runtime/litert_lm_service.dart';
 export 'src/runtime/model_learn_more_launcher.dart';
 export 'src/litert/litert_lm_runtime_adapter.dart';
+export 'src/litert/litert_lm_tool_loop.dart';
 export 'src/embeddings/embedding_client.dart';
 export 'src/embeddings/embedding_service.dart';
 export 'src/litert/litert_lm_execution_adapter.dart';

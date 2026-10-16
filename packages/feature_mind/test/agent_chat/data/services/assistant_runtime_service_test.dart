@@ -1294,6 +1294,79 @@ void main() {
       expect(result.status, AssistantRuntimePreparationStatus.cancelled);
     });
 
+    test('runs LiteRT lookup tools before the final reply', () async {
+      const modelId = 'mobile-actions-270m-litertlm';
+      final package = OfflineModelInfo(
+        id: modelId,
+        name: 'Mobile Actions',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        filePath: '/models/mobile-actions.litertlm',
+        provider: AIProvider.gemma,
+        supportsFunctionCalling: true,
+        tags: const ['litert-lm'],
+      );
+      final service = AssistantRuntimeService(
+        liteRtLm: LiteRtLmService(
+          client: _ToolRoundLiteRtClient(),
+          downloadService: _FixedPathDownloadService({
+            modelId: '/models/mobile-actions.litertlm',
+          }),
+        ),
+        loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+          task: AssistantTask.chat,
+          deviceLabel: 'Pixel 9',
+          platformLabel: 'ANDROID',
+          candidates: [
+            AssistantModelCandidate(
+              id: assistantModelIdForOfflineModel(modelId),
+              name: 'Mobile Actions',
+              runtime: 'LiteRT-LM',
+              description: 'Local package',
+              bestFor: const [AssistantTask.chat],
+              tags: const ['Local'],
+              privacyLabel: 'Prompt stays on device',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+          ],
+          recommended: const AssistantModelCandidate(
+            id: geminiCloudAssistantModelId,
+            name: 'Gemini Cloud',
+            runtime: 'Cloud',
+            description: 'Cloud runtime',
+            bestFor: [AssistantTask.chat],
+            tags: ['Cloud'],
+            privacyLabel: 'Sends prompt to API',
+            sizeLabel: 'No local download',
+            available: true,
+            actionLabel: 'Start',
+            local: false,
+          ),
+          defaultPackages: {AssistantTask.chat: package},
+        ),
+      );
+
+      final chunks = await service
+          .generateTextStream(
+            selectedModelId: assistantModelIdForOfflineModel(modelId),
+            prompt: 'what time is it',
+            liteRtTools: const [
+              LiteRtLmToolSpec(
+                name: 'get_current_date_time',
+                description: 'Current local time.',
+              ),
+            ],
+            executeLiteRtTool: (name, arguments) async => 'Friday 16:00',
+          )
+          .toList();
+
+      expect(chunks, ['It is Friday 16:00.']);
+    });
+
     test('streams LiteRT package chunks and ignores empty tokens', () async {
       const modelId = 'gemma-4-e2b-it-litertlm';
       final package = OfflineModelInfo(
@@ -2086,7 +2159,71 @@ class _FakeLlamaGgufService extends LlamaGgufService {
   bool? loadedPreferGpu;
 }
 
-class _ChunkLiteRtClient implements LiteRtLmClient {
+class _ToolRoundLiteRtClient extends LiteRtLmClient {
+  @override
+  Future<bool> activeModelExists({String? modelPath}) async => true;
+
+  @override
+  Future<String> generate({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  }) async => 'unused';
+
+  @override
+  Future<LiteRtLmReply> generateReply({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+    List<LiteRtLmToolSpec> tools = const [],
+    List<LiteRtLmToolResponse> toolResponses = const [],
+  }) async {
+    if (toolResponses.isEmpty) {
+      return const LiteRtLmReply(
+        text: '',
+        toolCalls: [LiteRtLmToolCall(name: 'get_current_date_time')],
+      );
+    }
+    return LiteRtLmReply(text: 'It is ${toolResponses.single.response}.');
+  }
+
+  @override
+  Stream<String> generateStream({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  }) => const Stream.empty();
+
+  @override
+  Future<LiteRtLmModelFacts?> describeModel({String? modelPath}) async => null;
+
+  @override
+  Future<void> initialize({
+    String? huggingFaceToken,
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+    bool vision = false,
+  }) async {}
+
+  @override
+  Future<String?> installModel({
+    required String url,
+    required LiteRtLmModelKind modelKind,
+    String? huggingFaceToken,
+  }) async => null;
+}
+
+class _ChunkLiteRtClient extends LiteRtLmClient {
   _ChunkLiteRtClient(this.chunks);
 
   final List<String> chunks;
@@ -2161,7 +2298,7 @@ class _FixedPathDownloadService extends ModelDownloadService {
   }
 }
 
-class _UrlOnlyLiteRtClient implements LiteRtLmClient {
+class _UrlOnlyLiteRtClient extends LiteRtLmClient {
   @override
   Future<bool> activeModelExists({String? modelPath}) async => true;
 
