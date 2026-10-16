@@ -12,7 +12,10 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
+import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.ModelInfo
+import com.google.ai.edge.litertlm.OpenApiTool
+import com.google.ai.edge.litertlm.tool
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
@@ -26,6 +29,8 @@ import java.io.FileOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Flutter MethodChannel bridge for LiteRT-LM.
@@ -47,6 +52,7 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
     private var conversation: Conversation? = null
     private var conversationSystemPrompt: String? = null
     private var conversationMaxTokens: Int? = null
+    private var conversationToolKey: String? = null
     private var initializedModelPath: String? = null
     private var visionEnabled: Boolean = false
     private var installedModelPath: String? = null
@@ -153,8 +159,14 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
     private fun generateContent(call: MethodCall, result: MethodChannel.Result) {
         coroutineScope.launch {
             try {
+                val toolResponses = parseToolResponses(call)
+                val tools = parseTools(call)
                 val prompt = call.argument<String>("prompt")
-                    ?: throw IllegalArgumentException("prompt is required")
+                    ?: if (toolResponses.isEmpty()) {
+                        throw IllegalArgumentException("prompt is required")
+                    } else {
+                        ""
+                    }
                 val systemPrompt = call.argument<String>("systemPrompt")
                 val imagePath = call.argument<String>("imagePath")
                 val maxTokens = call.argument<Int>("maxTokens") ?: 2048
@@ -167,17 +179,15 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
                     if (!reuseConversation) {
                         // Warmup must not leave a draft turn in the session
                         // cache, and the engine keeps one live conversation.
-                        conversation?.close()
-                        conversation = null
-                        conversationSystemPrompt = null
-                        conversationMaxTokens = null
+                        clearConversation()
                         val oneShot = createConversation(
                             activeEngine,
                             systemPrompt,
                             maxTokens.takeIf { it > 0 },
+                            tools,
                         )
                         try {
-                            sendPrompt(oneShot, prompt, imagePath)
+                            sendTurn(oneShot, prompt, imagePath, toolResponses)
                         } finally {
                             oneShot.close()
                         }
@@ -186,8 +196,9 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
                             activeEngine,
                             systemPrompt,
                             maxTokens,
+                            tools,
                         )
-                        sendPrompt(activeConversation, prompt, imagePath)
+                        sendTurn(activeConversation, prompt, imagePath, toolResponses)
                     }
                 }
 
@@ -213,17 +224,14 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
                     val activeEngine = engine
                         ?: throw IllegalStateException("LiteRT-LM engine is not initialized")
                     val activeConversation = if (!reuseConversation) {
-                        conversation?.close()
-                        conversation = null
-                        conversationSystemPrompt = null
-                        conversationMaxTokens = null
+                        clearConversation()
                         createConversation(
                             activeEngine,
                             systemPrompt?.takeIf { it.isNotBlank() },
                             maxTokens.takeIf { it > 0 },
                         )
                     } else {
-                        conversationFor(activeEngine, systemPrompt, maxTokens)
+                        conversationFor(activeEngine, systemPrompt, maxTokens, emptyList())
                     }
                     try {
                         streamConversation(activeConversation, prompt, imagePath)
@@ -310,21 +318,25 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
         engine: Engine,
         systemPrompt: String?,
         maxTokens: Int,
+        tools: List<OpenApiTool>,
     ): Conversation {
         val normalizedPrompt = systemPrompt?.takeIf { it.isNotBlank() }
         val tokenBudget = maxTokens.takeIf { it > 0 }
+        val toolKey = toolKey(tools)
         val existing = conversation
         if (existing != null &&
             conversationSystemPrompt == normalizedPrompt &&
-            conversationMaxTokens == tokenBudget
+            conversationMaxTokens == tokenBudget &&
+            conversationToolKey == toolKey
         ) {
             return existing
         }
         existing?.close()
-        val created = createConversation(engine, normalizedPrompt, tokenBudget)
+        val created = createConversation(engine, normalizedPrompt, tokenBudget, tools)
         conversation = created
         conversationSystemPrompt = normalizedPrompt
         conversationMaxTokens = tokenBudget
+        conversationToolKey = toolKey
         return created
     }
 
@@ -332,30 +344,140 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
         engine: Engine,
         systemPrompt: String?,
         maxTokens: Int?,
+        tools: List<OpenApiTool> = emptyList(),
     ): Conversation {
-        if (systemPrompt == null && maxTokens == null) {
+        if (systemPrompt == null && maxTokens == null && tools.isEmpty()) {
             return engine.createConversation()
         }
-        val config = when {
-            systemPrompt == null -> ConversationConfig(maxOutputToken = maxTokens)
-            maxTokens == null -> ConversationConfig(
-                systemInstruction = Contents.of(systemPrompt),
-            )
-            else -> ConversationConfig(
-                systemInstruction = Contents.of(systemPrompt),
-                maxOutputToken = maxTokens,
-            )
+        if (tools.isEmpty()) {
+            val config = when {
+                systemPrompt == null -> ConversationConfig(maxOutputToken = maxTokens)
+                maxTokens == null -> ConversationConfig(
+                    systemInstruction = Contents.of(systemPrompt),
+                )
+                else -> ConversationConfig(
+                    systemInstruction = Contents.of(systemPrompt),
+                    maxOutputToken = maxTokens,
+                )
+            }
+            return engine.createConversation(config)
         }
-        return engine.createConversation(config)
+        // The app executes lookup tools. Leaving automatic calling on would
+        // run OpenApiTool.execute inside the native runtime instead.
+        return engine.createConversation(
+            ConversationConfig(
+                systemInstruction = systemPrompt?.let { Contents.of(it) },
+                tools = tools.map { tool(it) },
+                automaticToolCalling = false,
+                maxOutputToken = maxTokens?.takeIf { it > 0 },
+            ),
+        )
     }
 
-    private fun sendPrompt(
+    private fun sendTurn(
         activeConversation: Conversation,
         prompt: String,
         imagePath: String?,
-    ): String {
-        val message = activeConversation.sendMessage(promptContents(prompt, imagePath))
-        return activeConversation.renderMessageIntoString(message)
+        toolResponses: List<Pair<String, String>>,
+    ): HashMap<String, Any?> {
+        val message = if (toolResponses.isNotEmpty()) {
+            val contents = toolResponses.map { (name, response) ->
+                Content.ToolResponse(name, response)
+            }
+            activeConversation.sendMessage(Message.tool(Contents.of(contents)))
+        } else {
+            activeConversation.sendMessage(promptContents(prompt, imagePath))
+        }
+        val calls = ArrayList<HashMap<String, Any?>>()
+        for (call in message.toolCalls) {
+            calls.add(
+                hashMapOf(
+                    "name" to call.name,
+                    "arguments" to codecValue(call.arguments),
+                ),
+            )
+        }
+        return hashMapOf(
+            "text" to activeConversation.renderMessageIntoString(message),
+            "toolCalls" to calls,
+        )
+    }
+
+    private fun parseTools(call: MethodCall): List<OpenApiTool> {
+        val raw = call.argument<List<*>>("tools") ?: return emptyList()
+        val tools = ArrayList<OpenApiTool>()
+        for (item in raw) {
+            val map = item as? Map<*, *> ?: continue
+            val name = map["name"]?.toString()?.trim().orEmpty()
+            if (name.isEmpty()) continue
+            val spec = JSONObject()
+            spec.put("name", name)
+            spec.put("description", map["description"]?.toString().orEmpty())
+            spec.put("parameters", jsonValue(map["parameters"]) ?: JSONObject())
+            tools.add(DescribedOpenApiTool(spec.toString()))
+        }
+        return tools
+    }
+
+    private fun parseToolResponses(call: MethodCall): List<Pair<String, String>> {
+        val raw = call.argument<List<*>>("toolResponses") ?: return emptyList()
+        val responses = ArrayList<Pair<String, String>>()
+        for (item in raw) {
+            val map = item as? Map<*, *> ?: continue
+            val name = map["name"]?.toString()?.trim().orEmpty()
+            if (name.isEmpty()) continue
+            responses.add(name to (map["response"]?.toString() ?: ""))
+        }
+        return responses
+    }
+
+    private fun toolKey(tools: List<OpenApiTool>): String {
+        return tools.joinToString("\n") { it.getToolDescriptionJsonString() }
+    }
+
+    private fun jsonValue(value: Any?): Any? {
+        return when (value) {
+            null -> null
+            is Map<*, *> -> JSONObject().apply {
+                for ((key, nested) in value) {
+                    put(key.toString(), jsonValue(nested))
+                }
+            }
+            is List<*> -> JSONArray().apply {
+                for (nested in value) {
+                    put(jsonValue(nested))
+                }
+            }
+            is String, is Number, is Boolean -> value
+            else -> value.toString()
+        }
+    }
+
+    private fun codecValue(value: Any?): Any? {
+        return when (value) {
+            null, is String, is Boolean, is Int, is Long, is Double -> value
+            is Float -> value.toDouble()
+            is Number -> value.toDouble()
+            is Map<*, *> -> HashMap<String, Any?>().apply {
+                for ((key, nested) in value) {
+                    put(key.toString(), codecValue(nested))
+                }
+            }
+            is List<*> -> ArrayList<Any?>().apply {
+                for (nested in value) {
+                    add(codecValue(nested))
+                }
+            }
+            else -> value.toString()
+        }
+    }
+
+    private fun clearConversation() {
+        conversation?.close()
+        conversation = null
+        conversationSystemPrompt = null
+        conversationMaxTokens = null
+        conversationToolKey = null
     }
 
     private fun promptContents(prompt: String, imagePath: String?): Contents {
@@ -455,14 +577,21 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
     }
 
     private fun closeActiveEngine() {
-        conversation?.close()
-        conversation = null
-        conversationSystemPrompt = null
-        conversationMaxTokens = null
+        clearConversation()
         engine?.close()
         engine = null
         initializedModelPath = null
         visionEnabled = false
+    }
+}
+
+private class DescribedOpenApiTool(
+    private val descriptionJson: String,
+) : OpenApiTool {
+    override fun getToolDescriptionJsonString(): String = descriptionJson
+
+    override fun execute(args: String): String {
+        return """{"error":"tool_execution_deferred"}"""
     }
 }
 

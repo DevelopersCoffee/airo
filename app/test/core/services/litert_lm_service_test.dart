@@ -145,7 +145,7 @@ void main() {
   });
 }
 
-class _FakeLiteRtLmClient implements LiteRtLmClient {
+class _FakeLiteRtLmClient extends LiteRtLmClient {
   _FakeLiteRtLmClient({required this.hasActiveModel});
 
   bool hasActiveModel;

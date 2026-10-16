@@ -2629,6 +2629,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       }
       final modelConfig = ref.read(chatModelConfigProvider);
+      final liteRtPackage = _selectedLiteRtPackage(selectedModelId);
+      final liteRtTools =
+          liteRtPackage != null && liteRtPackage.supportsFunctionCalling
+          ? liteRtLookupToolSpecs(_connectorRegistry)
+          : const <LiteRtLmToolSpec>[];
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: modelPrompt,
@@ -2639,6 +2644,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         topK: modelConfig.topK,
         preferGpu: modelConfig.preferGpu,
         constraint: generationConstraint,
+        liteRtTools: liteRtTools,
+        executeLiteRtTool: liteRtTools.isEmpty
+            ? null
+            : (name, arguments) => executeLiteRtLookupTool(
+                registry: _connectorRegistry,
+                name: name,
+                arguments: arguments,
+              ),
       )) {
         timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
         latestChunk = chunk;
@@ -2764,6 +2777,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       tier: widget.reasoningDeviceTier ?? _reasoningTier,
       signals: _reasoningSignals,
     );
+  }
+
+  OfflineModelInfo? _selectedLiteRtPackage(String selectedModelId) {
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    final package = library?.candidateById(selectedModelId)?.package;
+    if (package == null) return null;
+    if (!AssistantModelLibraryState.isLiteRtPackage(package)) return null;
+    return package;
   }
 
   bool _shouldUseReasoning(String selectedModelId) {

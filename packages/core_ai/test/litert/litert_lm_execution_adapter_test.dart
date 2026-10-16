@@ -62,7 +62,7 @@ ExecutionPlan _plan({RuntimeId runtime = RuntimeId.liteRt}) => ExecutionPlan(
   batterySaver: false,
 );
 
-class _FakeClient implements LiteRtLmClient {
+class _FakeClient extends LiteRtLmClient {
   String? initializedPath;
   LiteRtLmBackend? initializedBackend;
   int? initializedMaxTokens;
