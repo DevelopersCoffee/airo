@@ -208,6 +208,8 @@ void main() {
       expect(ModelQuantization.q4.memoryMultiplier, 0.25);
       expect(ModelQuantization.q8.memoryMultiplier, 0.5);
       expect(ModelQuantization.fp16.memoryMultiplier, 1.0);
+      expect(ModelQuantization.mixed.displayName, 'Mixed 2/4/8');
+      expect(ModelQuantization.mixed.memoryMultiplier, 0.25);
     });
   });
 

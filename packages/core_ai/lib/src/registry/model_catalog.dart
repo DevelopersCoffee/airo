@@ -34,14 +34,17 @@ class ModelCatalog {
       fileSizeBytes: 2588147712,
       downloadUrl:
           'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
-      quantization: ModelQuantization.q4,
+      quantization: ModelQuantization.mixed,
       parameterCount: 2000000000,
       contextLength: 32000,
       supportsVision: true,
       credibility: ModelCredibility.official,
       provider: AIProvider.gemma,
       description:
-          'Gallery Android allowlist package for chat, Prompt Lab, Agent Chat, image, and audio tasks.',
+          'Official Google mixed 2/4/8-bit LiteRT-LM package for chat, '
+          'Prompt Lab, Agent Chat, image, and audio. Android loads '
+          'gemma-4-E2B-it.litertlm; web loads the quantized '
+          'gemma-4-E2B-it-web.task from the same repo.',
       author: 'Google',
       license: 'Apache-2.0',
       huggingFaceId: 'litert-community/gemma-4-E2B-it-litert-lm',
@@ -68,7 +71,7 @@ class ModelCatalog {
       recommendedMemoryBytes: 4500000000,
       supportsWebRuntime: true,
       webAssetUrl:
-          'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e2b-it/float16/latest/gemma-4-e2b-it.task',
+          'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task',
       runtime: InferenceRuntime.litertLm,
       platformSupport: PlatformSupport.androidOnly(),
       task: ModelTask.textGeneration,
@@ -77,17 +80,19 @@ class ModelCatalog {
       id: 'gemma-4-e4b-it-litertlm',
       name: 'Gemma-4-E4B-it',
       family: ModelFamily.gemma,
-      fileSizeBytes: 3654467584,
+      fileSizeBytes: 3659530240,
       downloadUrl:
           'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm',
-      quantization: ModelQuantization.q4,
+      quantization: ModelQuantization.mixed,
       parameterCount: 4000000000,
       contextLength: 32000,
       supportsVision: true,
       credibility: ModelCredibility.official,
       provider: AIProvider.gemma,
       description:
-          'Higher-capability Gallery Android allowlist package for stronger devices.',
+          'Official Google mixed 2/4/8-bit LiteRT-LM package for stronger '
+          'devices. Android loads gemma-4-E4B-it.litertlm; web loads the '
+          'quantized gemma-4-E4B-it-web.task from the same repo.',
       author: 'Google',
       license: 'Apache-2.0',
       huggingFaceId: 'litert-community/gemma-4-E4B-it-litert-lm',
@@ -114,7 +119,7 @@ class ModelCatalog {
       recommendedMemoryBytes: 7000000000,
       supportsWebRuntime: true,
       webAssetUrl:
-          'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e4b-it/float16/latest/gemma-4-e4b-it.task',
+          'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it-web.task',
       runtime: InferenceRuntime.litertLm,
       platformSupport: PlatformSupport.androidOnly(),
       task: ModelTask.textGeneration,

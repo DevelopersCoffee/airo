@@ -67,6 +67,7 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
     String? modelPath,
     LiteRtLmBackend? backend,
     int? maxTokens,
+    bool vision = false,
   }) async {
     initializeCalls += 1;
     initializeModelPaths.add(modelPath);
@@ -88,6 +89,8 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
     required LiteRtLmBackend backend,
     required int maxTokens,
     String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
   }) async {
     generatedPrompts.add(prompt);
     return '';

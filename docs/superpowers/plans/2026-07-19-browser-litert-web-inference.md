@@ -216,7 +216,7 @@ In `packages/core_ai/lib/src/registry/model_catalog.dart`, add to the `gemma-4-e
       recommendedMemoryBytes: 4500000000,
       supportsWebRuntime: true,
       webAssetUrl:
-          'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e2b-it/float16/latest/gemma-4-e2b-it.task',
+          'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task',
     ),
 ```
 
@@ -227,7 +227,7 @@ And to the `gemma-4-e4b-it-litertlm` entry (starting at line 54):
       recommendedMemoryBytes: 7000000000,
       supportsWebRuntime: true,
       webAssetUrl:
-          'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e4b-it/float16/latest/gemma-4-e4b-it.task',
+          'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it-web.task',
     ),
 ```
 
@@ -338,7 +338,7 @@ const _webCapableModel = OfflineModelInfo(
   fileSizeBytes: 2583085056,
   provider: AIProvider.gemma,
   supportsWebRuntime: true,
-  webAssetUrl: 'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e2b-it/float16/latest/gemma-4-e2b-it.task',
+  webAssetUrl: 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task',
 );
 
 const _webIncapableModel = OfflineModelInfo(

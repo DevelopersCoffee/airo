@@ -59,6 +59,7 @@ abstract class LiteRtLmClient {
     String? modelPath,
     LiteRtLmBackend? backend,
     int? maxTokens,
+    bool vision = false,
   });
 
   Future<bool> activeModelExists({String? modelPath});
@@ -74,6 +75,8 @@ abstract class LiteRtLmClient {
     required LiteRtLmBackend backend,
     required int maxTokens,
     String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
   });
 }
 
@@ -97,6 +100,7 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
   final ActiveModelService _activeModelService;
   final Set<RuntimeBackend> _supportedBackends;
   String? _initializedModelPath;
+  bool _initializedVision = false;
 
   @override
   LocalRuntimeKind get runtimeKind => LocalRuntimeKind.liteRtLm;
@@ -120,7 +124,9 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
       supportsAudio: model.supportsAudio,
       supportsToolCalling: model.supportsFunctionCalling,
       supportsSystemPrompt: true,
-      supportsSpeculativeDecoding: false,
+      supportsSpeculativeDecoding: _supportedBackends.contains(
+        RuntimeBackend.gpu,
+      ),
     );
   }
 
@@ -147,6 +153,7 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
           ? runtimeConfig.modelUrl.trim()
           : resolvedModel?.downloadUrl,
       modelKind: runtimeConfig.modelKind,
+      vision: resolvedModel?.supportsVision ?? false,
     );
     if (!initialized) {
       throw StateError('LiteRT-LM runtime could not initialize.');
@@ -217,9 +224,12 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
         systemPrompt: request.systemPrompt,
         backend: _backendFor(hydratedModel.backendPreference),
         maxTokens: runtimeConfig.maxTokens,
+        imagePath: request.imagePath,
+        reuseConversation: request.reuseConversation,
       );
     }
 
+    final imagePath = request.imagePath?.trim();
     final initialized = await _ensureInitializedForRequest(
       modelPath: runtimeConfig.hasModelPath
           ? runtimeConfig.modelPath.trim()
@@ -230,6 +240,7 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
           ? runtimeConfig.modelUrl.trim()
           : null,
       modelKind: runtimeConfig.modelKind,
+      vision: imagePath != null && imagePath.isNotEmpty,
     );
     if (!initialized) {
       return null;
@@ -249,6 +260,8 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
       systemPrompt: request.systemPrompt,
       backend: runtimeConfig.backend,
       maxTokens: runtimeConfig.maxTokens,
+      imagePath: request.imagePath,
+      reuseConversation: request.reuseConversation,
     );
   }
 
@@ -331,6 +344,7 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
         prompt: ' ',
         backend: runtimeConfig.backend,
         maxTokens: 1,
+        reuseConversation: false,
       );
       await _activeModelService.activateRuntime(
         runtimeKind: ActiveRuntimeKind.liteRtLm,
@@ -362,11 +376,17 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
         modelPath: modelPath,
         backend: backend,
         maxTokens: runtimeConfig.maxTokens,
+        vision: hydratedModel.supportsVision,
       )) {
         return false;
       }
 
-      await _client.generate(prompt: ' ', backend: backend, maxTokens: 1);
+      await _client.generate(
+        prompt: ' ',
+        backend: backend,
+        maxTokens: 1,
+        reuseConversation: false,
+      );
       await _activeModelService.activateRuntime(
         runtimeKind: ActiveRuntimeKind.liteRtLm,
         runtimeId: 'litert-lm',
@@ -422,11 +442,13 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
     int? maxTokens,
     String? installUrl,
     LiteRtLmModelKind? modelKind,
+    bool vision = false,
   }) async {
     final trimmedModelPath = modelPath?.trim();
     if (_initializedModelPath != null &&
         trimmedModelPath != null &&
-        _initializedModelPath == trimmedModelPath) {
+        _initializedModelPath == trimmedModelPath &&
+        _initializedVision == vision) {
       return true;
     }
 
@@ -449,16 +471,24 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
           : null;
     }
 
-    await _client.initialize(
-      huggingFaceToken: runtimeConfig.optionalHuggingFaceToken,
-      modelPath: resolvedModelPath,
-      backend: backend ?? runtimeConfig.backend,
-      maxTokens: maxTokens ?? runtimeConfig.maxTokens,
-    );
+    try {
+      await _client.initialize(
+        huggingFaceToken: runtimeConfig.optionalHuggingFaceToken,
+        modelPath: resolvedModelPath,
+        backend: backend ?? runtimeConfig.backend,
+        maxTokens: maxTokens ?? runtimeConfig.maxTokens,
+        vision: vision,
+      );
+    } catch (_) {
+      _initializedModelPath = null;
+      _initializedVision = false;
+      rethrow;
+    }
 
     _initializedModelPath =
         resolvedModelPath ??
         (runtimeConfig.hasModelPath ? runtimeConfig.modelPath.trim() : null);
+    _initializedVision = vision;
     return true;
   }
 
@@ -561,6 +591,8 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
     required LiteRtLmBackend backend,
     required int maxTokens,
     String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
   }) async {
     final response = await _channel
         .invokeMethod<String>('generateContent', {
@@ -568,6 +600,8 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
           'systemPrompt': systemPrompt,
           'backend': backend.name,
           'maxTokens': maxTokens,
+          'imagePath': imagePath,
+          'reuseConversation': reuseConversation,
         })
         .timeout(_config.operationTimeout);
     return response ?? '';
@@ -579,6 +613,7 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
     String? modelPath,
     LiteRtLmBackend? backend,
     int? maxTokens,
+    bool vision = false,
   }) async {
     final resolvedModelPath = (modelPath?.trim().isNotEmpty ?? false)
         ? modelPath!.trim()
@@ -592,6 +627,7 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
           'modelPath': resolvedModelPath,
           'backend': (backend ?? _config.backend).name,
           'maxTokens': maxTokens ?? _config.maxTokens,
+          'vision': vision,
         })
         .timeout(_config.operationTimeout);
   }

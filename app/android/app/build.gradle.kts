@@ -430,9 +430,11 @@ dependencies {
     //
     // Pinned explicitly — do NOT use `latest.release`. Floating versions
     // caused issue #860 (silent CI break for ~10 days on a Backend/close API
-    // shift in 0.14.0). LiteRtLmPlugin.kt has been verified against the 0.14.0
-    // Kotlin API surface (Backend.CPU/GPU/NPU factories, engine.close(),
-    // Contents.of, ConversationConfig) per developers.google.com/edge/litert-lm.
+    // shift in 0.14.0). LiteRtLmPlugin.kt is written against the 0.18.0
+    // Kotlin API (Backend.CPU/GPU/NPU, EngineConfig.visionBackend,
+    // ConversationConfig.maxOutputToken, Contents image input,
+    // ExperimentalFlags.enableSpeculativeDecoding) per
+    // developers.google.com/edge/litert-lm.
     if (!isLeanStandaloneVariant && rootProject.extra.get("liteRtLmAvailable") as Boolean) {
         implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
     }

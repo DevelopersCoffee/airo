@@ -17,18 +17,28 @@ void main() {
       );
 
       expect(model.supportsWebRuntime, isTrue);
-      expect(model.webAssetUrl, isNotNull);
-      expect(model.webAssetUrl, endsWith('.task'));
+      expect(model.quantization, ModelQuantization.mixed);
+      expect(
+        model.webAssetUrl,
+        'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task',
+      );
+      expect(model.webAssetUrl, isNot(contains('float16')));
     });
 
-    test('Gemma-4-E4B is flagged web-capable with a .task asset URL', () {
+    test('Gemma-4-E4B uses the published quantized package', () {
       final model = ModelCatalog.bundledModels.firstWhere(
         (m) => m.id == 'gemma-4-e4b-it-litertlm',
       );
 
+      expect(model.fileSizeBytes, 3659530240);
+      expect(model.quantization, ModelQuantization.mixed);
       expect(model.supportsWebRuntime, isTrue);
-      expect(model.webAssetUrl, isNotNull);
-      expect(model.webAssetUrl, endsWith('.task'));
+      expect(model.downloadUrl, endsWith('gemma-4-E4B-it.litertlm'));
+      expect(
+        model.webAssetUrl,
+        'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it-web.task',
+      );
+      expect(model.webAssetUrl, isNot(contains('float16')));
     });
 
     test('Qwen2.5-1.5B is flagged web-capable with a .task asset URL', () {

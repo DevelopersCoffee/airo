@@ -95,6 +95,8 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
     required LiteRtLmBackend backend,
     required int maxTokens,
     String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
   }) async => 'ok';
 
   @override
@@ -103,6 +105,7 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
     String? modelPath,
     LiteRtLmBackend? backend,
     int? maxTokens,
+    bool vision = false,
   }) async {}
 
   @override
