@@ -35,6 +35,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val GEMINI_NANO_CHANNEL = "com.airo.gemini_nano"
     private val GEMINI_NANO_EVENT_CHANNEL = "com.airo.gemini_nano/stream"
     private val LITERT_LM_CHANNEL = "com.airo.litert_lm"
+    private val LITERT_LM_EVENT_CHANNEL = "com.airo.litert_lm/stream"
     private val EMBEDDING_CHANNEL = "com.airo.embedding"
     private val DEVICE_INFO_CHANNEL = "com.airo/device_info"
     // Foreground-service mic-use notification for in-app meeting capture
@@ -95,8 +96,11 @@ class MainActivity : AudioServiceFragmentActivity() {
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, GEMINI_NANO_EVENT_CHANNEL)
             .setStreamHandler(plugin.getStreamHandler())
 
+        val liteRtLmPlugin = LiteRtLmPlugin(this)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LITERT_LM_CHANNEL)
-            .setMethodCallHandler(LiteRtLmPlugin(this))
+            .setMethodCallHandler(liteRtLmPlugin)
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, LITERT_LM_EVENT_CHANNEL)
+            .setStreamHandler(liteRtLmPlugin.getStreamHandler())
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, EMBEDDING_CHANNEL)
             .setMethodCallHandler(EmbeddingPlugin(this))

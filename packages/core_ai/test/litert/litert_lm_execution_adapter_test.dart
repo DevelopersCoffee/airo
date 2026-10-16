@@ -87,6 +87,28 @@ class _FakeClient implements LiteRtLmClient {
   }
 
   @override
+  Stream<String> generateStream({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  }) async* {
+    yield await generate(
+      prompt: prompt,
+      backend: backend,
+      maxTokens: maxTokens,
+      systemPrompt: systemPrompt,
+      imagePath: imagePath,
+      reuseConversation: reuseConversation,
+    );
+  }
+
+  @override
+  Future<LiteRtLmModelFacts?> describeModel({String? modelPath}) async => null;
+
+  @override
   Future<void> initialize({
     String? huggingFaceToken,
     String? modelPath,

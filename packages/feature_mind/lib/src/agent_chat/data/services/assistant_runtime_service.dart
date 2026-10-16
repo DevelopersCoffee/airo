@@ -861,21 +861,28 @@ class AssistantRuntimeService {
       final offlineModelId = offlineModelIdFromAssistantModelId(runtimeId);
       if (offlineModelId != null) {
         final package = await _resolveOfflinePackage(runtimeId);
-        if (!AssistantModelLibraryState.isLiteRtPackage(package)) {
-          yield* _streamGguf(
+        if (AssistantModelLibraryState.isLiteRtPackage(package)) {
+          yield* _streamLiteRt(
             runtimeId: runtimeId,
             package: package,
-            prompt: prompt,
+            prompt: constrainedPrompt,
             systemPrompt: systemPrompt,
-            maxOutputTokens: maxOutputTokens,
-            temperature: temperature,
-            topP: topP,
-            topK: topK,
-            preferGpu: preferGpu,
-            assistantPrefill: constraint?.forcedPrefix,
           );
           return;
         }
+        yield* _streamGguf(
+          runtimeId: runtimeId,
+          package: package,
+          prompt: prompt,
+          systemPrompt: systemPrompt,
+          maxOutputTokens: maxOutputTokens,
+          temperature: temperature,
+          topP: topP,
+          topK: topK,
+          preferGpu: preferGpu,
+          assistantPrefill: constraint?.forcedPrefix,
+        );
+        return;
       }
       yield await generateText(
         selectedModelId: runtimeId,
@@ -929,6 +936,55 @@ class AssistantRuntimeService {
         ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
       );
     }
+  }
+
+  Stream<String> _streamLiteRt({
+    required String runtimeId,
+    required OfflineModelInfo package,
+    required String prompt,
+    String? systemPrompt,
+  }) async* {
+    _emitDebugTrace(
+      AssistantRuntimeDebugTrace(
+        runtimeId: runtimeId,
+        stage: 'request',
+        recordedAt: DateTime.now(),
+        systemPromptPreview: _previewText(systemPrompt),
+        promptPreview: _previewText(prompt),
+        detail: 'generateTextStream',
+      ),
+    );
+    var latest = '';
+    await for (final chunk in _liteRtLm.generateTextStreamForModel(
+      package,
+      prompt,
+      systemPrompt: systemPrompt,
+    )) {
+      if (chunk.trim().isEmpty) continue;
+      latest = chunk;
+      _emitResponseTrace(runtimeId, chunk, detail: 'stream-chunk');
+      yield chunk;
+    }
+    if (latest.trim().isEmpty) {
+      _noteReliability(
+        FailureClassifier.recordChatCompletion(
+          executionId: runtimeId,
+          text: '',
+          engineOk: true,
+        ),
+      );
+      throw AssistantRuntimeUnavailableException(
+        runtimeId,
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+      );
+    }
+    _noteReliability(
+      FailureClassifier.recordChatCompletion(
+        executionId: runtimeId,
+        text: latest,
+        engineOk: true,
+      ),
+    );
   }
 
   Stream<String> _streamGguf({

@@ -196,13 +196,79 @@ void main() {
         expect(hydrated.isDownloaded, isFalse);
       },
     );
+
+    test('streams cumulative chunks from the LiteRT client', () async {
+      final client = _FakeLiteRtLmClient(
+        hasActiveModel: true,
+        streamChunks: const ['Hel', 'Hello'],
+      );
+      final adapter = LiteRtLmRuntimeAdapter(
+        client: client,
+        activeModelService: activeModelService,
+        runtimeConfig: const LiteRtLmConfig(
+          modelPath: '/models/gemma.litertlm',
+        ),
+      );
+
+      final chunks = await adapter
+          .generateTextStream(const RuntimeGenerationRequest(prompt: 'hi'))
+          .toList();
+
+      expect(chunks, ['Hel', 'Hello']);
+    });
+
+    test('applies ModelInfo context and tool support during hydrate', () async {
+      final adapter = LiteRtLmRuntimeAdapter(
+        client: _FakeLiteRtLmClient(
+          hasActiveModel: true,
+          facts: const LiteRtLmModelFacts(
+            modelType: 'LLM',
+            maxContextTokens: 32768,
+            vision: true,
+            audio: false,
+            functionCalling: true,
+            thinking: false,
+            speculativeDecoding: true,
+          ),
+        ),
+        activeModelService: activeModelService,
+        downloadService: _FakeModelDownloadService(
+          downloadedPaths: {
+            'gemma-4-e2b-it-litertlm': '/models/gemma-4-e2b-it.litertlm',
+          },
+        ),
+      );
+
+      final hydrated = await adapter.hydrateDownloadedModel(
+        const OfflineModelInfo(
+          id: 'gemma-4-e2b-it-litertlm',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 1024,
+          downloadUrl: 'https://example.com/gemma-4-E2B-it.litertlm',
+          provider: AIProvider.gemma,
+          tags: ['litert-lm'],
+        ),
+      );
+
+      expect(hydrated.filePath, '/models/gemma-4-e2b-it.litertlm');
+      expect(hydrated.contextLength, 32768);
+      expect(hydrated.supportsVision, isTrue);
+      expect(hydrated.supportsFunctionCalling, isTrue);
+    });
   });
 }
 
 class _FakeLiteRtLmClient implements LiteRtLmClient {
-  _FakeLiteRtLmClient({required this.hasActiveModel});
+  _FakeLiteRtLmClient({
+    required this.hasActiveModel,
+    this.streamChunks = const ['ok'],
+    this.facts,
+  });
 
   bool hasActiveModel;
+  final List<String> streamChunks;
+  final LiteRtLmModelFacts? facts;
   final installCalls = <String>[];
   final initializeModelPaths = <String?>[];
 
@@ -218,6 +284,23 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
     String? imagePath,
     bool reuseConversation = true,
   }) async => 'ok';
+
+  @override
+  Stream<String> generateStream({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  }) async* {
+    for (final chunk in streamChunks) {
+      yield chunk;
+    }
+  }
+
+  @override
+  Future<LiteRtLmModelFacts?> describeModel({String? modelPath}) async => facts;
 
   @override
   Future<void> initialize({

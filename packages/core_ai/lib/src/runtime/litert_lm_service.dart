@@ -114,6 +114,31 @@ class LiteRtLmService {
     return _nativeAdapter!.generateText(request, model: model);
   }
 
+  Stream<String> generateTextStreamForModel(
+    OfflineModelInfo model,
+    String prompt, {
+    String? systemPrompt,
+    String? imagePath,
+  }) {
+    final request = RuntimeGenerationRequest(
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      imagePath: imagePath,
+      requiresVision: imagePath != null && imagePath.trim().isNotEmpty,
+    );
+    if (_isWeb) {
+      return Stream.fromFuture(
+        generateTextForModel(
+          model,
+          prompt,
+          systemPrompt: systemPrompt,
+          imagePath: imagePath,
+        ),
+      ).where((text) => text != null && text.isNotEmpty).cast<String>();
+    }
+    return _nativeAdapter!.generateTextStream(request, model: model);
+  }
+
   Future<OfflineModelInfo> hydrateDownloadedModel(OfflineModelInfo model) {
     if (_isWeb) return Future.value(model);
     return _nativeAdapter!.hydrateDownloadedModel(model);
