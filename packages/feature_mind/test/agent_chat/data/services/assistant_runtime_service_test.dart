@@ -1294,6 +1294,150 @@ void main() {
       expect(result.status, AssistantRuntimePreparationStatus.cancelled);
     });
 
+    test('streams LiteRT package chunks and ignores empty tokens', () async {
+      const modelId = 'gemma-4-e2b-it-litertlm';
+      final package = OfflineModelInfo(
+        id: modelId,
+        name: 'Gemma 4 E2B',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        filePath: '/models/gemma-4-e2b-it.litertlm',
+        provider: AIProvider.gemma,
+        tags: const ['litert-lm'],
+      );
+      final traces = <AssistantRuntimeDebugTrace>[];
+      final service = AssistantRuntimeService(
+        liteRtLm: LiteRtLmService(
+          client: _ChunkLiteRtClient(const ['', 'Hel', 'Hello']),
+          downloadService: _FixedPathDownloadService({
+            modelId: '/models/gemma-4-e2b-it.litertlm',
+          }),
+        ),
+        loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+          task: AssistantTask.chat,
+          deviceLabel: 'Pixel 9',
+          platformLabel: 'ANDROID',
+          candidates: [
+            AssistantModelCandidate(
+              id: assistantModelIdForOfflineModel(modelId),
+              name: 'Gemma 4 E2B',
+              runtime: 'LiteRT-LM',
+              description: 'Local package',
+              bestFor: const [AssistantTask.chat],
+              tags: const ['Local'],
+              privacyLabel: 'Prompt stays on device',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+          ],
+          recommended: const AssistantModelCandidate(
+            id: geminiCloudAssistantModelId,
+            name: 'Gemini Cloud',
+            runtime: 'Cloud',
+            description: 'Cloud runtime',
+            bestFor: [AssistantTask.chat],
+            tags: ['Cloud'],
+            privacyLabel: 'Sends prompt to API',
+            sizeLabel: 'No local download',
+            available: true,
+            actionLabel: 'Start',
+            local: false,
+          ),
+          defaultPackages: {AssistantTask.chat: package},
+        ),
+        debugTraceEmitter: traces.add,
+      );
+
+      final chunks = await service
+          .generateTextStream(
+            selectedModelId: assistantModelIdForOfflineModel(modelId),
+            prompt: 'say hello',
+          )
+          .toList();
+
+      expect(chunks, ['Hel', 'Hello']);
+      expect(
+        traces.where((trace) => trace.detail == 'stream-chunk'),
+        hasLength(2),
+      );
+      expect(service.lastReliabilityDiagnostic, isNull);
+    });
+
+    test('reports empty LiteRT streams as unavailable', () async {
+      const modelId = 'gemma-4-e2b-it-litertlm';
+      final package = OfflineModelInfo(
+        id: modelId,
+        name: 'Gemma 4 E2B',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        filePath: '/models/gemma-4-e2b-it.litertlm',
+        provider: AIProvider.gemma,
+        tags: const ['litert-lm'],
+      );
+      final service = AssistantRuntimeService(
+        liteRtLm: LiteRtLmService(
+          client: _ChunkLiteRtClient(const ['', '   ']),
+          downloadService: _FixedPathDownloadService({
+            modelId: '/models/gemma-4-e2b-it.litertlm',
+          }),
+        ),
+        loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+          task: AssistantTask.chat,
+          deviceLabel: 'Pixel 9',
+          platformLabel: 'ANDROID',
+          candidates: [
+            AssistantModelCandidate(
+              id: assistantModelIdForOfflineModel(modelId),
+              name: 'Gemma 4 E2B',
+              runtime: 'LiteRT-LM',
+              description: 'Local package',
+              bestFor: const [AssistantTask.chat],
+              tags: const ['Local'],
+              privacyLabel: 'Prompt stays on device',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+          ],
+          recommended: const AssistantModelCandidate(
+            id: geminiCloudAssistantModelId,
+            name: 'Gemini Cloud',
+            runtime: 'Cloud',
+            description: 'Cloud runtime',
+            bestFor: [AssistantTask.chat],
+            tags: ['Cloud'],
+            privacyLabel: 'Sends prompt to API',
+            sizeLabel: 'No local download',
+            available: true,
+            actionLabel: 'Start',
+            local: false,
+          ),
+          defaultPackages: const {},
+        ),
+      );
+
+      await expectLater(
+        () => service
+            .generateTextStream(
+              selectedModelId: assistantModelIdForOfflineModel(modelId),
+              prompt: 'hello',
+            )
+            .drain<void>(),
+        throwsA(
+          isA<AssistantRuntimeUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            ChatOutputVerifier.userMessageFor(OutputVerification.incomplete),
+          ),
+        ),
+      );
+    });
+
     test('streams Gemini Nano chunks and ignores empty tokens', () async {
       final traces = <AssistantRuntimeDebugTrace>[];
       final service = AssistantRuntimeService(
@@ -1942,6 +2086,81 @@ class _FakeLlamaGgufService extends LlamaGgufService {
   bool? loadedPreferGpu;
 }
 
+class _ChunkLiteRtClient implements LiteRtLmClient {
+  _ChunkLiteRtClient(this.chunks);
+
+  final List<String> chunks;
+
+  @override
+  Future<bool> activeModelExists({String? modelPath}) async => true;
+
+  @override
+  Future<String> generate({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  }) async => chunks.where((chunk) => chunk.trim().isNotEmpty).join();
+
+  @override
+  Stream<String> generateStream({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  }) => Stream<String>.fromIterable(chunks);
+
+  @override
+  Future<LiteRtLmModelFacts?> describeModel({String? modelPath}) async => null;
+
+  @override
+  Future<void> initialize({
+    String? huggingFaceToken,
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+    bool vision = false,
+  }) async {}
+
+  @override
+  Future<String?> installModel({
+    required String url,
+    required LiteRtLmModelKind modelKind,
+    String? huggingFaceToken,
+  }) async => null;
+}
+
+class _FixedPathDownloadService extends ModelDownloadService {
+  _FixedPathDownloadService(this.downloadedPaths);
+
+  final Map<String, String> downloadedPaths;
+
+  @override
+  Future<bool> isModelDownloaded(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    return downloadedPaths.containsKey(modelId);
+  }
+
+  @override
+  Future<String?> resolveExistingModelPath(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    return downloadedPaths[modelId];
+  }
+
+  @override
+  Future<String> getModelPath(String modelId, {OfflineModelInfo? model}) async {
+    return downloadedPaths[modelId] ?? '/missing/$modelId';
+  }
+}
+
 class _UrlOnlyLiteRtClient implements LiteRtLmClient {
   @override
   Future<bool> activeModelExists({String? modelPath}) async => true;
@@ -1955,6 +2174,28 @@ class _UrlOnlyLiteRtClient implements LiteRtLmClient {
     String? imagePath,
     bool reuseConversation = true,
   }) async => 'should-not-run';
+
+  @override
+  Stream<String> generateStream({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+    String? imagePath,
+    bool reuseConversation = true,
+  }) async* {
+    yield await generate(
+      prompt: prompt,
+      backend: backend,
+      maxTokens: maxTokens,
+      systemPrompt: systemPrompt,
+      imagePath: imagePath,
+      reuseConversation: reuseConversation,
+    );
+  }
+
+  @override
+  Future<LiteRtLmModelFacts?> describeModel({String? modelPath}) async => null;
 
   @override
   Future<void> initialize({
