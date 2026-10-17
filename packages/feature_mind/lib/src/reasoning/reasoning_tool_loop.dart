@@ -76,6 +76,251 @@ List<LiteRtLmToolSpec> liteRtLookupToolSpecs(AgentConnectorRegistry registry) {
   ];
 }
 
+const kAiroActionsModelId = 'airo-actions-270m-litertlm';
+const kMobileActionsModelId = 'mobile-actions-270m-litertlm';
+
+/// Google's seven mobile action tools run when `mobile-actions-270m-litertlm` is loaded.
+const List<LiteRtLmToolSpec> kLiteRtGoogleMobileActionToolSpecs = [
+  LiteRtLmToolSpec(
+    name: 'turn_on_flashlight',
+    description: 'Turn on the device flashlight or torch.',
+    parameters: {'type': 'object', 'properties': <String, Object?>{}},
+  ),
+  LiteRtLmToolSpec(
+    name: 'turn_off_flashlight',
+    description: 'Turn off the device flashlight or torch.',
+    parameters: {'type': 'object', 'properties': <String, Object?>{}},
+  ),
+  LiteRtLmToolSpec(
+    name: 'create_contact',
+    description:
+        'Open the contact creation screen with optional name, phone, email.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'name': {'type': 'string', 'description': 'Name of the contact.'},
+        'phone': {'type': 'string', 'description': 'Phone number.'},
+        'email': {'type': 'string', 'description': 'Email address.'},
+      },
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'send_email',
+    description:
+        'Open email client composer with optional recipient, subject, and body.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'to': {'type': 'string', 'description': 'Recipient email.'},
+        'subject': {'type': 'string', 'description': 'Subject of the email.'},
+        'body': {'type': 'string', 'description': 'Body text of the email.'},
+      },
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'show_map',
+    description: 'Open map view or search for an address or location.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'query': {
+          'type': 'string',
+          'description': 'Location query or address.',
+        },
+      },
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'open_wifi_settings',
+    description: 'Open device Wi-Fi settings.',
+    parameters: {'type': 'object', 'properties': <String, Object?>{}},
+  ),
+  LiteRtLmToolSpec(
+    name: 'create_calendar_event',
+    description: 'Create or add an event to the local calendar.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'title': {'type': 'string', 'description': 'Title of the event.'},
+        'start': {'type': 'string', 'description': 'Start date/time.'},
+        'end': {'type': 'string', 'description': 'End date/time.'},
+      },
+      'required': ['title'],
+    },
+  ),
+];
+
+/// Tools supported by Airo's on-device action model (`airo-actions-270m-litertlm`).
+const List<LiteRtLmToolSpec> kLiteRtAiroActionToolSpecs = [
+  LiteRtLmToolSpec(
+    name: 'get_current_date_time',
+    description:
+        'Current local date, time, weekday, and timezone. No arguments.',
+    parameters: {
+      'type': 'object',
+      'properties': <String, Object?>{},
+      'required': <String>[],
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'read_calendar_events',
+    description:
+        'Read calendar events for a date or date range. date and end_date are YYYY-MM-DD. date is required.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'date': {
+          'type': 'string',
+          'description': 'Start date in YYYY-MM-DD format',
+        },
+        'end_date': {
+          'type': 'string',
+          'description': 'Optional end date in YYYY-MM-DD format',
+        },
+      },
+      'required': ['date'],
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'calendar_permission_status',
+    description: 'Whether calendar read access is granted. No arguments.',
+    parameters: {
+      'type': 'object',
+      'properties': <String, Object?>{},
+      'required': <String>[],
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'query_lifetrack_status',
+    description:
+        'query is a short question about a local LifeTrack goal. Required.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'query': {
+          'type': 'string',
+          'description': 'Short question about a local LifeTrack goal',
+        },
+      },
+      'required': ['query'],
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'open_route',
+    description:
+        'Open an Airo app route. target is one of: money, budget, expenses, split, assistant, models, music, tv, games, chess, quest.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'target': {
+          'type': 'string',
+          'enum': [
+            'money',
+            'budget',
+            'expenses',
+            'split',
+            'assistant',
+            'models',
+            'music',
+            'tv',
+            'games',
+            'chess',
+            'quest',
+          ],
+          'description': 'Target screen or route identifier',
+        },
+      },
+      'required': ['target'],
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'schedule_notification',
+    description:
+        'Schedule a reminder notification. hour is 0-23. minute is 0-59. date is YYYY-MM-DD when for one day. repeat_daily is true only when asked for every day.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'title': {'type': 'string', 'description': 'Title of the reminder'},
+        'message': {
+          'type': 'string',
+          'description': 'Message or details of the reminder',
+        },
+        'hour': {
+          'type': 'integer',
+          'description': 'Hour in 24-hour format (0-23)',
+        },
+        'minute': {'type': 'integer', 'description': 'Minute (0-59)'},
+        'date': {
+          'type': 'string',
+          'description': 'Optional date in YYYY-MM-DD format',
+        },
+        'repeat_daily': {
+          'type': 'boolean',
+          'description': 'Whether the reminder repeats daily',
+        },
+      },
+      'required': ['title', 'message', 'hour', 'minute'],
+    },
+  ),
+  LiteRtLmToolSpec(
+    name: 'record_lifetrack_facts',
+    description:
+        "The user is stating a fact to store on a LifeTrack, not asking for status. query is the fact in the user's words.",
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'query': {
+          'type': 'string',
+          'description': "The fact in the user's words",
+        },
+      },
+      'required': ['query'],
+    },
+  ),
+];
+
+/// Returns the appropriate LiteRT tool specifications for the given [modelId].
+///
+/// - When [modelId] is `airo-actions-270m-litertlm`, offers only the 7 Airo action tools.
+/// - When [modelId] is `mobile-actions-270m-litertlm`, offers Google's 7 tools.
+/// - When [supportsFunctionCalling] is true for any other package, offers the 4 lookup tools.
+/// - Otherwise returns an empty list.
+List<LiteRtLmToolSpec> liteRtToolSpecsForModel({
+  required String? modelId,
+  required AgentConnectorRegistry registry,
+  bool supportsFunctionCalling = false,
+}) {
+  if (modelId == kAiroActionsModelId) {
+    return [
+      for (final spec in kLiteRtAiroActionToolSpecs)
+        if (registry.getConnector(spec.name) != null) spec,
+    ];
+  }
+  if (modelId == kMobileActionsModelId) {
+    return [
+      for (final spec in kLiteRtGoogleMobileActionToolSpecs)
+        if (registry.getConnector(spec.name) != null) spec,
+    ];
+  }
+  if (supportsFunctionCalling) {
+    return liteRtLookupToolSpecs(registry);
+  }
+  return const [];
+}
+
+/// Returns the appropriate LiteRT tool specifications for the given [package].
+List<LiteRtLmToolSpec> liteRtToolSpecsForPackage(
+  OfflineModelInfo? package,
+  AgentConnectorRegistry registry,
+) {
+  if (package == null) return const [];
+  return liteRtToolSpecsForModel(
+    modelId: package.id,
+    registry: registry,
+    supportsFunctionCalling: package.supportsFunctionCalling,
+  );
+}
+
 Map<String, dynamic> decodeToolArguments(String raw) {
   if (raw.trim().isEmpty) return const {};
   try {
@@ -101,6 +346,17 @@ Future<String> executeLiteRtLookupTool({
     argumentsJson: jsonEncode(arguments),
   );
 }
+
+/// Alias for [executeLiteRtLookupTool] supporting all LiteRT action and lookup tools.
+Future<String> executeLiteRtTool({
+  required AgentConnectorRegistry registry,
+  required String name,
+  required Map<String, Object?> arguments,
+}) => executeLiteRtLookupTool(
+  registry: registry,
+  name: name,
+  arguments: arguments,
+);
 
 Future<String> executeReasoningTool({
   required AgentConnectorRegistry registry,

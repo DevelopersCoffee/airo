@@ -495,6 +495,23 @@ void main() {
         actionPackages.map((model) => model.id),
         contains('mobile-actions-270m-litertlm'),
       );
+      expect(
+        actionPackages.map((model) => model.id),
+        contains('airo-actions-270m-litertlm'),
+      );
+
+      final airoActions = ModelCatalog.byId('airo-actions-270m-litertlm');
+      expect(airoActions, isNotNull);
+      expect(airoActions!.runtime, InferenceRuntime.litertLm);
+      expect(airoActions.supportsFunctionCalling, isTrue);
+      expect(airoActions.platformSupport!.android, isTrue);
+      expect(airoActions.platformSupport!.ios, isFalse);
+      expect(airoActions.fileSizeBytes, 291398144);
+      expect(
+        airoActions.sha256,
+        '4c8d14b80570f919ce0c538087f1e8f23cde62ad2e21be6a3f714e8916a2bc3b',
+      );
+      expect(airoActions.parameterCount, 268098176);
     });
   });
 }

@@ -15,6 +15,7 @@ import '../../../routing/assistant_route_names.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/chat_entity_graph_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
+import '../../../agent_chat/data/connectors/device_actions_connectors.dart';
 import '../../../agent_chat/data/connectors/life_track_status_connector_factory.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
@@ -438,6 +439,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       RouteConnector(),
       GuideBreathingConnector(),
       LogReflectionConnector(),
+      ...createDeviceActionConnectors(),
     ];
     final lifeTrackStatusConnector = createLifeTrackStatusConnector();
     if (lifeTrackStatusConnector != null) {
@@ -2630,10 +2632,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
       final modelConfig = ref.read(chatModelConfigProvider);
       final liteRtPackage = _selectedLiteRtPackage(selectedModelId);
-      final liteRtTools =
-          liteRtPackage != null && liteRtPackage.supportsFunctionCalling
-          ? liteRtLookupToolSpecs(_connectorRegistry)
-          : const <LiteRtLmToolSpec>[];
+      final liteRtTools = liteRtToolSpecsForPackage(
+        liteRtPackage,
+        _connectorRegistry,
+      );
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: modelPrompt,
@@ -2647,7 +2649,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         liteRtTools: liteRtTools,
         executeLiteRtTool: liteRtTools.isEmpty
             ? null
-            : (name, arguments) => executeLiteRtLookupTool(
+            : (name, arguments) => executeLiteRtTool(
                 registry: _connectorRegistry,
                 name: name,
                 arguments: arguments,

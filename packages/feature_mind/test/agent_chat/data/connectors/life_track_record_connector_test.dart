@@ -85,6 +85,16 @@ void main() {
       'Missed call from claims team.',
     );
   });
+
+  test('handles query argument from action model', () async {
+    final result = await connector.execute({
+      'query': 'Policy number is POL-999',
+    });
+
+    expect(result.isError, isTrue);
+    expect(result.errorCode, 'confirmation_required');
+    expect(result.message, contains('Policy number is POL-999'));
+  });
 }
 
 const _template = LifeTrackTemplate(
