@@ -15,7 +15,6 @@ import '../../../routing/assistant_route_names.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/chat_entity_graph_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
-import '../../../agent_chat/data/connectors/device_actions_connectors.dart';
 import '../../../agent_chat/data/connectors/life_track_status_connector_factory.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
@@ -79,7 +78,9 @@ import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import '../../../reasoning/chat_reasoning_request.dart';
 import '../../../reasoning/reasoning_models.dart';
 import '../../../reasoning/reasoning_progress_panel.dart';
+import '../../../reasoning/google_mobile_action_tools.dart';
 import '../../../reasoning/reasoning_tool_loop.dart';
+import '../../../services/device_actions_service.dart';
 import '../../../bridges/mind_generation_bridge.dart';
 import '../../../runtime/fixture/fixture_mind_runtime.dart';
 import '../../../runtime/models/capability_models.dart';
@@ -439,7 +440,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       RouteConnector(),
       GuideBreathingConnector(),
       LogReflectionConnector(),
-      ...createDeviceActionConnectors(),
     ];
     final lifeTrackStatusConnector = createLifeTrackStatusConnector();
     if (lifeTrackStatusConnector != null) {
@@ -2632,6 +2632,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
       final modelConfig = ref.read(chatModelConfigProvider);
       final liteRtPackage = _selectedLiteRtPackage(selectedModelId);
+      final googleActions = liteRtPackage?.id == kGoogleMobileActionsModelId;
       final liteRtTools = liteRtToolSpecsForPackage(
         liteRtPackage,
         _connectorRegistry,
@@ -2649,7 +2650,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         liteRtTools: liteRtTools,
         executeLiteRtTool: liteRtTools.isEmpty
             ? null
-            : (name, arguments) => executeLiteRtTool(
+            : googleActions
+            ? (name, arguments) => executeGoogleMobileAction(
+                actions: DeviceActionsService(),
+                registry: _connectorRegistry,
+                name: name,
+                arguments: arguments,
+              )
+            : (name, arguments) => executeLiteRtLookupTool(
                 registry: _connectorRegistry,
                 name: name,
                 arguments: arguments,

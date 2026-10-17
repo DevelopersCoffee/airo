@@ -75,6 +75,16 @@ abstract class EmbeddingClient {
     required String text,
     EmbeddingTaskType taskType = EmbeddingTaskType.semanticSimilarity,
   });
+
+  /// Embeds a local image or audio file with EmbeddingGemma 2.
+  ///
+  /// Exactly one of [imagePath] and [audioPath] is set. The text-only 300M
+  /// embedder does not implement this.
+  Future<List<double>> embedMedia({String? imagePath, String? audioPath}) {
+    throw UnsupportedError(
+      'This embedder only accepts text. Image and audio need EmbeddingGemma 2.',
+    );
+  }
 }
 
 /// Channel name is distinct from `com.airo.litert_lm`: a different plugin,
@@ -145,6 +155,28 @@ class MethodChannelEmbeddingClient implements EmbeddingClient {
         .timeout(operationTimeout);
     if (result == null) {
       throw StateError('Embedding plugin returned no vector for "$text"');
+    }
+    return result.cast<num>().map((v) => v.toDouble()).toList();
+  }
+
+  @override
+  Future<List<double>> embedMedia({
+    String? imagePath,
+    String? audioPath,
+  }) async {
+    if (!_liteRt) {
+      throw UnsupportedError(
+        'Image and audio embeddings need an EmbeddingGemma 2 package.',
+      );
+    }
+    final result = await _liteRtChannel
+        .invokeMethod<List<Object?>>('embedMedia', {
+          'imagePath': ?imagePath,
+          'audioPath': ?audioPath,
+        })
+        .timeout(operationTimeout);
+    if (result == null) {
+      throw StateError('Embedding plugin returned no vector for the media.');
     }
     return result.cast<num>().map((v) => v.toDouble()).toList();
   }

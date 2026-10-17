@@ -435,6 +435,68 @@ class ModelCatalog {
       platformSupport: PlatformSupport.androidOnly(),
       task: ModelTask.embedding,
     ),
+    const OfflineModelInfo(
+      id: 'embeddinggemma-2-text-vision-440m-litertlm',
+      name: 'EmbeddingGemma 2 Text Vision 440M',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 387710976,
+      downloadUrl:
+          'https://huggingface.co/litert-community/embeddinggemma-2-text-vision-440m-litert-lm/resolve/main/embeddinggemma-2-text-vision-440m.litertlm',
+      quantization: ModelQuantization.unknown,
+      parameterCount: 440000000,
+      contextLength: 8192,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'Text and photo embeddings in one vector space. Used when a '
+          'search input is an image. Text search stays on the 270M package.',
+      author: 'Google',
+      license: 'Apache-2.0',
+      huggingFaceId:
+          'litert-community/embeddinggemma-2-text-vision-440m-litert-lm',
+      modalities: [ModelModality.text, ModelModality.image],
+      capabilities: [ModelCapability.embeddings],
+      backendPreference: ModelBackendPreference.cpu,
+      tags: ['embeddings', 'semantic-search', 'litert-lm', 'image'],
+      minMemoryBytes: 1200000000,
+      recommendedMemoryBytes: 1600000000,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      task: ModelTask.embedding,
+    ),
+    const OfflineModelInfo(
+      id: 'embeddinggemma-2-740m-litertlm',
+      name: 'EmbeddingGemma 2 740M',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 484622336,
+      downloadUrl:
+          'https://huggingface.co/litert-community/embeddinggemma-2-740m-litert-lm/resolve/main/embeddinggemma-2-740m.litertlm',
+      quantization: ModelQuantization.unknown,
+      parameterCount: 740000000,
+      contextLength: 8192,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'Text, photo, and audio embeddings in one vector space. Audio '
+          'search uses this package. Text and photos prefer the smaller '
+          'EmbeddingGemma 2 packages when those are installed.',
+      author: 'Google',
+      license: 'Apache-2.0',
+      huggingFaceId: 'litert-community/embeddinggemma-2-740m-litert-lm',
+      modalities: [
+        ModelModality.text,
+        ModelModality.image,
+        ModelModality.audio,
+      ],
+      capabilities: [ModelCapability.embeddings],
+      backendPreference: ModelBackendPreference.cpu,
+      tags: ['embeddings', 'semantic-search', 'litert-lm', 'image', 'audio'],
+      minMemoryBytes: 1600000000,
+      recommendedMemoryBytes: 2200000000,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      task: ModelTask.embedding,
+    ),
     // EmbeddingGemma 300M: raw .tflite + a separate sentencepiece tokenizer,
     // loaded by the AI Edge RAG SDK. Kept for devices that already downloaded
     // it. `seq256` matches short search queries and meeting chunks. The
@@ -454,8 +516,8 @@ class ModelCatalog {
       provider: AIProvider.gemma,
       description:
           'On-device text embeddings for semantic search. Needs the paired '
-          "embeddinggemma-300m-tokenizer entry; TaskModelRouter resolves "
-          'AiTask.embeddings to this entry, never the tokenizer.',
+          'embeddinggemma-300m-tokenizer entry. Kept for devices that already '
+          'downloaded it. New text search prefers EmbeddingGemma 2.',
       author: 'Google',
       license: 'Gemma',
       huggingFaceId: 'litert-community/embeddinggemma-300m',

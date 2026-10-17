@@ -3,9 +3,40 @@ import 'package:flutter/foundation.dart';
 import '../download/model_download_service.dart';
 import '../models/offline_model_info.dart';
 import '../registry/model_catalog.dart';
-import '../router/ai_task.dart';
-import '../router/task_model_router.dart';
 import 'embedding_client.dart';
+
+/// What the caller wants embedded.
+enum EmbeddingInputKind { text, image, audio }
+
+/// Smallest installed embedding package whose modalities cover [kind].
+///
+/// Text stays on EmbeddingGemma 2 270M when it is installed. Image prefers
+/// the 440M text-and-vision package over the 740M package. Audio needs the
+/// 740M package.
+OfflineModelInfo? selectEmbeddingModel(
+  List<OfflineModelInfo> installed,
+  EmbeddingInputKind kind,
+) {
+  final matches = installed.where((model) {
+    if (!model.capabilities.contains(ModelCapability.embeddings)) {
+      return false;
+    }
+    return switch (kind) {
+      EmbeddingInputKind.text =>
+        model.modalities.isEmpty ||
+            model.modalities.contains(ModelModality.text),
+      EmbeddingInputKind.image => model.modalities.contains(
+        ModelModality.image,
+      ),
+      EmbeddingInputKind.audio => model.modalities.contains(
+        ModelModality.audio,
+      ),
+    };
+  }).toList();
+  if (matches.isEmpty) return null;
+  matches.sort((a, b) => a.fileSizeBytes.compareTo(b.fileSizeBytes));
+  return matches.first;
+}
 
 /// Why [EmbeddingService.embed] cannot answer right now. Mirrors
 /// `MindUnavailable`'s shape: each case is one the caller can act on.
@@ -43,34 +74,26 @@ class EmbeddingResult {
   bool get isReady => vector != null;
 }
 
-/// Resolves `AiTask.embeddings` to an installed model and turns text into a
-/// vector, without ever acquiring a model itself.
+/// Picks an installed embedding package and turns text, an image, or audio
+/// into a vector, without ever acquiring a model itself.
 ///
-/// Two collaborators do the actual work: [TaskModelRouter] picks *which*
-/// catalog entry answers `AiTask.embeddings` (PR #1564's contract, unchanged
-/// here), and [EmbeddingClient] is the native call once a model and its
-/// paired tokenizer are known to be on disk
-/// (`docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md`).
+/// [selectEmbeddingModel] picks the smallest installed package that can
+/// represent the input. [EmbeddingClient] is the native call once that file,
+/// and a tokenizer when the older TFLite model needs one, is on disk.
 ///
 /// "Installed" is checked, never made true: this service calls
-/// `ModelDownloadService.isModelDownloaded`, never `downloadModel` — the same
-/// boundary `ModelProvider` draws elsewhere in this app. A caller that wants
-/// the model downloaded goes through the model-library UI, the same as every
-/// other catalog entry.
+/// `ModelDownloadService.isModelDownloaded`, never `downloadModel`.
 class EmbeddingService {
   EmbeddingService({
     EmbeddingClient? client,
     ModelDownloadService? downloadService,
-    TaskModelRouter? router,
     List<OfflineModelInfo>? catalog,
   }) : _client = client ?? MethodChannelEmbeddingClient(),
        _downloadService = downloadService ?? ModelDownloadService(),
-       _router = router ?? const TaskModelRouter(),
        _catalog = catalog ?? ModelCatalog.bundledModels;
 
   final EmbeddingClient _client;
   final ModelDownloadService _downloadService;
-  final TaskModelRouter _router;
   final List<OfflineModelInfo> _catalog;
 
   String? _initializedModelId;
@@ -87,12 +110,39 @@ class EmbeddingService {
   Future<EmbeddingResult> embed(
     String text, {
     EmbeddingTaskType taskType = EmbeddingTaskType.semanticSimilarity,
-  }) async {
+  }) {
+    return _run(
+      EmbeddingInputKind.text,
+      'No embedding model is installed yet.',
+      (resolved) => _client.embed(text: text, taskType: taskType),
+    );
+  }
+
+  /// Embeds a photo with the smallest installed vision embedding package.
+  Future<EmbeddingResult> embedImage(String imagePath) {
+    return _run(
+      EmbeddingInputKind.image,
+      'No image embedding model is installed yet.',
+      (_) => _client.embedMedia(imagePath: imagePath),
+    );
+  }
+
+  /// Embeds an audio file with the installed audio embedding package.
+  Future<EmbeddingResult> embedAudio(String audioPath) {
+    return _run(
+      EmbeddingInputKind.audio,
+      'No audio embedding model is installed yet.',
+      (_) => _client.embedMedia(audioPath: audioPath),
+    );
+  }
+
+  Future<EmbeddingResult> _run(
+    EmbeddingInputKind kind,
+    String missingMessage,
+    Future<List<double>> Function(OfflineModelInfo resolved) embed,
+  ) async {
     final installed = <OfflineModelInfo>[];
     for (final candidate in _catalog) {
-      // Skip capability-less entries (the tokenizer) before ever asking the
-      // download service about them -- they can never resolve a task, so
-      // checking their download state would be work with no possible answer.
       if (candidate.capabilities.isEmpty) continue;
       if (await _downloadService.isModelDownloaded(
         candidate.id,
@@ -102,11 +152,11 @@ class EmbeddingService {
       }
     }
 
-    final resolved = _router.resolve(AiTask.embeddings, installed);
+    final resolved = selectEmbeddingModel(installed, kind);
     if (resolved == null) {
-      return const EmbeddingResult.unavailable(
+      return EmbeddingResult.unavailable(
         EmbeddingUnavailable.noModelInstalled,
-        'No embedding model is installed yet.',
+        missingMessage,
       );
     }
 
@@ -139,7 +189,7 @@ class EmbeddingService {
         _initializedModelId = resolved.id;
       }
 
-      final vector = await _client.embed(text: text, taskType: taskType);
+      final vector = await embed(resolved);
       return EmbeddingResult.ready(vector, resolved.id);
     } on Object catch (e) {
       return EmbeddingResult.unavailable(

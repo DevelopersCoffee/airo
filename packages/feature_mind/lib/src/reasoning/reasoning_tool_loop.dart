@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:core_ai/core_ai.dart';
 
 import '../agent_chat/domain/services/agent_connector_registry.dart';
+import 'google_mobile_action_tools.dart';
 import 'reasoning_models.dart';
 
 /// Same cap as Rust [`MAX_TOOL_ITERATIONS`]. Counts executed tools.
@@ -77,78 +78,10 @@ List<LiteRtLmToolSpec> liteRtLookupToolSpecs(AgentConnectorRegistry registry) {
 }
 
 const kAiroActionsModelId = 'airo-actions-270m-litertlm';
-const kMobileActionsModelId = 'mobile-actions-270m-litertlm';
+const kMobileActionsModelId = kGoogleMobileActionsModelId;
 
 /// Google's seven mobile action tools run when `mobile-actions-270m-litertlm` is loaded.
-const List<LiteRtLmToolSpec> kLiteRtGoogleMobileActionToolSpecs = [
-  LiteRtLmToolSpec(
-    name: 'turn_on_flashlight',
-    description: 'Turn on the device flashlight or torch.',
-    parameters: {'type': 'object', 'properties': <String, Object?>{}},
-  ),
-  LiteRtLmToolSpec(
-    name: 'turn_off_flashlight',
-    description: 'Turn off the device flashlight or torch.',
-    parameters: {'type': 'object', 'properties': <String, Object?>{}},
-  ),
-  LiteRtLmToolSpec(
-    name: 'create_contact',
-    description:
-        'Open the contact creation screen with optional name, phone, email.',
-    parameters: {
-      'type': 'object',
-      'properties': {
-        'name': {'type': 'string', 'description': 'Name of the contact.'},
-        'phone': {'type': 'string', 'description': 'Phone number.'},
-        'email': {'type': 'string', 'description': 'Email address.'},
-      },
-    },
-  ),
-  LiteRtLmToolSpec(
-    name: 'send_email',
-    description:
-        'Open email client composer with optional recipient, subject, and body.',
-    parameters: {
-      'type': 'object',
-      'properties': {
-        'to': {'type': 'string', 'description': 'Recipient email.'},
-        'subject': {'type': 'string', 'description': 'Subject of the email.'},
-        'body': {'type': 'string', 'description': 'Body text of the email.'},
-      },
-    },
-  ),
-  LiteRtLmToolSpec(
-    name: 'show_map',
-    description: 'Open map view or search for an address or location.',
-    parameters: {
-      'type': 'object',
-      'properties': {
-        'query': {
-          'type': 'string',
-          'description': 'Location query or address.',
-        },
-      },
-    },
-  ),
-  LiteRtLmToolSpec(
-    name: 'open_wifi_settings',
-    description: 'Open device Wi-Fi settings.',
-    parameters: {'type': 'object', 'properties': <String, Object?>{}},
-  ),
-  LiteRtLmToolSpec(
-    name: 'create_calendar_event',
-    description: 'Create or add an event to the local calendar.',
-    parameters: {
-      'type': 'object',
-      'properties': {
-        'title': {'type': 'string', 'description': 'Title of the event.'},
-        'start': {'type': 'string', 'description': 'Start date/time.'},
-        'end': {'type': 'string', 'description': 'End date/time.'},
-      },
-      'required': ['title'],
-    },
-  ),
-];
+const kLiteRtGoogleMobileActionToolSpecs = kGoogleMobileActionToolSpecs;
 
 /// Tools supported by Airo's on-device action model (`airo-actions-270m-litertlm`).
 const List<LiteRtLmToolSpec> kLiteRtAiroActionToolSpecs = [
@@ -296,11 +229,9 @@ List<LiteRtLmToolSpec> liteRtToolSpecsForModel({
         if (registry.getConnector(spec.name) != null) spec,
     ];
   }
-  if (modelId == kMobileActionsModelId) {
-    return [
-      for (final spec in kLiteRtGoogleMobileActionToolSpecs)
-        if (registry.getConnector(spec.name) != null) spec,
-    ];
+  if (modelId == kGoogleMobileActionsModelId ||
+      modelId == kMobileActionsModelId) {
+    return kGoogleMobileActionToolSpecs;
   }
   if (supportsFunctionCalling) {
     return liteRtLookupToolSpecs(registry);
