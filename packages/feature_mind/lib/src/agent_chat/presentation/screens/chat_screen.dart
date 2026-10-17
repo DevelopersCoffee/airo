@@ -2633,11 +2633,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final modelConfig = ref.read(chatModelConfigProvider);
       final liteRtPackage = _selectedLiteRtPackage(selectedModelId);
       final googleActions = liteRtPackage?.id == kGoogleMobileActionsModelId;
-      final liteRtTools = googleActions
-          ? kGoogleMobileActionToolSpecs
-          : liteRtPackage != null && liteRtPackage.supportsFunctionCalling
-          ? liteRtLookupToolSpecs(_connectorRegistry)
-          : const <LiteRtLmToolSpec>[];
+      final liteRtTools = liteRtToolSpecsForPackage(
+        liteRtPackage,
+        _connectorRegistry,
+      );
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: modelPrompt,
