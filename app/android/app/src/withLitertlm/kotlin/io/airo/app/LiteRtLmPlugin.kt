@@ -75,7 +75,7 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
             "describeModel" -> describeModel(call, result)
             "installModel" -> installModel(call, result)
             "embedInitialize" -> embedInitialize(call, result)
-            "embedReady" -> result.success(embeddingEngine?.isInitialized == true)
+            "embedReady" -> result.success(embeddingEngine?.isInitialized() == true)
             "embedText" -> embedText(call, result)
             "embedMedia" -> embedMedia(call, result)
             else -> result.notImplemented()
@@ -594,7 +594,7 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
                 val useGpu = call.argument<Boolean>("useGpu") ?: false
                 withContext(Dispatchers.IO) {
                     if (embeddingModelPath == modelPath &&
-                        embeddingEngine?.isInitialized == true
+                        embeddingEngine?.isInitialized() == true
                     ) {
                         return@withContext
                     }

@@ -71,10 +71,15 @@ class LifeTrackRecordConnector implements AgentConnector {
 
   @override
   Future<ConnectorResult> execute(Map<String, dynamic> arguments) async {
-    final title = (arguments['title'] as String?)?.trim() ?? '';
+    final rawQuery = (arguments['query'] as String?)?.trim() ?? '';
+    final rawTitle = (arguments['title'] as String?)?.trim() ?? '';
+    final title = rawTitle.isNotEmpty ? rawTitle : rawQuery;
     final templateId =
         (arguments['template_id'] as String?)?.trim() ?? 'insurance_claim_v1';
-    final facts = _stringMap(arguments['facts']);
+    var facts = _stringMap(arguments['facts']);
+    if (facts.isEmpty && rawQuery.isNotEmpty) {
+      facts = {'note': rawQuery};
+    }
     if (title.isEmpty || facts.isEmpty) {
       return const ConnectorResult.error(
         code: 'missing_facts',

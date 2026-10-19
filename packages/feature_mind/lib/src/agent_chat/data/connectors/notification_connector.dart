@@ -24,7 +24,11 @@ class ScheduleNotificationConnector implements AgentConnector {
     final message = (arguments['message'] as String?)?.trim();
     final hour = _readInt(arguments['hour']);
     final minute = _readInt(arguments['minute']) ?? 0;
-    final repeatDaily = arguments['repeat_daily'] as bool? ?? false;
+    final repeatDaily = switch (arguments['repeat_daily']) {
+      final bool value => value,
+      final String value => value.trim().toLowerCase() == 'true',
+      _ => false,
+    };
     final date = (arguments['date'] as String?)?.trim();
     final category = (arguments['category'] as String?)?.trim() ?? 'general';
     final scheduleType =

@@ -230,6 +230,40 @@ class ModelCatalog {
       platformSupport: PlatformSupport.androidOnly(),
       task: ModelTask.textGeneration,
     ),
+    const OfflineModelInfo(
+      id: 'airo-actions-270m-litertlm',
+      name: 'AiroActions-270M',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 291398144,
+      sha256:
+          '4c8d14b80570f919ce0c538087f1e8f23cde62ad2e21be6a3f714e8916a2bc3b',
+      downloadUrl:
+          'https://huggingface.co/developerscoffee/airo-actions-270m-litertlm/resolve/main/airo_actions_q8_ekv1024.litertlm',
+      quantization: ModelQuantization.q8,
+      parameterCount: 268098176,
+      contextLength: 1024,
+      supportsFunctionCalling: true,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'Airo on-device action model for local navigation, reminders, calendar, and LifeTrack connectors.',
+      author: 'DevelopersCoffee',
+      license: 'Apache-2.0',
+      huggingFaceId: 'developerscoffee/airo-actions-270m-litertlm',
+      modalities: [ModelModality.text, ModelModality.toolCall],
+      capabilities: [
+        ModelCapability.mobileActions,
+        ModelCapability.chat,
+        ModelCapability.agentSkills,
+      ],
+      backendPreference: ModelBackendPreference.cpu,
+      tags: ['gallery', 'function-calling', 'actions', 'small'],
+      minMemoryBytes: 700000000,
+      recommendedMemoryBytes: 1000000000,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      task: ModelTask.textGeneration,
+    ),
 
     // Gemma 2 2B Instruct — Unsloth public GGUF (Google's HF repo is gated
     // and returns HTTP 401 without a token).
@@ -568,4 +602,12 @@ class ModelCatalog {
   /// Gets only models with a confirmed MediaPipe web (.task) bundle.
   static List<OfflineModelInfo> get webRuntimeSupported =>
       bundledModels.where((m) => m.supportsWebRuntime).toList();
+
+  /// Finds a bundled model by its unique [id], or null if not found.
+  static OfflineModelInfo? byId(String id) {
+    for (final model in bundledModels) {
+      if (model.id == id) return model;
+    }
+    return null;
+  }
 }
