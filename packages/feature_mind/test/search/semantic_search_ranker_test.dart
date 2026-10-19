@@ -564,4 +564,20 @@ class _FakeEmbeddingService implements EmbeddingService {
     }
     return EmbeddingResult.ready(vector, 'fake-embedding-model');
   }
+
+  @override
+  Future<EmbeddingResult> embedImage(String imagePath) async {
+    return const EmbeddingResult.unavailable(
+      EmbeddingUnavailable.noModelInstalled,
+      'no image vector configured in the fake',
+    );
+  }
+
+  @override
+  Future<EmbeddingResult> embedAudio(String audioPath) async {
+    return const EmbeddingResult.unavailable(
+      EmbeddingUnavailable.noModelInstalled,
+      'no audio vector configured in the fake',
+    );
+  }
 }

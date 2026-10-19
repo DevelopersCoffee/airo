@@ -9,6 +9,8 @@ reviewers:
   - Chief Open Source Officer
 contracts:
   - background-download-contract/v1
+allowed_dependencies:
+  - airo_background_downloads
 forbidden_dependencies:
   - app
   - core_ai
