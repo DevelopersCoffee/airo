@@ -25,6 +25,7 @@ import 'whisper/api/meetings.dart' as rust;
 import 'mind_diarization.dart';
 import 'mind_service.dart';
 import 'processing/application/transcript_quality_evaluator.dart';
+import 'processing/evidence_clock_format.dart';
 import 'processing/presentation/transcript_review_banner.dart';
 import 'trust/scribe_trust_signals.dart';
 
@@ -980,15 +981,6 @@ class _MeetingScreenState extends State<MeetingScreen> {
       ),
     );
   }
-}
-
-/// `mm:ss` for the evidence clock chip (shorter than export's `[hh:mm:ss]`).
-String formatEvidenceClock(int ms) {
-  final totalSeconds = ms ~/ 1000;
-  final minutes = totalSeconds ~/ 60;
-  final seconds = totalSeconds % 60;
-  return '${minutes.toString().padLeft(2, '0')}:'
-      '${seconds.toString().padLeft(2, '0')}';
 }
 
 class _SectionTitle extends StatelessWidget {

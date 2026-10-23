@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../application/transcript_quality_evaluator.dart';
 import '../../widgets/mind_palette.dart';
+import '../application/transcript_quality_evaluator.dart';
+import '../evidence_clock_format.dart';
 
 /// Honest transcript confidence banner for the meeting reader.
 class TranscriptReviewBanner extends StatelessWidget {
@@ -64,8 +65,8 @@ class TranscriptReviewBanner extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Text(
-                          '• ${_formatClock(issue.startMs)}–'
-                          '${_formatClock(issue.endMs)}: '
+                          '• ${formatEvidenceClock(issue.startMs)}–'
+                          '${formatEvidenceClock(issue.endMs)}: '
                           '${issue.text.trim()} '
                           '(${issue.signals.join(', ')})',
                           style: theme.textTheme.bodySmall,
@@ -79,13 +80,5 @@ class TranscriptReviewBanner extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatClock(int ms) {
-    final totalSeconds = ms ~/ 1000;
-    final minutes = totalSeconds ~/ 60;
-    final seconds = totalSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
   }
 }
