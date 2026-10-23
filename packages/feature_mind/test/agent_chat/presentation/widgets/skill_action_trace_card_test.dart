@@ -96,6 +96,26 @@ void main() {
     },
   );
 
+  testWidgets('renders formatted duration when trace includes durationMs', (
+    tester,
+  ) async {
+    const traces = [
+      AgentActionTrace(
+        title: 'Execute action',
+        detail: 'read_calendar_events',
+        durationMs: 1500,
+      ),
+    ];
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: SkillActionTraceCard(traces: traces)),
+      ),
+    );
+
+    expect(find.text('1.5s'), findsOneWidget);
+  });
+
   testWidgets('a failed tool call is shown, not swallowed', (tester) async {
     const traces = [
       AgentActionTrace(
