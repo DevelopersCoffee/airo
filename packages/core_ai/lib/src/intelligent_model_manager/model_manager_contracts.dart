@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 
+import '../format/storage_byte_format.dart';
 import '../download/model_download_progress.dart';
 import '../models/offline_model_info.dart';
 import 'model_entry.dart';
@@ -46,7 +47,9 @@ class ModelManagerSnapshot {
       ..writeln('| Installed | `${installedModels.length}` |')
       ..writeln('| Recommended | `${recommendedModels.length}` |')
       ..writeln('| Download queue | `${queue.length}` |')
-      ..writeln('| Storage used | `${_formatBytes(storageUsedBytes)}` |')
+      ..writeln(
+        '| Storage used | `${formatBinaryStorageBytes(storageUsedBytes)}` |',
+      )
       ..writeln(
         '| Generated | `${(generatedAt ?? DateTime.now()).toUtc().toIso8601String()}` |',
       )
@@ -61,7 +64,7 @@ class ModelManagerSnapshot {
           ..writeln('- `${progress.modelId}`')
           ..writeln('  - Status: `${progress.statusDisplay}`')
           ..writeln(
-            '  - Downloaded: `${_formatBytes(progress.downloadedBytes)} / ${_formatBytes(progress.totalBytes)}`',
+            '  - Downloaded: `${formatBinaryStorageBytes(progress.downloadedBytes)} / ${formatBinaryStorageBytes(progress.totalBytes)}`',
           )
           ..writeln('  - Speed: `${progress.speedDisplay}`')
           ..writeln('  - ETA: `${progress.etaDisplay ?? 'not available'}`')
@@ -87,7 +90,7 @@ class ModelManagerSnapshot {
         ..writeln('  - Recommended: `${model.isRecommended}`')
         ..writeln('  - Resident: `${model.isResident}`')
         ..writeln('  - Update state: `${model.updateState.name}`')
-        ..writeln('  - Size: `${_formatBytes(model.sizeBytes)}`');
+        ..writeln('  - Size: `${formatBinaryStorageBytes(model.sizeBytes)}`');
       final installedVersion = model.installedVersion;
       if (installedVersion != null && installedVersion.trim().isNotEmpty) {
         buffer.writeln('  - Installed version: `$installedVersion`');
@@ -109,17 +112,6 @@ class ModelManagerSnapshot {
       ModelDownloadStatus.failed => 'not_verified',
       _ => 'pending_verification',
     };
-  }
-
-  static String _formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 }
 
