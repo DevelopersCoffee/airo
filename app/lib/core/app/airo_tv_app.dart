@@ -16,7 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../error/global_error_handler.dart';
 import '../platform/platform_config.dart';
 import '../providers/app_theme_provider.dart';
-import '../tv/tv.dart';
+import '../tv/tv_providers.dart';
 import 'tv_router.dart';
 
 /// TV-specific app for IPTV-only experience
