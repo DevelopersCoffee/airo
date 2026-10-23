@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/music_provider.dart';
 import '../../application/providers/music_tracks_provider.dart';
 import '../../domain/services/music_service.dart';
+import '../music_duration_format.dart';
 import '../widgets/beats_search_bar.dart';
 import '../widgets/beats_search_results.dart';
 import '../../../../shared/widgets/responsive_center.dart';
@@ -196,11 +197,11 @@ class MusicScreen extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                _formatDuration(state.position),
+                                formatMusicTrackDuration(state.position),
                                 style: const TextStyle(fontSize: 12),
                               ),
                               Text(
-                                _formatDuration(state.duration),
+                                formatMusicTrackDuration(state.duration),
                                 style: const TextStyle(fontSize: 12),
                               ),
                             ],
@@ -330,12 +331,6 @@ class MusicScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   String _qualityLabel(MusicTrack? track) {
@@ -603,19 +598,13 @@ class _RecentlyPlayedSection extends StatelessWidget {
             ),
             title: Text(track.title),
             subtitle: Text(
-              '${track.artist} • ${_formatDuration(track.duration)}',
+              '${track.artist} • ${formatMusicTrackDuration(track.duration)}',
             ),
             trailing: const Icon(Icons.play_arrow),
             onTap: () => onTrackSelected(track),
           ),
       ],
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
 
@@ -707,7 +696,7 @@ class _MusicPlayerUI extends StatelessWidget {
       state: state,
       tracks: tracks,
       musicController: musicController,
-      formatDuration: _formatDuration,
+      formatDuration: formatMusicTrackDuration,
     );
     final queue = _TrackQueue(
       state: state,
@@ -750,11 +739,6 @@ class _MusicPlayerUI extends StatelessWidget {
     );
   }
 
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
 }
 
 class _NowPlayingPanel extends StatelessWidget {
