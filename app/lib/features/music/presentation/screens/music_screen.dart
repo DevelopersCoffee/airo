@@ -738,7 +738,6 @@ class _MusicPlayerUI extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _NowPlayingPanel extends StatelessWidget {
