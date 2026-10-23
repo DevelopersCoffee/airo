@@ -441,7 +441,7 @@ class _OverviewBody extends StatelessWidget {
         ),
         _SystemRow(
           label: 'Storage used',
-          value: _formatBytes(storageUsedBytes),
+          value: formatBinaryStorageBytes(storageUsedBytes),
         ),
         _SystemRow(
           label: 'Memory available',
@@ -488,17 +488,6 @@ class _OverviewBody extends StatelessWidget {
     final downloaded = catalog.where((model) => model.isDownloaded);
     if (downloaded.isEmpty) return 'None';
     return downloaded.first.effectiveRuntime.displayName;
-  }
-
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 }
 

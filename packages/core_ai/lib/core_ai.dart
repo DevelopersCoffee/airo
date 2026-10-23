@@ -86,6 +86,9 @@ export 'src/registry/model_catalog.dart';
 export 'src/huggingface/huggingface_catalog_cache.dart';
 export 'src/huggingface/huggingface_catalog_service.dart';
 
+// Formatting helpers
+export 'src/format/storage_byte_format.dart';
+
 // Model Download
 export 'src/download/model_download_progress.dart';
 export 'src/download/model_download_service.dart';

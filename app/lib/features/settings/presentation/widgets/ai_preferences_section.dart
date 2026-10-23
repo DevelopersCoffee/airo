@@ -161,7 +161,7 @@ class AIPreferencesSection extends ConsumerWidget {
                 subtitle: Text(
                   storageDashboard.when(
                     data: (summary) =>
-                        '${_formatBytes(summary.totalUsedBytes)} used',
+                        '${formatBinaryStorageBytes(summary.totalUsedBytes)} used',
                     loading: () => 'Checking storage usage',
                     error: (_, _) => 'Storage usage unavailable',
                   ),
@@ -174,7 +174,7 @@ class AIPreferencesSection extends ConsumerWidget {
                         title: Text(category.label),
                         trailing: Text(
                           category.available
-                              ? _formatBytes(category.bytes)
+                              ? formatBinaryStorageBytes(category.bytes)
                               : 'Unavailable',
                         ),
                       ),
@@ -626,15 +626,4 @@ String _fallbackOrderLabel(AIRoutingStrategy strategy) {
     AIRoutingStrategy.specificModel => 'Specific runtime first, then backup',
     AIRoutingStrategy.userChoice => 'User-selected runtime, then fallback',
   };
-}
-
-String _formatBytes(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  if (bytes < 1024 * 1024) {
-    return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  }
-  if (bytes < 1024 * 1024 * 1024) {
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
 }
