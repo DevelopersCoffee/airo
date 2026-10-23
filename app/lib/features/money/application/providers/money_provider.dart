@@ -5,11 +5,8 @@ import '../../../../core/utils/result.dart';
 import '../../../../core/utils/locale_settings.dart';
 // ignore: unused_import
 import '../../../../core/utils/currency_formatter.dart';
-import '../../data/repositories/local_wallet_repository.dart';
 import '../../domain/models/money_models.dart';
-import '../../domain/models/insight_models.dart';
 import '../../domain/repositories/money_repositories.dart';
-import '../../domain/repositories/wallet_repository.dart';
 import '../services/audit_service.dart';
 
 // Native-only imports - these are only used when not on web
@@ -35,10 +32,6 @@ import '../../data/repositories/local_transactions_repository_stub.dart'
 // ignore: unused_import
 import '../services/expense_service_stub.dart'
     if (dart.library.io) '../services/expense_service.dart';
-// ignore: unused_import
-import '../services/insights_service_stub.dart'
-    if (dart.library.io) '../services/insights_service.dart';
-
 // ============================================================================
 // FAKE IMPLEMENTATIONS FOR DEVELOPMENT
 // ============================================================================
@@ -452,140 +445,11 @@ final recentTransactionsProvider = FutureProvider<List<Transaction>>((
   return result.fold((_, _) => [], (txns) => txns);
 });
 
-/// Stream of recent transactions for reactive UI
-final transactionsStreamProvider = StreamProvider<List<Transaction>>((ref) {
-  // On web, return empty stream (no SQLite support)
-  if (kIsWeb) {
-    return Stream.value([]);
-  }
-  // On native, use database-backed repository
-  final db = ref.watch(appDatabaseProvider);
-  final repo = LocalTransactionsRepository(db);
-  return repo.watchTransactions(limit: 50);
-});
-
-// ============================================================================
-// PAGINATED TRANSACTIONS PROVIDERS
-// ============================================================================
-
-/// Transaction filter state
-class TransactionFilter {
-  final String? category;
-  final DateTime? startDate;
-  final DateTime? endDate;
-
-  const TransactionFilter({this.category, this.startDate, this.endDate});
-
-  TransactionFilter copyWith({
-    String? category,
-    DateTime? startDate,
-    DateTime? endDate,
-    bool clearCategory = false,
-    bool clearStartDate = false,
-    bool clearEndDate = false,
-  }) {
-    return TransactionFilter(
-      category: clearCategory ? null : (category ?? this.category),
-      startDate: clearStartDate ? null : (startDate ?? this.startDate),
-      endDate: clearEndDate ? null : (endDate ?? this.endDate),
-    );
-  }
-}
-
-/// Current transaction filter state
-final transactionFilterProvider = StateProvider<TransactionFilter>(
-  (ref) => const TransactionFilter(),
-);
-
-/// Page size for pagination
-const _pageSize = 20;
-
-/// Paginated transactions provider
-/// Returns transactions for a specific page with filters applied
-final paginatedTransactionsProvider =
-    FutureProvider.family<List<Transaction>, int>((ref, page) async {
-      final repo = ref.watch(transactionsRepositoryProvider);
-      final filter = ref.watch(transactionFilterProvider);
-
-      final query = FetchTransactionsQuery(
-        category: filter.category,
-        startDate: filter.startDate,
-        endDate: filter.endDate,
-        limit: _pageSize,
-        offset: page * _pageSize,
-      );
-
-      final result = await repo.fetch(query);
-      return result.fold((_, _) => [], (txns) => txns);
-    });
-
-/// Available categories for filtering
-final availableCategoriesProvider = Provider<List<String>>((ref) {
-  return const [
-    'Food & Drink',
-    'Transportation',
-    'Entertainment',
-    'Shopping',
-    'Bills & Utilities',
-    'Healthcare',
-    'Education',
-    'Other',
-  ];
-});
-
 /// All budgets provider
 final budgetsProvider = FutureProvider<List<Budget>>((ref) async {
   final repo = ref.watch(budgetsRepositoryProvider);
   final result = await repo.fetchAll();
   return result.fold((_, _) => [], (budgets) => budgets);
-});
-
-/// Stream of budgets for reactive UI
-final budgetsStreamProvider = StreamProvider<List<Budget>>((ref) {
-  // On web, return empty stream (no SQLite support)
-  if (kIsWeb) {
-    return Stream.value([]);
-  }
-  // On native, use database-backed repository
-  final db = ref.watch(appDatabaseProvider);
-  final repo = LocalBudgetsRepository(db);
-  return repo.watchBudgets();
-});
-
-/// Insights service provider
-final insightsServiceProvider = Provider<InsightsService>((ref) {
-  // On web, use stub service (stub accepts dynamic parameters)
-  if (kIsWeb) {
-    return InsightsService(
-      (LocalTransactionsRepository as dynamic)(null)
-          as LocalTransactionsRepository,
-      (LocalBudgetsRepository as dynamic)(null) as LocalBudgetsRepository,
-    );
-  }
-  // On native, use real service
-  final db = ref.watch(appDatabaseProvider);
-  return InsightsService(
-    LocalTransactionsRepository(db),
-    LocalBudgetsRepository(db),
-  );
-});
-
-/// Spending summary provider (current month)
-final spendingSummaryProvider = FutureProvider<SpendingSummary>((ref) async {
-  final service = ref.watch(insightsServiceProvider);
-  return service.getSpendingSummary();
-});
-
-/// Budget health provider
-final budgetHealthProvider = FutureProvider<BudgetHealth>((ref) async {
-  final service = ref.watch(insightsServiceProvider);
-  return service.getBudgetHealth();
-});
-
-/// Spending trend provider
-final spendingTrendProvider = FutureProvider<SpendingTrend>((ref) async {
-  final service = ref.watch(insightsServiceProvider);
-  return service.getSpendingTrend();
 });
 
 /// Money controller provider
@@ -733,33 +597,3 @@ class MoneyController {
     _ref.invalidate(budgetsProvider);
   }
 }
-
-// ============================================================================
-// WALLET PROVIDERS (Real Repository Implementation)
-// ============================================================================
-
-/// Wallet repository provider - uses real local storage
-final walletRepositoryProvider = Provider<WalletRepository>((ref) {
-  return LocalWalletRepository();
-});
-
-/// All wallets provider
-final walletsProvider = FutureProvider<List<Wallet>>((ref) async {
-  final repo = ref.watch(walletRepositoryProvider);
-  final result = await repo.fetchAll();
-  return result.fold((_, _) => [], (wallets) => wallets);
-});
-
-/// Total wallet balance provider (in cents)
-final totalWalletBalanceProvider = FutureProvider<int>((ref) async {
-  final repo = ref.watch(walletRepositoryProvider);
-  final result = await repo.getTotalBalanceCents();
-  return result.fold((_, _) => 0, (total) => total);
-});
-
-/// Formatted total wallet balance provider
-final formattedTotalBalanceProvider = FutureProvider<String>((ref) async {
-  final balanceCents = await ref.watch(totalWalletBalanceProvider.future);
-  final formatter = ref.watch(currencyFormatterProvider);
-  return formatter.formatCents(balanceCents);
-});

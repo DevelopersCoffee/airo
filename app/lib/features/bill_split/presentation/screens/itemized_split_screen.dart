@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/utils/locale_settings.dart';
 import '../../domain/models/receipt_item.dart';
 import '../../domain/services/receipt_parser_service.dart';
 
@@ -34,9 +33,6 @@ class ItemizedSplitTestIds {
 final receiptParserProvider = Provider<ReceiptParserService>((ref) {
   return MLKitReceiptParserService();
 });
-
-/// Provider for participants list
-final participantsProvider = StateProvider<List<ItemParticipant>>((ref) => []);
 
 /// Provider for receipt items with participant assignments
 final receiptItemsProvider =

@@ -41,17 +41,6 @@ final channelAutoScanScopeProvider = Provider<String>((ref) {
   return '${category.name}|${flavor?.name ?? ''}|$query|$channelIds';
 });
 
-/// Preserve active playback by issuing only one request at a time. Idle scans
-/// use a small three-request window so large user-owned lists still progress.
-final channelAutoScanMaxConcurrentRequestsProvider = Provider<int>((ref) {
-  return switch (ref.watch(playbackStateProvider)) {
-    PlaybackState.loading ||
-    PlaybackState.buffering ||
-    PlaybackState.playing => 1,
-    _ => 3,
-  };
-});
-
 /// The regular active filter with a completed Auto Scan's temporary hide set
 /// applied only when its scope still matches.
 final autoScanFilteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {

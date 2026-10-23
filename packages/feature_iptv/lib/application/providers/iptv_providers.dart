@@ -27,7 +27,6 @@ import 'provider_health_providers.dart';
 import 'channel_library_merger_extension_point.dart';
 
 export 'iptv_cast_providers.dart';
-export 'airo_tv_profile_provider.dart';
 export 'connectivity_providers.dart';
 export 'edge_intelligence_providers.dart';
 export 'iptv_navigation_provider.dart';
@@ -789,11 +788,6 @@ final compactEpgRepositoryProvider = Provider<CompactEpgRepository>((ref) {
   return const EmptyCompactEpgRepository();
 });
 
-/// Reference time for current/next guide queries.
-final compactEpgReferenceTimeProvider = Provider<DateTime>((ref) {
-  return DateTime.now().toUtc();
-});
-
 final compactEpgSliceForChannelsProvider =
     FutureProvider.family<CompactEpgSlice, CompactEpgChannelQuery>((
       ref,
@@ -849,36 +843,6 @@ final currentChannelProvider = Provider<IPTVChannel?>((ref) {
     loading: () => null,
     error: (_, _) => null,
   );
-});
-
-/// Current channel index in filtered list
-final currentChannelIndexProvider = Provider<int>((ref) {
-  final currentChannel = ref.watch(currentChannelProvider);
-  final filteredChannels = ref.watch(filteredChannelsProvider);
-  if (currentChannel == null) return -1;
-  return filteredChannels.indexWhere(
-    (c) => c.streamUrl == currentChannel.streamUrl,
-  );
-});
-
-/// Next channel provider - returns the next channel in the filtered list
-final nextChannelProvider = Provider<IPTVChannel?>((ref) {
-  final currentIndex = ref.watch(currentChannelIndexProvider);
-  final filteredChannels = ref.watch(filteredChannelsProvider);
-  if (currentIndex < 0 || filteredChannels.isEmpty) return null;
-  final nextIndex = (currentIndex + 1) % filteredChannels.length;
-  return filteredChannels[nextIndex];
-});
-
-/// Previous channel provider - returns the previous channel in the filtered list
-final previousChannelProvider = Provider<IPTVChannel?>((ref) {
-  final currentIndex = ref.watch(currentChannelIndexProvider);
-  final filteredChannels = ref.watch(filteredChannelsProvider);
-  if (currentIndex < 0 || filteredChannels.isEmpty) return null;
-  final prevIndex = currentIndex == 0
-      ? filteredChannels.length - 1
-      : currentIndex - 1;
-  return filteredChannels[prevIndex];
 });
 
 IPTVChannel? channelAfter({
@@ -1033,15 +997,6 @@ final channelFavoriteTogglerProvider = Provider<Future<bool> Function(String)>((
 final notForMeChannelIdsProvider = FutureProvider<Set<String>>((ref) async {
   final storage = ref.watch(favoriteChannelsStorageProvider);
   return storage.getNotForMeChannelIds();
-});
-
-/// Whether a specific channel is marked "not for me".
-final isChannelNotForMeProvider = Provider.family<bool, String>((
-  ref,
-  channelId,
-) {
-  final notForMeIds = ref.watch(notForMeChannelIdsProvider);
-  return notForMeIds.value?.contains(channelId) ?? false;
 });
 
 /// Toggles a channel's "not for me" state (clearing favorite if setting).
