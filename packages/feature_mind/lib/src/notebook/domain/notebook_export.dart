@@ -1,3 +1,4 @@
+import '../../export/domain/yaml_string_escape.dart';
 import 'notebook_note.dart';
 import 'notebook_source.dart';
 
@@ -10,17 +11,21 @@ String renderNotebookMarkdown(NotebookNote note) {
   );
   final buf = StringBuffer()
     ..writeln('---')
-    ..writeln('title: "${_escapeYaml(note.title)}"')
+    ..writeln('title: "${escapeYamlDoubleQuoted(note.title)}"')
     ..writeln('date: ${recorded.toIso8601String()}')
     ..writeln('source: ${doc.source.name}');
   if (doc.languageCode != null && doc.languageCode!.isNotEmpty) {
     buf.writeln('language: ${doc.languageCode}');
   }
   if (doc.tags.isNotEmpty) {
-    buf.writeln('tags: [${doc.tags.map(_escapeYaml).join(', ')}]');
+    buf.writeln(
+      'tags: [${doc.tags.map(escapeYamlDoubleQuoted).join(', ')}]',
+    );
   }
   if (doc.labels.isNotEmpty) {
-    buf.writeln('labels: [${doc.labels.map(_escapeYaml).join(', ')}]');
+    buf.writeln(
+      'labels: [${doc.labels.map(escapeYamlDoubleQuoted).join(', ')}]',
+    );
   }
   if (doc.source == NotebookSource.superSummary &&
       doc.sourceNoteIds.isNotEmpty) {
@@ -69,5 +74,3 @@ String notebookExportFileName(NotebookNote note) {
   return '$safe.md';
 }
 
-String _escapeYaml(String value) =>
-    value.replaceAll('\\', r'\\').replaceAll('"', r'\"');

@@ -1,6 +1,7 @@
 import '../../mind_diarization.dart';
-import 'meeting_export_models.dart';
 import '../../speaker/meeting_speaker_registry.dart';
+import 'meeting_export_models.dart';
+import 'yaml_string_escape.dart';
 
 /// Pure markdown rendering for meeting export (#1663).
 ///
@@ -46,7 +47,7 @@ String renderFrontmatter({
   Duration? duration,
 }) {
   final buf = StringBuffer('---\n')
-    ..writeln('title: "${_escapeYaml(title)}"')
+    ..writeln('title: "${escapeYamlDoubleQuoted(title)}"')
     ..writeln('date: ${date.toUtc().toIso8601String()}');
   if (duration != null) {
     buf.writeln('duration: "${formatDurationHms(duration)}"');
@@ -54,9 +55,6 @@ String renderFrontmatter({
   buf.writeln('---');
   return buf.toString();
 }
-
-String _escapeYaml(String s) =>
-    s.replaceAll('\\', r'\\').replaceAll('"', r'\"');
 
 /// `transcript.md`'s body: frontmatter, a heading, then the transcript.
 ///
