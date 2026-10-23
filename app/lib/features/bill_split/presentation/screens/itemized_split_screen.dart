@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../domain/models/receipt_item.dart';
 import '../../domain/services/receipt_parser_service.dart';
 
