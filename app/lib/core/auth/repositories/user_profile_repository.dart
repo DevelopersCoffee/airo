@@ -155,4 +155,3 @@ class LocalUserProfileRepository implements UserProfileRepository {
     _cachedProfile = null;
   }
 }
-
