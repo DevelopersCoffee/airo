@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/agent_skill.dart';
+import '../../domain/services/chat_turn_inspector.dart';
 
 class SkillActionTraceCard extends StatelessWidget {
   const SkillActionTraceCard({super.key, required this.traces});
@@ -90,7 +91,7 @@ class _TraceRow extends StatelessWidget {
                 ),
                 if (trace.durationMs != null)
                   Text(
-                    _formatDuration(trace.durationMs!),
+                    formatChatTurnDuration(trace.durationMs!),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
@@ -123,11 +124,4 @@ class _TraceRow extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatDuration(int durationMs) {
-  if (durationMs < 1000) {
-    return '${durationMs}ms';
-  }
-  return '${(durationMs / 1000).toStringAsFixed(1)}s';
 }
