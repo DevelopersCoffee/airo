@@ -6,9 +6,3 @@ import '../../domain/services/music_track_service.dart';
 final musicTracksProvider = FutureProvider<List<MusicTrack>>((ref) async {
   return await MusicTrackService.getSampleTracks();
 });
-
-/// Refresh music tracks
-final refreshMusicTracksProvider = FutureProvider<void>((ref) async {
-  // ignore: unused_result
-  ref.refresh(musicTracksProvider);
-});

@@ -35,9 +35,6 @@ final receiptParserProvider = Provider<ReceiptParserService>((ref) {
   return MLKitReceiptParserService();
 });
 
-/// Provider for participants list
-final participantsProvider = StateProvider<List<ItemParticipant>>((ref) => []);
-
 /// Provider for receipt items with participant assignments
 final receiptItemsProvider =
     StateNotifierProvider<ReceiptItemsNotifier, List<ReceiptItem>>((ref) {

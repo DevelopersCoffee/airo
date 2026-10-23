@@ -3,9 +3,6 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../services/android_finance_import_preferences.dart';
 import '../services/android_finance_import_service.dart';
-import '../services/finance_chat_ingestion_service.dart';
-import '../../domain/services/finance_message_parser.dart';
-import 'expense_providers.dart';
 
 final androidFinanceImportPreferencesProvider =
     Provider<AndroidFinanceImportPreferences>(
@@ -19,19 +16,6 @@ final androidFinanceImportPermissionControllerProvider =
     >((ref) {
       final preferences = ref.watch(androidFinanceImportPreferencesProvider);
       return AndroidFinanceImportPermissionController(preferences);
-    });
-
-final androidFinanceImportServiceProvider =
-    Provider<AndroidFinanceImportService>((ref) {
-      final preferences = ref.watch(androidFinanceImportPreferencesProvider);
-      final repository = ref.watch(transactionRepositoryProvider);
-      return AndroidFinanceImportService(
-        ingestionService: FinanceChatIngestionService(
-          parser: const FinanceMessageParser(),
-          repository: repository,
-        ),
-        permissionReader: preferences.readPermission,
-      );
     });
 
 class AndroidFinanceImportPermissionController

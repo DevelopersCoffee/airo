@@ -4,14 +4,6 @@
 /// Set via compile-time constants or environment variables.
 library;
 
-/// Enable performance monitoring overlay
-///
-/// Shows FPS counter and memory usage in debug builds.
-const bool kEnablePerformanceOverlay = bool.fromEnvironment(
-  'ENABLE_PERF_OVERLAY',
-  defaultValue: false,
-);
-
 /// Enable the experimental phone-local media handoff entry point.
 ///
 /// This stays off in normal builds until the Airo Receiver qualification
