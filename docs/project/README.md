@@ -9,6 +9,11 @@ Verified snapshots of Airo and Aika Stream execution state. Historical agent not
 | [PROJECT_EXECUTION_PLAN.md](./PROJECT_EXECUTION_PLAN.md) | Phased plan (baseline → release) |
 | [PROJECT_RELEASE_CHECKLIST.md](./PROJECT_RELEASE_CHECKLIST.md) | Per-track release gates (Play, phone, Fire TV, pub.dev) |
 
-**Pack history:** Initial pack merged in [#2112](https://github.com/DevelopersCoffee/airo/pull/2112) (`6e86787985490a6b1c4a86eb801c3334b4bc8bcd`).
+**Pack history:**
+
+- [#2112](https://github.com/DevelopersCoffee/airo/pull/2112) — initial four-file pack (`6e867879`)
+- [#2113](https://github.com/DevelopersCoffee/airo/pull/2113) — refresh + this index
+
+**Thread closure (2026-10-24):** Baseline and CI citations updated to `main` @ `69f354f86cf421fc0ebe651586306118504d491e`. Open qualification and store gates remain **Needs verification** / **Blocked** until humans rerun device and Play/Appstore steps.
 
 **Related:** `docs/release/`, `docs/okf/aika-stream-play/`, `docs/agents/WORKFLOW.md`.
