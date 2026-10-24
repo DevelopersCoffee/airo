@@ -1,6 +1,6 @@
 # Airo / Aika Stream — project backlog
 
-**Last verified:** 2026-10-16 against `origin/main` @ `6e86787985490a6b1c4a86eb801c3334b4bc8bcd`.
+**Last verified:** 2026-10-24 (Asia/Calcutta) against `origin/main` @ `69f354f86cf421fc0ebe651586306118504d491e`.
 
 Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verification** only.
 
@@ -12,7 +12,7 @@ Priority is top-down within each section; cross-track items name their release l
 
 | ID | Item | Status | Evidence / next step |
 | --- | --- | --- | --- |
-| B-001 | Keep `main` CI green on all Android variants (full, tv, fire-tv, coins) | **Done** | [CI run 38715870317](https://github.com/DevelopersCoffee/airo/actions/runs/38715870317) success on pack SHA (2026-10-15). |
+| B-001 | Keep `main` CI green on all Android variants (full, tv, fire-tv, coins) | **Done** | [CI run 40032582357](https://github.com/DevelopersCoffee/airo/actions/runs/40032582357) success (2026-10-23). |
 | B-002 | Re-run `feature_iptv` + TV shell tests on developer host | **Needs verification** | Commands from Sept 2026 test plan: `cd packages/feature_iptv && flutter test`; `cd app && flutter test test/core/app/tv_shell_test.dart`. CI passed; local Flutter missing on Cloud Agent VM. |
 | B-003 | Close Dependabot Android bumps (#2111–#2109) or merge when vetted | **Pending** | Open PRs as of 2026-10-16. |
 
