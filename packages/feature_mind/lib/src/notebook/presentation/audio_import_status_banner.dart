@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/progress_byte_format.dart';
 import '../application/audio_import_progress.dart';
 
 /// Bottom banner for podcast / YouTube import and queue transcription status.
@@ -82,7 +83,7 @@ class AudioImportStatusBanner extends StatelessWidget {
               if (progress.totalBytes > 0) ...[
                 const SizedBox(height: 6),
                 Text(
-                  '${_formatBytes(progress.receivedBytes)} / ${_formatBytes(progress.totalBytes)}',
+                  '${formatProgressByteSize(progress.receivedBytes)} / ${formatProgressByteSize(progress.totalBytes)}',
                   style: theme.textTheme.labelSmall,
                 ),
               ],
@@ -93,10 +94,4 @@ class AudioImportStatusBanner extends StatelessWidget {
     );
   }
 
-  static String _formatBytes(int bytes) {
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(0)} KB';
-    }
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
 }
