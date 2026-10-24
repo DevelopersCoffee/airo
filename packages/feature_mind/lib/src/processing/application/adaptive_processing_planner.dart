@@ -3,6 +3,7 @@ import 'package:core_ai/core_ai.dart';
 import '../domain/hardware_profile.dart';
 import '../domain/processing_plan.dart';
 import '../domain/processing_profile.dart';
+import '../../widgets/progress_byte_format.dart';
 
 /// Chooses a processing strategy from audio signals, hardware, and user intent.
 ///
@@ -145,7 +146,7 @@ class AdaptiveProcessingPlanner {
       if (hardware.isBatteryConstrained) 'Low battery — capped model tier',
       if (audioDurationSec != null)
         'Recording length: ${_formatDuration(audioDurationSec)}',
-      if (audioBytes != null) 'Audio size: ${_formatBytes(audioBytes)}',
+      if (audioBytes != null) 'Audio size: ${formatProgressByteSize(audioBytes)}',
     ];
     return lines;
   }
@@ -156,10 +157,4 @@ class AdaptiveProcessingPlanner {
     return '${m}m ${s.toString().padLeft(2, '0')}s';
   }
 
-  String _formatBytes(int bytes) {
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(0)} KB';
-    }
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
 }
