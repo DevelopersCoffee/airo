@@ -1,7 +1,52 @@
+import 'dart:convert';
+
 import 'litert_lm_runtime_adapter.dart';
 
 const kLiteRtToolBudgetMessage =
     'This request needed too many steps. Try a simpler question.';
+
+final _liteRtTextToolCall = RegExp(
+  r'<([A-Za-z_][\w]*)>(?:\{([^}]*)\})?</\1>',
+);
+
+/// Reads `<tool_name>{arg:value,arg:value}</tool_name>` calls from reply text.
+///
+/// The Airo Actions model emits this text instead of a native LiteRT tool
+/// call. An empty `{}` body, or a tag with no braces, means no arguments.
+List<LiteRtLmToolCall> liteRtTextToolCalls(String text) {
+  final calls = <LiteRtLmToolCall>[];
+  for (final match in _liteRtTextToolCall.allMatches(text)) {
+    final name = match.group(1);
+    if (name == null || name.isEmpty) continue;
+    calls.add(
+      LiteRtLmToolCall(
+        name: name,
+        arguments: _liteRtTextArguments(match.group(2)),
+      ),
+    );
+  }
+  return calls;
+}
+
+Map<String, Object?> _liteRtTextArguments(String? body) {
+  final arguments = <String, Object?>{};
+  final trimmed = body?.trim() ?? '';
+  if (trimmed.isEmpty) return arguments;
+  for (final part in trimmed.split(',')) {
+    final separator = part.indexOf(':');
+    if (separator <= 0) continue;
+    final key = part.substring(0, separator).trim();
+    if (key.isEmpty) continue;
+    arguments[key] = _liteRtTextValue(part.substring(separator + 1).trim());
+  }
+  return arguments;
+}
+
+Object _liteRtTextValue(String raw) {
+  if (raw == 'true') return true;
+  if (raw == 'false') return false;
+  return int.tryParse(raw) ?? raw;
+}
 
 typedef LiteRtToolRound =
     Future<LiteRtLmReply> Function({
@@ -38,7 +83,17 @@ Future<String> completeLiteRtWithTools({
       toolResponses: responses,
     );
     latestText = reply.text;
-    if (reply.toolCalls.isEmpty) return latestText;
+    if (reply.toolCalls.isEmpty) {
+      final written = liteRtTextToolCalls(reply.text);
+      if (written.isEmpty) return latestText;
+      return _executeTextToolCalls(
+        calls: written,
+        allowed: allowed,
+        execute: execute,
+        executed: executed,
+        maxIterations: maxIterations,
+      );
+    }
     if (executed >= maxIterations) {
       return latestText.trim().isNotEmpty
           ? latestText
@@ -63,4 +118,41 @@ Future<String> completeLiteRtWithTools({
   }
 
   return latestText.trim().isNotEmpty ? latestText : kLiteRtToolBudgetMessage;
+}
+
+Future<String> _executeTextToolCalls({
+  required List<LiteRtLmToolCall> calls,
+  required Set<String> allowed,
+  required LiteRtToolExecutor execute,
+  required int executed,
+  required int maxIterations,
+}) async {
+  final lines = <String>[];
+  var used = executed;
+  for (final call in calls) {
+    if (used >= maxIterations) {
+      return lines.isNotEmpty ? lines.join('\n') : kLiteRtToolBudgetMessage;
+    }
+    final output = allowed.contains(call.name)
+        ? await execute(call.name, call.arguments)
+        : 'Tool ${call.name} is not available.';
+    lines.add(_visibleToolOutput(output));
+    used += 1;
+  }
+  return lines.join('\n');
+}
+
+String _visibleToolOutput(String output) {
+  final trimmed = output.trim();
+  if (!trimmed.startsWith('{')) return output;
+  try {
+    final decoded = jsonDecode(trimmed);
+    if (decoded is Map) {
+      final message = decoded['message'];
+      if (message is String && message.trim().isNotEmpty) return message;
+    }
+  } on Object {
+    return output;
+  }
+  return output;
 }

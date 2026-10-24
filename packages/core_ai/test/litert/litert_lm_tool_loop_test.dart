@@ -88,6 +88,45 @@ void main() {
     expect(text, 'Tool set_flashlight is not available.');
   });
 
+  test('runs a text-format tool call and hides the tag', () async {
+    Map<String, Object?>? seen;
+    final text = await completeLiteRtWithTools(
+      prompt: 'show my budget',
+      tools: const [
+        LiteRtLmToolSpec(name: 'open_route', description: 'Open a screen.'),
+      ],
+      execute: (name, arguments) async {
+        seen = arguments;
+        return '{"route":"/money/budgets","message":"Opening Budgets."}';
+      },
+      generate:
+          ({
+            required String prompt,
+            required List<LiteRtLmToolSpec> tools,
+            required List<LiteRtLmToolResponse> toolResponses,
+          }) async {
+            return const LiteRtLmReply(
+              text: '<open_route>{target:budget}</open_route>',
+            );
+          },
+    );
+
+    expect(seen, {'target': 'budget'});
+    expect(text, 'Opening Budgets.');
+    expect(
+      liteRtTextToolCalls(
+        '<schedule_notification>{title:Medicine,message:Take it,hour:7,minute:30,repeat_daily:true}</schedule_notification>',
+      ).single.arguments,
+      {
+        'title': 'Medicine',
+        'message': 'Take it',
+        'hour': 7,
+        'minute': 30,
+        'repeat_daily': true,
+      },
+    );
+  });
+
   test('stops after the tool budget', () async {
     var rounds = 0;
     final text = await completeLiteRtWithTools(
