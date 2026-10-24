@@ -1,6 +1,6 @@
 # Airo / Aika Stream — execution plan
 
-**Last verified:** 2026-10-16 · Base SHA **`6e86787985490a6b1c4a86eb801c3334b4bc8bcd`** (`origin/main`, includes #2112 project pack).
+**Last verified:** 2026-10-24 (Asia/Calcutta) · Base SHA **`69f354f86cf421fc0ebe651586306118504d491e`** (`origin/main`).
 
 Execute phases **in order**. Do not promote Play or Amazon builds until Phase 3 sign-offs exist for the target artifact SHA.
 
@@ -14,7 +14,7 @@ Status vocabulary: Done, Pending, Blocked, Deferred, Needs verification.
 
 | Step | Action | Status | Evidence |
 | --- | --- | --- | --- |
-| 1.1 | Record `main` HEAD SHA | **Done** | `6e86787985490a6b1c4a86eb801c3334b4bc8bcd` |
+| 1.1 | Record `main` HEAD SHA | **Done** | `69f354f86cf421fc0ebe651586306118504d491e` |
 | 1.2 | Record pubspec versions (phone, TV, coins) | **Done** | `app/pubspec.yaml` `0.1.0+13`; `app/pubspec_tv.yaml` `0.0.4+28`; `app/pubspec_coins.yaml` `0.0.7+12` |
 | 1.3 | List latest GitHub releases/tags | **Done** | `aika-stream-v0.0.2` (latest product release); `v0.0.6` aggregate |
 | 1.4 | Enumerate open PRs | **Done** | #2111, #2110, #2109 (Dependabot only) |
@@ -31,7 +31,7 @@ Status vocabulary: Done, Pending, Blocked, Deferred, Needs verification.
 
 | Step | Action | Status | Evidence / command |
 | --- | --- | --- | --- |
-| 2.1 | CI Continuous Integration on latest `main` push | **Done** | [38715870317](https://github.com/DevelopersCoffee/airo/actions/runs/38715870317) — all listed jobs success on pack SHA |
+| 2.1 | CI Continuous Integration on latest `main` push | **Done** | [40032582357](https://github.com/DevelopersCoffee/airo/actions/runs/40032582357) — all listed jobs success |
 | 2.2 | Local `flutter analyze` (phone app) | **Blocked** | Flutter SDK unavailable on Cloud Agent VM; run on host: `cd app && flutter analyze --no-fatal-infos --no-fatal-warnings` |
 | 2.3 | Local `packages/feature_iptv` tests | **Blocked** | Host: `cd packages/feature_iptv && flutter test` |
 | 2.4 | Local TV shell tests | **Blocked** | Host: `cd app && flutter test test/core/app/tv_shell_test.dart` |
@@ -120,8 +120,8 @@ Execute tracks **in parallel** but **never mix artifacts** between Aika Stream P
 
 | Step | Action | Status |
 | --- | --- | --- |
-| 6.1 | Land project status pack | **Done** | [#2112](https://github.com/DevelopersCoffee/airo/pull/2112) → `6e867879` |
-| 6.2 | Periodic refresh of status tables | **Pending** | After each Play drop or CI regression; use `docs/project/README.md` |
+| 6.1 | Land project status pack | **Done** | [#2112](https://github.com/DevelopersCoffee/airo/pull/2112), [#2113](https://github.com/DevelopersCoffee/airo/pull/2113) |
+| 6.2 | Thread closure baseline refresh | **Done** | `docs/project/*` @ `69f354f8` (2026-10-24) |
 | 6.3 | Next release sign-offs | **Pending** | See `PROJECT_RELEASE_CHECKLIST.md` |
 
 ---
