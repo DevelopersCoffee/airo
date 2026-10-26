@@ -45,6 +45,9 @@ export 'src/widgets/tv_long_press_ok_hint.dart';
 // Frame pace (high refresh rate + 8.33 ms budget)
 export 'src/frame/airo_frame_pace.dart';
 
+// Motion
+export 'src/motion/airo_stream_glow.dart';
+
 // Adaptive UI
 export 'src/adaptive/adaptive_ui_models.dart';
 export 'src/adaptive/airo_fold.dart';
