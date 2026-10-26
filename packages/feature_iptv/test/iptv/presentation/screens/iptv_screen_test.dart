@@ -189,10 +189,13 @@ void main() {
       expect(find.text('Fav'), findsNothing);
       expect(find.byTooltip('My Aika'), findsOneWidget);
       expect(find.byTooltip('Cast'), findsOneWidget);
+      // 800x600 is landscape with a short side under the phone breakpoint,
+      // so the library stays behind the Channels button until it is opened.
       expect(
-        find.byKey(const ValueKey('filter-chip-category')),
+        find.byKey(const ValueKey('airo-tv-phone-landscape-channels-toggle')),
         findsOneWidget,
       );
+      expect(find.byKey(const ValueKey('filter-chip-category')), findsNothing);
       expect(find.text('Featured Player'), findsNothing);
       expect(find.text('Play media from your saved playlist.'), findsNothing);
       expect(find.text('Select a channel to start watching'), findsOneWidget);
@@ -201,6 +204,15 @@ void main() {
         findsNothing,
       );
 
+      await tester.tap(
+        find.byKey(const ValueKey('airo-tv-phone-landscape-channels-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('filter-chip-category')),
+        findsOneWidget,
+      );
       expect(find.text('Sort: Name'), findsOneWidget);
       expect(find.text('City News Live'), findsWidgets);
     } finally {
