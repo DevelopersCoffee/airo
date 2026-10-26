@@ -1,9 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
-    <!-- Phone + tablet + D-pad/TV + Android Auto: leanback and touch are
-         optional so the same AAB installs on Pixel/tablet (LAUNCHER) and
-         Android TV (LEANBACK_LAUNCHER). Auto is media projection via
-         automotive_app_desc, not AAOS. Do not flip leanback to required. -->
+    <!-- Phone + tablet + D-pad/TV: leanback and touch are optional so the
+         same AAB installs on Pixel/tablet (LAUNCHER) and Android TV
+         (LEANBACK_LAUNCHER). Do not declare Android Auto. Do not flip
+         leanback to required. -->
     <uses-feature android:name="android.software.leanback" android:required="false"/>
     <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
     <uses-feature
@@ -123,10 +123,6 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
-        <!-- Android Auto descriptor (same media session as phone). -->
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
