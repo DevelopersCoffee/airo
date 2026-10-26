@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:core_ui/core_ui.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -169,7 +170,9 @@ abstract final class AiroBootstrap {
   ///    prologue and `runApp` (Airo TV's system chrome → prefs → audio
   ///    service; the super app's prefs → module registry → router). Returns
   ///    the widget to run.
-  /// 7. `runApp(...)`.
+  /// 7. `runApp(AiroFramePace(...))` — asks Android for a high refresh rate
+  ///    and publishes the frame budget. iOS ProMotion is unlocked by
+  ///    `CADisableMinimumFrameDurationOnPhone` in the phone Info.plist.
   /// 8. Deferred Firebase init, if [firebase] is [FirebasePolicy.deferred]
   ///    (scheduled for after the first frame; never blocks it).
   /// 9. [afterRunApp] — deferred/best-effort startup work (module
@@ -225,7 +228,7 @@ abstract final class AiroBootstrap {
     }
 
     final app = await composeApp();
-    (runWidget ?? runApp)(app);
+    (runWidget ?? runApp)(AiroFramePace(child: app));
 
     if (firebase case final _DeferredFirebasePolicy policy) {
       _scheduleAfterFirstFrame(

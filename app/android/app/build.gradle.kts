@@ -332,6 +332,10 @@ android {
                     else "src/withoutEmbedding/kotlin",
                 )
             }
+            // Coins and Anya replace the kotlin source dirs above, so a file
+            // under src/product or src/main/kotlin would not reach those
+            // activities. This directory is added for every variant.
+            kotlin.srcDir("src/framePace/kotlin")
         }
         // Wave B: classes that import androidx.media3.datasource.okhttp/OkHttp
         // (isTvVariant-gated below) get their own conditional test source dir,

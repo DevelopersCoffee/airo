@@ -6,7 +6,8 @@ reviewers:
   - Media Intelligence Architect
 contracts:
   - shell_module_registry_v1
-allowed_dependencies: []
+allowed_dependencies:
+  - core_ui
 forbidden_dependencies:
   - app
 quality_gates: {}

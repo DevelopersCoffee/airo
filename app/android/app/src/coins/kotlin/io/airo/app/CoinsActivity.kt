@@ -28,6 +28,7 @@ class CoinsActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        AiroFramePacePlugin.register(flutterEngine)
         nfcCapturePlugin = CoinsNfcCapturePlugin().also {
             flutterEngine.plugins.add(it)
         }

@@ -79,6 +79,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     }
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        AiroFramePacePlugin.register(flutterEngine)
 
         coinsNfcCapturePlugin = CoinsNfcCapturePlugin().also {
             flutterEngine.plugins.add(it)

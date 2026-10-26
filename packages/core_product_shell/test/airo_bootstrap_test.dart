@@ -1,4 +1,5 @@
 import 'package:core_product_shell/core_product_shell.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -223,5 +224,22 @@ void main() {
         ]);
       },
     );
+  });
+
+  test('wraps every shell in AiroFramePace', () async {
+    late Widget launched;
+
+    await AiroBootstrap.run(
+      shell: ShellId.mobile,
+      errorHandler: const ErrorHandlerPolicy.disabled(reason: 'test'),
+      firebase: const FirebasePolicy.skip(reason: 'test'),
+      composeApp: () => const Text('shell', textDirection: TextDirection.ltr),
+      runWidget: (widget) => launched = widget,
+    );
+
+    expect(launched, isA<AiroFramePace>());
+    final pace = launched as AiroFramePace;
+    expect(pace.child, isA<Text>());
+    expect((pace.child as Text).data, 'shell');
   });
 }
