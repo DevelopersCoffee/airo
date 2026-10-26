@@ -1,0 +1,13 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="nasa.iss.earth" tvg-name="Earth from the ISS" group-title="NASA public domain",Earth from the ISS
+https://images-assets.nasa.gov/video/Earth%20Views%20from%20the%20International%20Space%20Station/Earth%20Views%20from%20the%20International%20Space%20Station~small.mp4
+#EXTINF:-1 tvg-id="nasa.tv.plus" tvg-name="NASA TV Is Now NASA+" group-title="NASA public domain",NASA TV Is Now NASA+
+https://images-assets.nasa.gov/video/NASA%20TV%20Is%20Now%20NASA%2B/NASA%20TV%20Is%20Now%20NASA%2B~small.mp4
+#EXTINF:-1 tvg-id="nasa.artemis3" tvg-name="Artemis III Announcement" group-title="NASA public domain",Artemis III Announcement
+https://images-assets.nasa.gov/video/NASA%E2%80%99s%20Artemis%20III%20Announcement%20%28Official%20NASA%20Trailer%29/NASA%E2%80%99s%20Artemis%20III%20Announcement%20%28Official%20NASA%20Trailer%29~small.mp4
+#EXTINF:-1 tvg-id="nasa.spinoff" tvg-name="What is a NASA Spinoff" group-title="NASA public domain",What is a NASA Spinoff
+https://images-assets.nasa.gov/video/What%20is%20a%20NASA%20Spinoff/What%20is%20a%20NASA%20Spinoff~small.mp4
+#EXTINF:-1 tvg-id="nasa.we.are" tvg-name="We Are NASA" group-title="NASA public domain",We Are NASA
+https://images-assets.nasa.gov/video/NHQ_2019_0508_We%20Are%20NASA/NHQ_2019_0508_We%20Are%20NASA~small.mp4
+#EXTINF:-1 tvg-id="nasa.minute.20261010" tvg-name="NASA Minute Oct 10 2026" group-title="NASA public domain",NASA Minute Oct 10 2026
+https://images-assets.nasa.gov/video/NASA%20Minute%20Oct.%2010%2C%202026/NASA%20Minute%20Oct.%2010%2C%202026~small.mp4
