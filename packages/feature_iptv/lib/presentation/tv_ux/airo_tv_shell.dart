@@ -63,6 +63,7 @@ class AiroTvShell extends ConsumerStatefulWidget {
     this.videoFrameEncoder,
     this.onFullscreenToggle,
     this.videoStageHasOwnActions = false,
+    this.showStreamGlow = true,
     this.onSearch,
   });
 
@@ -123,6 +124,11 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// matter what [videoStage] renders. MultiView always keeps this shell's
   /// row regardless, since [MultiviewStage] has no sheet of its own.
   final bool videoStageHasOwnActions;
+
+  /// Draws [AiroStreamGlow] along the bottom edge of the stage, outside the
+  /// video-capture boundary. Tests that wait for animations to finish pass
+  /// false; a repeating ribbon never settles.
+  final bool showStreamGlow;
 
   /// Compact phone Search chip opens this instead of [SearchOverlay].
   final VoidCallback? onSearch;
@@ -357,7 +363,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     // Help/Settings/Fullscreen stay reachable no matter what's on screen.
     final needsShellVideoActions =
         multiview.sessions.isNotEmpty || !widget.videoStageHasOwnActions;
-    final videoStage = needsShellVideoActions
+    final stage = needsShellVideoActions
         ? _VideoStageWithActions(
             // Transient channel identity, in the same Stack as the action
             // row (and outside the capture RepaintBoundary below, so a
@@ -449,6 +455,28 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
             ),
           );
 
+    final showGlow =
+        widget.showStreamGlow &&
+        widget.showVideoStage &&
+        (widget.currentChannel != null || multiview.sessions.isNotEmpty);
+    // The stage owns the capture boundary. The ribbon is a sibling so a
+    // shared video frame does not include it, and it does not take hits.
+    final videoStage = showGlow
+        ? Stack(
+            fit: StackFit.expand,
+            children: [
+              stage,
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 36,
+                child: AiroStreamGlow(),
+              ),
+            ],
+          )
+        : stage;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final shortestSide = math.min(
@@ -495,10 +523,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           if (showFilter) filterRowFor(true),
         ];
         if (usePhoneLandscapeImmersive) {
-          final panelWidth = math.min(
-            constraints.maxWidth * 0.46,
-            400.0,
-          );
+          final panelWidth = math.min(constraints.maxWidth * 0.46, 400.0);
           return FocusTraversalGroup(
             child: Stack(
               key: const ValueKey('airo-tv-phone-landscape-immersive'),
@@ -517,9 +542,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                   Positioned.fill(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(
-                        () => _phoneLandscapeLibraryOpen = false,
-                      ),
+                      onTap: () =>
+                          setState(() => _phoneLandscapeLibraryOpen = false),
                       child: ColoredBox(
                         color: Colors.black.withValues(alpha: 0.55),
                       ),
@@ -564,9 +588,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                     left: 8 + MediaQuery.paddingOf(context).left,
                     top: 8 + MediaQuery.paddingOf(context).top,
                     child: _PhoneLandscapeChannelsButton(
-                      onPressed: () => setState(
-                        () => _phoneLandscapeLibraryOpen = true,
-                      ),
+                      onPressed: () =>
+                          setState(() => _phoneLandscapeLibraryOpen = true),
                     ),
                   ),
               ],

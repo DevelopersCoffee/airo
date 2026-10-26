@@ -62,6 +62,7 @@ void main() {
     Future<void> Function(Uint8List)? onShareVideoFrame,
     Future<Uint8List> Function(RenderRepaintBoundary)? videoFrameEncoder,
     Future<void> Function()? onWaysToWatchTap,
+    bool showStreamGlow = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
@@ -86,6 +87,7 @@ void main() {
               width: width,
               height: height,
               child: AiroTvShell(
+                showStreamGlow: showStreamGlow,
                 channels: channels,
                 currentChannel: currentChannel,
                 showVideoStage: showVideoStage,
@@ -124,6 +126,7 @@ void main() {
                   width: 390,
                   height: 720,
                   child: AiroTvShell(
+                    showStreamGlow: false,
                     channels: channels,
                     videoStage: const SizedBox(key: ValueKey('video-stage')),
                     onChannelSelected: (_) {},
@@ -135,6 +138,27 @@ void main() {
         )
         .then((_) => container);
   }
+
+  testWidgets('stream glow stays outside the video capture boundary', (
+    tester,
+  ) async {
+    await pumpAt(
+      tester,
+      1280,
+      currentChannel: channels.first,
+      showStreamGlow: true,
+    );
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('airo-stream-glow')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('airo-tv-video-capture-scope')),
+        matching: find.byKey(const ValueKey('airo-stream-glow')),
+      ),
+      findsNothing,
+    );
+  });
 
   testWidgets('compact layout preserves the stacked browsing structure', (
     tester,
@@ -351,10 +375,7 @@ void main() {
         videoStage.size.width / videoStage.size.height,
         closeTo(16 / 9, 0.02),
       );
-      expect(
-        videoStage.size.width,
-        greaterThan(shellBox.size.width * 0.72),
-      );
+      expect(videoStage.size.width, greaterThan(shellBox.size.width * 0.72));
 
       await tester.tap(
         find.byKey(const ValueKey('airo-tv-phone-landscape-channels-toggle')),
@@ -747,6 +768,7 @@ void main() {
                 width: 1280,
                 height: 720,
                 child: AiroTvShell(
+                  showStreamGlow: false,
                   channels: channels,
                   videoStage: const SizedBox(key: ValueKey('video-stage')),
                   onChannelSelected: (_) {},
@@ -820,6 +842,7 @@ void main() {
                 width: 1280,
                 height: 720,
                 child: AiroTvShell(
+                  showStreamGlow: false,
                   channels: channels,
                   videoStage: const SizedBox(key: ValueKey('video-stage')),
                   onChannelSelected: (_) {},
@@ -894,6 +917,7 @@ void main() {
                 width: 1280,
                 height: 720,
                 child: AiroTvShell(
+                  showStreamGlow: false,
                   channels: channels,
                   videoStage: const SizedBox(key: ValueKey('video-stage')),
                   onChannelSelected: (_) {},
@@ -971,6 +995,7 @@ void main() {
               width: 900,
               height: 720,
               child: AiroTvShell(
+                showStreamGlow: false,
                 channels: channels,
                 videoStage: const SizedBox(key: ValueKey('video-stage')),
                 availabilityByChannelId: const {
@@ -1019,6 +1044,7 @@ void main() {
               width: 900,
               height: 720,
               child: AiroTvShell(
+                showStreamGlow: false,
                 channels: channels,
                 videoStage: const SizedBox(key: ValueKey('video-stage')),
                 onChannelSelected: (_) {},
@@ -1071,6 +1097,7 @@ void main() {
                 width: 900,
                 height: 720,
                 child: AiroTvShell(
+                  showStreamGlow: false,
                   channels: channels,
                   videoStage: const SizedBox(key: ValueKey('video-stage')),
                   onChannelSelected: (_) {},
@@ -1122,6 +1149,7 @@ void main() {
                 width: 900,
                 height: 720,
                 child: AiroTvShell(
+                  showStreamGlow: false,
                   channels: channels,
                   videoStage: const SizedBox(key: ValueKey('video-stage')),
                   onChannelSelected: (_) {},
