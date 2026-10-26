@@ -3,6 +3,7 @@ package io.airo.app
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.engine.FlutterEngine
 
 // Focused host for Anya. Fragment activity keeps plugin activity results
 // (file picker) on a stable activity surface.
@@ -13,5 +14,10 @@ class AnyaActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+    }
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        AiroFramePacePlugin.register(flutterEngine)
     }
 }

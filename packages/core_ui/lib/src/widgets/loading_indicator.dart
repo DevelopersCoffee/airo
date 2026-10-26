@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/airo_spacing.dart';
+import 'airo_repaint_island.dart';
 
 /// Standard loading indicator widget
 class LoadingIndicator extends StatelessWidget {
@@ -17,14 +18,16 @@ class LoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final indicator = SizedBox(
-      width: _getSize(),
-      height: _getSize(),
-      child: CircularProgressIndicator(
-        strokeWidth: _getStrokeWidth(),
-        valueColor: color != null
-            ? AlwaysStoppedAnimation<Color>(color!)
-            : null,
+    final indicator = AiroRepaintIsland(
+      child: SizedBox(
+        width: _getSize(),
+        height: _getSize(),
+        child: CircularProgressIndicator(
+          strokeWidth: _getStrokeWidth(),
+          valueColor: color != null
+              ? AlwaysStoppedAnimation<Color>(color!)
+              : null,
+        ),
       ),
     );
 
