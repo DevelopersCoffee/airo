@@ -3,7 +3,6 @@ package io.airo.app
 import android.app.Activity
 import android.os.Build
 import android.view.Display
-import android.view.Surface
 import android.view.Window
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -98,28 +97,13 @@ internal object AiroFramePaceModes {
 
     fun apply(window: Window, modeId: Int): Boolean {
         val display = currentDisplay(window) ?: return false
-        val mode = display.supportedModes.firstOrNull { it.modeId == modeId } ?: return false
+        if (display.supportedModes.none { it.modeId == modeId }) return false
         val attrs = window.attributes
         if (attrs.preferredDisplayModeId != modeId) {
             attrs.preferredDisplayModeId = modeId
             window.attributes = attrs
         }
-        hintFrameRate(window, mode.refreshRate)
         return true
-    }
-
-    private fun hintFrameRate(window: Window, refreshRate: Float) {
-        if (Build.VERSION.SDK_INT < 35) return
-        try {
-            window.setFrameRate(
-                refreshRate,
-                Surface.FRAME_RATE_COMPATIBILITY_DEFAULT,
-                Surface.CHANGE_FRAME_RATE_ONLY_IF_SEAMLESS,
-            )
-        } catch (ignored: RuntimeException) {
-            // preferredDisplayModeId is already set. The seamless hint is
-            // optional and some OEM windows reject it before attach.
-        }
     }
 
     @Suppress("DEPRECATION")
