@@ -19,6 +19,8 @@ void main() {
     id: 'movie-1',
     title: 'Movie One',
     streamUrl: 'https://example.com/movie.m3u8',
+    group: 'Movies',
+    kind: VodContentKind.movie,
   );
 
   test('removeFromRecentlyWatchedProvider persists across container restart',
