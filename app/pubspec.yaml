@@ -111,8 +111,6 @@ dependencies:
     path: ../packages/platform_ads
 
   # Local packages - Features
-  airo:
-    path: ../packages/airo
   feature_coin:
     path: ../packages/feature_coin
   feature_anya:
