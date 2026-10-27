@@ -61,6 +61,8 @@ dependencies:
     path: ../packages/core_auth
 
   # Local packages - Features
+  airo:
+    path: ../packages/airo
   feature_coin:
     path: ../packages/feature_coin
 
