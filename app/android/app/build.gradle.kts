@@ -425,7 +425,7 @@ dependencies {
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
     if (!isLeanStandaloneVariant && !isFireTvVariant) {
-        implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
+        implementation("com.google.mlkit:genai-prompt:1.0.0-beta5")
     }
 
     // LiteRT-LM for local on-device LLM inference. The artifact is published
