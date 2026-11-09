@@ -16,4 +16,6 @@ Verified snapshots of Airo and Aika Stream execution state. Historical agent not
 
 **Thread closure (2026-10-24):** Baseline and CI citations updated to `main` @ `69f354f86cf421fc0ebe651586306118504d491e`. Open qualification and store gates remain **Needs verification** / **Blocked** until humans rerun device and Play/Appstore steps.
 
+**Weekly refresh (2026-11-09):** TV SSOT `0.0.4+30`, `main` @ `d7174c9f`, CI [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540); coins standalone shell per [#2091](https://github.com/DevelopersCoffee/airo/pull/2091).
+
 **Related:** `docs/release/`, `docs/okf/aika-stream-play/`, `docs/agents/WORKFLOW.md`.

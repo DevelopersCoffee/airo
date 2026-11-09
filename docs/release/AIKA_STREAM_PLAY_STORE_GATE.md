@@ -112,16 +112,19 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 
 ## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`–`25` then `0.0.4+26`–`28`
 
-Play already consumed `versionCode` **18**–**27**. The next Play AAB is **28**
-(`0.0.4+28` in `app/pubspec_tv.yaml`). Never reuse 27. `versionName` stays
+Play already consumed `versionCode` **18**–**27** (historical). SSOT on `main` is now
+**30** (`0.0.4+30` in `app/pubspec_tv.yaml`, [#2135](https://github.com/DevelopersCoffee/airo/pull/2135)).
+Never reuse spent codes per OKF. `versionName` stays
 `0.0.4`. Overlay Pro AABs at 28 use the Play `goog_` RevenueCat SDK key
 (Billing Library 8 / RevenueCat Flutter 9.16.1) and refuse Test Store `test_`
 keys in release.
 
-This is the first listing drop that declares **Android Auto** (`automotive_app_desc.xml`
-+ `com.google.android.gms.car.application` on both main and tv manifests) on
-the same dual-form-factor AAB as phone, tablet, D-pad, and Android TV. Do not
-split Auto onto a second package.
+**Android Auto (2026-11-09):** The TV product flavor manifest
+(`app/android/app/src/tv/AndroidManifest.xml`) explicitly **does not** declare Android
+Auto ([#2135](https://github.com/DevelopersCoffee/airo/pull/2135), `4e6470e7`). The
+full/phone `main` manifest may still expose `com.google.android.gms.car.application`
+(`app/android/app/src/main/AndroidManifest.xml`) for car projection on non-TV builds.
+Do not describe the TV listing AAB as an Android Auto app.
 
 Play Console rec on 19 (the only remaining production action): R8
 optimization, obfuscation, and shrinking all at **26%**. 0.0.2 drops the
@@ -149,9 +152,10 @@ Pixel 9:
 | Device catalog | Pixel 9 and the Sony Bravia appear as supported. If Pixel 9 is absent, form factors or screenshots are incomplete — do not cut another AAB with `leanback required=true`. |
 | Sideload vs Play | Testers must **uninstall sideloads** before installing from Play. Pixel sideload uses the upload key; Play-installed APKs use Play App Signing and will not upgrade in place (see Upgrade path above). |
 
-Cut the 0.0.4+28 AAB via `.github/workflows/aika-stream-release.yml` **after**
-this packet is green. Do not reuse versionCode 27. Enable Phone, Tablet, and
-TV form factors; keep Auto as projection on the phone/tablet catalog.
+Cut the AAB from current `app/pubspec_tv.yaml` SSOT via
+`.github/workflows/aika-stream-release.yml` **after** this packet is green. Do not
+reuse spent `versionCode` values. Enable Phone, Tablet, and TV form factors on the
+dual-form-factor listing.
 
 ## Out of scope this wave
 

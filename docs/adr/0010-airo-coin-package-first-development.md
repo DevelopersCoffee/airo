@@ -78,26 +78,21 @@ The public entitlement contract now reserves
 
 ## Standalone shell interim exception
 
-The standalone Airo Coins shell (`app/lib/main_coins.dart`) opens on a lean,
-content-first money summary (`CoinsStandaloneHome`: recent transactions plus a
-Secure Vault entry) so it feels like the super-app's Coins tab instead of
-dropping onto the vault gate. This is a deliberate, time-boxed exception to the
-rule above that the legacy tree is a migration source only: the home reuses the
-legacy read path (`recentExpensesProvider` and the display card) until the money
-dashboard is migrated package-first into `feature_coin` (Airo Coin phased epic
-#938–#942), at which point the shell mounts the package screen and this
-exception is removed.
+The standalone Airo Coins shell (`app/lib/main_coins.dart`) uses a lean home hub
+(`app/lib/core/coins/coins_standalone_home.dart`) with two entry cards — **Shared
+expenses** and **Secure vault** — rather than opening directly on the vault gate.
+This is a deliberate exception while group/split flows remain in the legacy
+`app/lib/features/coins` tree until package-first migration (#938–#942); see
+[#2091](https://github.com/DevelopersCoffee/airo/pull/2091) (`28e7ae00`).
 
 Constraints while the exception stands:
 
-- The exception is limited to a read-only summary. The heavy add/split/group/
-  budget flows — and their OCR, share, and uuid dependencies — stay out of the
-  standalone, keeping the coins edge profile small.
-- The new code lives in the shell composition layer
-  (`app/lib/core/coins/coins_standalone_home.dart`); no new code is added to the
-  legacy tree.
-- The read path self-wires from `appDatabaseProvider` (Drift, native only); the
-  shell adds no extra bootstrap.
+- Shared expenses routes (`/groups`, group detail, settle-up) live in the shell
+  composition layer (`app/lib/core/coins/coins_standalone_groups_list_screen.dart`
+  and related screens) and may call legacy providers/use cases; receipt OCR and
+  cloud sync stay super-app-only.
+- New standalone-specific UI belongs in `app/lib/core/coins/`, not new business
+  logic in the legacy tree (review-blocking per this ADR).
 - The vault stays package-first in `feature_coin`, mounted at `/money/vault`.
 
 **Update (2026-10-03):** Product owner decision supersedes the read-only

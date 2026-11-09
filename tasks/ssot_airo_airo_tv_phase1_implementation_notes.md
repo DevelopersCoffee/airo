@@ -114,6 +114,11 @@ label/icon resolution, and behavior for a third shell identifier.
 
 ### 4. `main_coins.dart` stub
 
+> **Superseded (2026-11-09):** As of [#2091](https://github.com/DevelopersCoffee/airo/pull/2091)
+> (`28e7ae00`), `main_coins.dart` is a real standalone shell (groups, vault, routes).
+> `app/test/main_coins_shell_test.dart` replaced the stub test. The text below is the
+> historical phase-1 record only.
+
 Added `app/lib/main_coins.dart`: a minimal entrypoint that constructs a
 `ModuleRegistry(shell: ShellId.coins)` with zero modules registered and
 renders a placeholder screen (`AiroCoinsStubApp`). No routes, no providers,

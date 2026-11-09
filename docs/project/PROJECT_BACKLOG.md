@@ -1,6 +1,6 @@
 # Airo / Aika Stream — project backlog
 
-**Last verified:** 2026-10-24 (Asia/Calcutta) against `origin/main` @ `69f354f86cf421fc0ebe651586306118504d491e`.
+**Last verified:** 2026-11-09 (UTC) against `origin/main` @ `d7174c9f364f16be10b4d6a95f7b53b2d24117b5`.
 
 Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verification** only.
 
@@ -12,9 +12,9 @@ Priority is top-down within each section; cross-track items name their release l
 
 | ID | Item | Status | Evidence / next step |
 | --- | --- | --- | --- |
-| B-001 | Keep `main` CI green on all Android variants (full, tv, fire-tv, coins) | **Done** | [CI run 40032582357](https://github.com/DevelopersCoffee/airo/actions/runs/40032582357) success (2026-10-23). |
+| B-001 | Keep `main` CI green on all Android variants (full, tv, fire-tv, coins) | **Done** | [CI run 40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) success on `d7174c9f` (2026-11-09). |
 | B-002 | Re-run `feature_iptv` + TV shell tests on developer host | **Needs verification** | Commands from Sept 2026 test plan: `cd packages/feature_iptv && flutter test`; `cd app && flutter test test/core/app/tv_shell_test.dart`. CI passed; local Flutter missing on Cloud Agent VM. |
-| B-003 | Close Dependabot Android bumps (#2111–#2109) or merge when vetted | **Pending** | Open PRs as of 2026-10-16. |
+| B-003 | Close Dependabot Android bumps or merge when vetted | **Pending** | Open: [#2144](https://github.com/DevelopersCoffee/airo/pull/2144)–[#2146](https://github.com/DevelopersCoffee/airo/pull/2146) (2026-11-09). |
 
 ---
 
@@ -34,11 +34,11 @@ Priority is top-down within each section; cross-track items name their release l
 
 | ID | Item | Status | Evidence / next step |
 | --- | --- | --- | --- |
-| B-020 | Align GitHub release tag with pubspec SSOT (`0.0.4+28`) | **Pending** | Pubspec: `app/pubspec_tv.yaml`. Latest GitHub release: `aika-stream-v0.0.2`. |
+| B-020 | Align GitHub release tag with pubspec SSOT (`0.0.4+30`) | **Pending** | Pubspec: `app/pubspec_tv.yaml` line 14. Latest GitHub release: `aika-stream-v0.0.2`. |
 | B-021 | Play drop checklist (Internal → Production) | **Blocked** | Human upload/promotion per `docs/okf/aika-stream-play/playbooks/internal-then-production.md`; agent cannot verify Production Latest. |
 | B-022 | Settings expansion slice 2+ (resume last channel, sleep timer, source headers, EPG offset) | **Pending** | Slice 1 **Done** (#2042, #2054). Plan: `docs/superpowers/plans/2026-09-22-aika-stream-settings.md`; specs e.g. `docs/superpowers/specs/2026-09-23-tv-resume-last-channel-design.md`. |
 | B-023 | Reconcile spent Play versionCodes with next bump | **Needs verification** | OKF: `docs/okf/aika-stream-play/references/version-ssot.md` — do not reuse 21–25. Confirm next code with Play Console before edit. |
-| B-024 | Archive or merge stale `aika-stream-obb-19` / `tv-19` branches | **Pending** | Remote branches exist; SSOT at +28. Audit for unmerged fixes before delete. |
+| B-024 | Archive or merge stale `aika-stream-obb-19` / `tv-19` branches | **Pending** | Remote branches exist; SSOT at +30. Audit for unmerged fixes before delete. |
 
 ---
 
@@ -79,7 +79,7 @@ Priority is top-down within each section; cross-track items name their release l
 | ID | Item | Status | Evidence / next step |
 | --- | --- | --- | --- |
 | B-060 | Project status pack under `docs/project/` | **Done** | [#2112](https://github.com/DevelopersCoffee/airo/pull/2112) merged → `6e867879`; index `docs/project/README.md`. |
-| B-061 | Refresh stale release evidence index | **Pending** | Many `docs/release/evidence/*` artifacts predate `0.0.4+28`. |
+| B-061 | Refresh stale release evidence index | **Pending** | Many `docs/release/evidence/*` artifacts predate `0.0.4+30`. |
 | B-062 | Repository health preflight for next wave | **Needs verification** | `docs/release/REPOSITORY_HEALTH_STATUS.md` — requires maintainer env vars for green preflight. |
 
 ---

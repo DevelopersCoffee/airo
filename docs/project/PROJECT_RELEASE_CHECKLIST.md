@@ -2,7 +2,7 @@
 
 **Purpose:** Track-specific gates before shipping. Complements (does not replace) `docs/release/RELEASE_CHECKLIST.md` and OKF playbooks.
 
-**Last verified:** 2026-10-24 (Asia/Calcutta) · `main` @ `69f354f86cf421fc0ebe651586306118504d491e`.
+**Last verified:** 2026-11-09 (UTC) · `main` @ `d7174c9f364f16be10b4d6a95f7b53b2d24117b5`.
 
 Check box = gate satisfied with cited evidence. Use status words in the **Status** column when a gate is not binary.
 
@@ -12,8 +12,8 @@ Check box = gate satisfied with cited evidence. Use status words in the **Status
 
 | Gate | Status | Evidence / command |
 | --- | --- | --- |
-| Branch from latest `origin/main` | **Done** | SHA `69f354f86cf421fc0ebe651586306118504d491e` |
-| CI Continuous Integration green on release candidate SHA | **Done** (current `main`) | [Run 40032582357](https://github.com/DevelopersCoffee/airo/actions/runs/40032582357) |
+| Branch from latest `origin/main` | **Done** | SHA `d7174c9f364f16be10b4d6a95f7b53b2d24117b5` |
+| CI Continuous Integration green on release candidate SHA | **Done** (current `main`) | [Run 40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) |
 | Semantic PR / commit policy | **Pending** | Required at PR merge time |
 | No secrets in repo / release notes | **Done** | Policy; this doc contains no keystore material |
 | `[skip ci]` only for non-executable changes | **Done** | `CLAUDE.md` / hooks policy |
@@ -22,7 +22,7 @@ Check box = gate satisfied with cited evidence. Use status words in the **Status
 
 ## Track A — Aika Stream TV (Google Play)
 
-**Package:** `com.developerscoffee.tv.midas` · **SSOT:** `app/pubspec_tv.yaml` · **Current:** `0.0.4+28`
+**Package:** `com.developerscoffee.tv.midas` · **SSOT:** `app/pubspec_tv.yaml` · **Current:** `0.0.4+30`
 
 | # | Gate | Status | Evidence |
 | --- | --- | --- | --- |
