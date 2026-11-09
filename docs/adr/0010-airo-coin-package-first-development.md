@@ -103,6 +103,15 @@ Constraints while the exception stands:
   whether the original “no new code in the legacy tree” rule still stands or is relaxed.
 - The vault stays package-first in `feature_coin`, mounted at `/money/vault`.
 
+**Update (2026-10-03):** Product owner decision for this interim exception:
+the Airo Coin shell (`main_coins.dart`) must expose full on-device shared
+expenses (groups, add/split, balances, settle-up) plus the package-first vault;
+cloud sync and accounts remain separate tracks. Split flows may still live in the
+legacy app layer until package-first migration (#938–#942). Standalone NFC quick
+capture also ships on `/quick-capture` (`NfcQuickExpenseCaptureScreen` in
+`main_coins.dart`, [#2090](https://github.com/DevelopersCoffee/airo/pull/2090),
+`8e274c81`).
+
 ## Related Decisions
 
 - ADR-0001: Modular Package Structure

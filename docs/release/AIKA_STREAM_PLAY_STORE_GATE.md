@@ -112,9 +112,10 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 
 ## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`–`25` then `0.0.4+26`–`28`
 
-Play already consumed `versionCode` **18**–**29** (historical; **28**–**29** spent when
-Play rejected the TV listing under Android Auto quality rules —
-[#2135](https://github.com/DevelopersCoffee/airo/pull/2135)). SSOT on `main` is now
+Play already consumed `versionCode` **18**–**29** (historical). **28** was an earlier
+Play upload (spent). **29** was consumed and rejected under Android Auto / car
+login rules ([#2135](https://github.com/DevelopersCoffee/airo/pull/2135), `d65146c1`
+commit message). SSOT on `main` is now
 **30** (`0.0.4+30` in `app/pubspec_tv.yaml`, [#2135](https://github.com/DevelopersCoffee/airo/pull/2135)).
 Never reuse spent codes per OKF. `versionName` stays
 `0.0.4`. Overlay Pro AABs uploaded at **28** used the Play `goog_` RevenueCat SDK key

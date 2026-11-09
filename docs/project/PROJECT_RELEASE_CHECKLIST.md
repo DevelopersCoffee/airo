@@ -39,7 +39,7 @@ Check box = gate satisfied with cited evidence. Use status words in the **Status
 | A11 | Play Production promotion | **Blocked** | Human operator |
 | A12 | Store listing / Data Safety / content rating docs current | **Needs verification** | `docs/release/AIKA_STREAM_*` — spot-check against build features |
 
-**Post–build-19 note:** Historical OBB/train work lives on branches `feat/aika-stream-obb-19*`. Current SSOT is **+30**; Play spent **28**–**29** ([#2135](https://github.com/DevelopersCoffee/airo/pull/2135)). Confirm Play Console live version before bumping.
+**Post–build-19 note:** Historical OBB/train work lives on branches `feat/aika-stream-obb-19*`. Current SSOT is **+30**; **28** spent on an earlier upload; **29** spent when Play rejected the build under car login rules ([#2135](https://github.com/DevelopersCoffee/airo/pull/2135), `d65146c1`). Confirm Play Console live version before bumping.
 
 ---
 
@@ -124,7 +124,7 @@ cd app && flutter test test/core/app/tv_shell_test.dart
 
 # TV AAB (example — adjust name/code to target drop)
 GRADLE_USER_HOME="$HOME/.gradle" \
-  bash scripts/build-tv.sh --aab-only --build-name 0.0.4 --build-number 28
+  bash scripts/build-tv.sh --aab-only --build-name 0.0.4 --build-number 30
 ```
 
 Cloud Agent VM (2026-10-24): Flutter SDK **not** on PATH — run on a developer host or download CI artifacts from [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) (2026-10-28).
