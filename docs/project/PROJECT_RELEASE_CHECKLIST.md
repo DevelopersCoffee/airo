@@ -13,7 +13,7 @@ Check box = gate satisfied with cited evidence. Use status words in the **Status
 | Gate | Status | Evidence / command |
 | --- | --- | --- |
 | Branch from latest `origin/main` | **Done** | SHA `d7174c9f364f16be10b4d6a95f7b53b2d24117b5` |
-| CI Continuous Integration green on release candidate SHA | **Done** (current `main`) | [Run 40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) |
+| CI Continuous Integration green on release candidate SHA | **Done** (current `main`) | [Run 40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) on `d7174c9f` (2026-10-28) |
 | Semantic PR / commit policy | **Pending** | Required at PR merge time |
 | No secrets in repo / release notes | **Done** | Policy; this doc contains no keystore material |
 | `[skip ci]` only for non-executable changes | **Done** | `CLAUDE.md` / hooks policy |
@@ -39,7 +39,7 @@ Check box = gate satisfied with cited evidence. Use status words in the **Status
 | A11 | Play Production promotion | **Blocked** | Human operator |
 | A12 | Store listing / Data Safety / content rating docs current | **Needs verification** | `docs/release/AIKA_STREAM_*` — spot-check against build features |
 
-**Post–build-19 note:** Historical OBB/train work lives on branches `feat/aika-stream-obb-19*`. Current SSOT is **+28**. Confirm Play Console live version before bumping.
+**Post–build-19 note:** Historical OBB/train work lives on branches `feat/aika-stream-obb-19*`. Current SSOT is **+30**; Play spent **28**–**29** ([#2135](https://github.com/DevelopersCoffee/airo/pull/2135)). Confirm Play Console live version before bumping.
 
 ---
 
@@ -51,9 +51,9 @@ Check box = gate satisfied with cited evidence. Use status words in the **Status
 | --- | --- | --- | --- |
 | B1 | Phone pubspec version intentional | **Done** | `app/pubspec.yaml` |
 | B2 | `flutter analyze` + format | **Needs verification** | Host-only; VM blocked |
-| B3 | Full app CI variant green | **Done** | CI job `build-android (full, lib/main.dart, …)` run 40032582357 |
+| B3 | Full app CI variant green | **Done** | CI job `build-android (full, …)` success on [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) (2026-10-28) |
 | B4 | Aggregate GitHub release (`v0.0.x` wave) if shipping with orchestrator | **Pending** | Latest `v0.0.6` (2026-08-03) vs pubspec `0.1.0+13` |
-| B5 | Mind shell job green | **Done** | `airo-mind-shell` success run 40032582357 |
+| B5 | Mind shell job green | **Done** | `airo-mind-shell` success on [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) (2026-10-28) |
 | B6 | Store/listing separate from Aika Stream | **Done** | Distinct package id and pubspec |
 
 > **Amiro / Build 9:** If your release calendar uses an internal “Build 9” label for the phone app, map it to `version:` build number in `app/pubspec.yaml` and Play Console — no **Done** entry without that mapping evidence.
@@ -66,7 +66,7 @@ Check box = gate satisfied with cited evidence. Use status words in the **Status
 
 | # | Gate | Status | Evidence |
 | --- | --- | --- | --- |
-| C1 | Fire OS Gradle variant builds in CI | **Done** | #2100; fire-tv job run 40032582357 |
+| C1 | Fire OS Gradle variant builds in CI | **Done** | #2100; fire-tv job success on [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) (2026-10-28) |
 | C2 | `scripts/check-fire-tv-release.sh` passes | **Done** | CI step on fire-tv matrix |
 | C3 | GMS-free / Amazon policy gates documented | **Needs verification** | Review workflow comments in #2100 + store compliance docs |
 | C4 | Fire TV signing secrets configured in CI | **Needs verification** | Workflow uses `FIRE_TV_RELEASE_KEYSTORE_BASE64` — presence not verified in this doc pass |
@@ -127,4 +127,4 @@ GRADLE_USER_HOME="$HOME/.gradle" \
   bash scripts/build-tv.sh --aab-only --build-name 0.0.4 --build-number 28
 ```
 
-Cloud Agent VM (2026-10-24): Flutter SDK **not** on PATH — run on a developer host or download CI artifacts from [40032582357](https://github.com/DevelopersCoffee/airo/actions/runs/40032582357).
+Cloud Agent VM (2026-10-24): Flutter SDK **not** on PATH — run on a developer host or download CI artifacts from [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) (2026-10-28).

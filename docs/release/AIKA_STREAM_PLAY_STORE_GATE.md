@@ -112,19 +112,23 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 
 ## Play Console dual form-factor (`0.0.1+19`) then `0.0.2+20`–`22` then `0.0.3+23`–`25` then `0.0.4+26`–`28`
 
-Play already consumed `versionCode` **18**–**27** (historical). SSOT on `main` is now
+Play already consumed `versionCode` **18**–**29** (historical; **28**–**29** spent when
+Play rejected the TV listing under Android Auto quality rules —
+[#2135](https://github.com/DevelopersCoffee/airo/pull/2135)). SSOT on `main` is now
 **30** (`0.0.4+30` in `app/pubspec_tv.yaml`, [#2135](https://github.com/DevelopersCoffee/airo/pull/2135)).
 Never reuse spent codes per OKF. `versionName` stays
-`0.0.4`. Overlay Pro AABs at 28 use the Play `goog_` RevenueCat SDK key
+`0.0.4`. Overlay Pro AABs uploaded at **28** used the Play `goog_` RevenueCat SDK key
 (Billing Library 8 / RevenueCat Flutter 9.16.1) and refuse Test Store `test_`
-keys in release.
+keys in release (that build is spent; current TV SSOT is **+30**).
 
-**Android Auto (2026-11-09):** The TV product flavor manifest
-(`app/android/app/src/tv/AndroidManifest.xml`) explicitly **does not** declare Android
-Auto ([#2135](https://github.com/DevelopersCoffee/airo/pull/2135), `4e6470e7`). The
-full/phone `main` manifest may still expose `com.google.android.gms.car.application`
-(`app/android/app/src/main/AndroidManifest.xml`) for car projection on non-TV builds.
-Do not describe the TV listing AAB as an Android Auto app.
+**Android Auto (2026-11-09):** TV Gradle variants replace the main manifest with
+`app/android/app/src/tv/AndroidManifest.xml` (`app/android/app/build.gradle.kts`,
+`isTvVariant` → `manifest.srcFile("src/tv/AndroidManifest.xml")`). That TV manifest
+explicitly **does not** declare Android Auto ([#2135](https://github.com/DevelopersCoffee/airo/pull/2135),
+`d65146c1`). The full/phone `main` manifest may still expose
+`com.google.android.gms.car.application` (`app/android/app/src/main/AndroidManifest.xml`)
+for car projection on non-TV builds. Do not describe the TV listing AAB as an Android
+Auto app.
 
 Play Console rec on 19 (the only remaining production action): R8
 optimization, obfuscation, and shrinking all at **26%**. 0.0.2 drops the
@@ -144,7 +148,7 @@ Pixel 9:
 
 | Step | What to confirm |
 | --- | --- |
-| Form factors | Enable **Phone**, **Tablet**, and **TV** (same listing). Do not leave the app TV-only. Wi-Fi tablets need `android.hardware.telephony` `required="false"`. Android Auto is the same AAB (media projection), not a second listing. |
+| Form factors | Enable **Phone**, **Tablet**, and **TV** only (same listing). Do not leave the app TV-only. Wi-Fi tablets need `android.hardware.telephony` `required="false"`. The TV-listing AAB does **not** ship Android Auto — use the phone app (`io.airo.app`) for Auto, not `com.developerscoffee.tv.midas`. |
 | Phone screenshots | Save a phone screenshot set (compact explorer, 16:9 or 9:16). TV-only screenshots keep Pixel 9 out of the catalog. |
 | Tablet screenshots | Save 7-inch and 10-inch tablet screenshots. Missing tablet graphics keep tablets out of the catalog even when `supports-screens` is open. |
 | TV screenshots | Keep the existing TV set under `docs/store-assets/airo-tv/` (`01`–`04`, skip `05`). Console Save still required. |

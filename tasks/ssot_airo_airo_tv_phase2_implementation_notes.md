@@ -59,9 +59,10 @@ otherwise it belongs to the module that owns its state.
    feature, not shared shell infrastructure. Extract that feature as its own
    package first if ever needed.
 4. **Airo Coins real UI** — **Done** for standalone shell scope ([#2091](https://github.com/DevelopersCoffee/airo/pull/2091)):
-   groups/splits/vault in `main_coins.dart` + `app/lib/core/coins/*`. Package-first
-   migration of legacy `app/lib/features/coins` into `feature_coin` / `feature_coins_core`
-   remains **Pending** (ADR-0010, #938–#942).
+   hub + groups list in `app/lib/core/coins/*`; group detail/settle-up via legacy
+   `app/lib/features/coins` screens wired from `main_coins.dart`; vault via `feature_coin`.
+   Package-first migration of legacy `app/lib/features/coins` into `feature_coin` /
+   `feature_coins_core` remains **Pending** (ADR-0010, #938–#942).
 
 ## Known pre-existing failures (not from this work)
 

@@ -87,20 +87,21 @@ This is a deliberate exception while group/split flows remain in the legacy
 
 Constraints while the exception stands:
 
-- Shared expenses routes (`/groups`, group detail, settle-up) live in the shell
-  composition layer (`app/lib/core/coins/coins_standalone_groups_list_screen.dart`
-  and related screens) and may call legacy providers/use cases; receipt OCR and
+- Hub and groups **list** routes live in `app/lib/core/coins/` (`coins_standalone_home.dart`,
+  `coins_standalone_groups_list_screen.dart`; `/` and `/groups` in `main_coins.dart`).
+- Group detail and settle-up flows route to legacy
+  `app/lib/features/coins/presentation/screens/group_detail_screen.dart` (`/groups/:groupId`
+  in `main_coins.dart`; in-screen settlement via `recordSettlement` there — no top-level
+  settle-up route). Shell screens may call legacy providers/use cases; receipt OCR and
   cloud sync stay super-app-only.
-- New standalone-specific UI belongs in `app/lib/core/coins/`, not new business
-  logic in the legacy tree (review-blocking per this ADR).
+- New standalone-specific UI belongs in `app/lib/core/coins/`. The decision above
+  (lines 44–47) is that the legacy `app/lib/features/coins` tree is not a target for
+  new Airo Coin business logic. [#2091](https://github.com/DevelopersCoffee/airo/pull/2091)
+  (`28e7ae00`) added files under that legacy tree (e.g.
+  `group_detail_cloud_share.dart`, `group_detail_itemized_bill.dart`,
+  `group_detail_super_app.dart`, `auth_coins_identity.dart`). **Pending** product owner:
+  whether the original “no new code in the legacy tree” rule still stands or is relaxed.
 - The vault stays package-first in `feature_coin`, mounted at `/money/vault`.
-
-**Update (2026-10-03):** Product owner decision supersedes the read-only
-standalone home above. The Airo Coin shell (`main_coins.dart`) must expose full
-on-device shared expenses (groups, add/split, balances, settle-up) plus the
-package-first vault; cloud sync, accounts, and NFC quick capture remain separate
-tracks. Split flows may still live in the legacy app layer until migrated into
-packages per this ADR's package-first rule.
 
 ## Related Decisions
 

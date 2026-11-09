@@ -17,7 +17,7 @@ Status vocabulary: Done, Pending, Blocked, Deferred, Needs verification.
 | 1.1 | Record `main` HEAD SHA | **Done** | `d7174c9f364f16be10b4d6a95f7b53b2d24117b5` |
 | 1.2 | Record pubspec versions (phone, TV, coins) | **Done** | `app/pubspec.yaml` `0.1.0+13`; `app/pubspec_tv.yaml` `0.0.4+30`; `app/pubspec_coins.yaml` `0.0.7+12` |
 | 1.3 | List latest GitHub releases/tags | **Done** | `aika-stream-v0.0.2` (latest product release); `v0.0.6` aggregate |
-| 1.4 | Enumerate open PRs | **Done** | #2144–#2146 (Dependabot only, 2026-11-09) |
+| 1.4 | Enumerate open PRs | **Done** | Draft #2147 (docs drift); #2144–#2146 Dependabot (2026-11-09) |
 | 1.5 | Map active remote branches to tracks | **Done** | See `PROJECT_STATUS.md` §1; IPTV `agent/iptv/aika-stream-*`, Fire `cursor/fire-tv-build-pipeline-ff46` (merged) |
 | 1.6 | Confirm TV Android application id | **Done** | `com.developerscoffee.tv.midas` — `app/android/app/build.gradle.kts` |
 
@@ -31,7 +31,7 @@ Status vocabulary: Done, Pending, Blocked, Deferred, Needs verification.
 
 | Step | Action | Status | Evidence / command |
 | --- | --- | --- | --- |
-| 2.1 | CI Continuous Integration on latest `main` push | **Done** | [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) on `d7174c9f` (2026-11-09) |
+| 2.1 | CI Continuous Integration on latest `main` push | **Done** | [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) on `d7174c9f` (2026-10-28) |
 | 2.2 | Local `flutter analyze` (phone app) | **Blocked** | Flutter SDK unavailable on Cloud Agent VM; run on host: `cd app && flutter analyze --no-fatal-infos --no-fatal-warnings` |
 | 2.3 | Local `packages/feature_iptv` tests | **Blocked** | Host: `cd packages/feature_iptv && flutter test` |
 | 2.4 | Local TV shell tests | **Blocked** | Host: `cd app && flutter test test/core/app/tv_shell_test.dart` |

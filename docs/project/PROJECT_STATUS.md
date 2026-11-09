@@ -19,7 +19,7 @@
 | Aika Stream TV version (SSOT) | **Done** | `app/pubspec_tv.yaml` line 14: `version: 0.0.4+30` ([#2135](https://github.com/DevelopersCoffee/airo/pull/2135)). OKF: `docs/okf/aika-stream-play/references/version-ssot.md`. |
 | Airo Coins flavor | **Done** | `app/pubspec_coins.yaml`: `0.0.7+12`. |
 | Latest GitHub Release (org-wide) | **Done** | [Aika Stream 0.0.2](https://github.com/DevelopersCoffee/airo/releases/tag/aika-stream-v0.0.2) tag `aika-stream-v0.0.2` (2026-09-22). Prior TV-tagged release: `aika-stream-v0.0.1` (2026-09-15). Aggregate app line: `v0.0.6` (2026-08-03). |
-| Open pull requests | **Done** | Dependabot only as of 2026-11-09: [#2144](https://github.com/DevelopersCoffee/airo/pull/2144)–[#2146](https://github.com/DevelopersCoffee/airo/pull/2146) (Android Gradle bumps). |
+| Open pull requests | **Done** | Draft docs drift [#2147](https://github.com/DevelopersCoffee/airo/pull/2147); Dependabot [#2144](https://github.com/DevelopersCoffee/airo/pull/2144)–[#2146](https://github.com/DevelopersCoffee/airo/pull/2146) (2026-11-09). |
 | Remote branch surface | **Done** | Many remote-tracking branches on `origin`; IPTV/TV lines include `origin/agent/iptv/aika-stream-*`, `origin/feat/aika-stream-obb-19*`, Fire TV pipeline merged via #2100. |
 | Local worktrees on this VM | **Done** | Single checkout at `/workspace`; no additional agent worktrees mounted on this Cloud Agent VM. |
 
@@ -29,9 +29,9 @@
 | --- | --- | --- |
 | **Aika Stream TV / Play** (`com.developerscoffee.tv.midas`) | **Needs verification** | Pubspec SSOT `0.0.4+30` on `main`. GitHub release tag stops at `aika-stream-v0.0.2`. Play `versionCode` spend and live Production state are human-gated — see `docs/okf/aika-stream-play/references/version-ssot.md` (codes 21–25 spent as of 2026-09-28 note). |
 | **Airo super-app (phone)** | **Pending** | `0.1.0+13` on `main`; not aligned with latest aggregate GitHub release `v0.0.6` naming — see `docs/release/VERSION_LINES.md`. |
-| **Fire TV / Amazon Appstore** | **Done** (pipeline) | [#2100](https://github.com/DevelopersCoffee/airo/pull/2100) merged. Latest full matrix: [40032582357](https://github.com/DevelopersCoffee/airo/actions/runs/40032582357) job `build-android (fire-tv, …)` **success** (2026-10-23). Store submission: **Needs verification**. |
+| **Fire TV / Amazon Appstore** | **Done** (pipeline) | [#2100](https://github.com/DevelopersCoffee/airo/pull/2100) merged. CI `build-android (fire-tv, …)` **success** on [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) @ `d7174c9f` (2026-10-28). Store submission: **Needs verification**. |
 
-> **Note on “Amiro Build 9”:** No release artifact or pubspec in this repository uses the label “Amiro Build 9”. Treat **Airo super-app** (`app/pubspec.yaml`, currently build **13**) and **Aika Stream TV** (`app/pubspec_tv.yaml`, currently build **28**) as distinct tracks. If “Build 9” refers to an external Play or internal codename, status is **Needs verification**.
+> **Note on “Amiro Build 9”:** No release artifact or pubspec in this repository uses the label “Amiro Build 9”. Treat **Airo super-app** (`app/pubspec.yaml`, currently build **13**) and **Aika Stream TV** (`app/pubspec_tv.yaml`, currently build **30**) as distinct tracks. If “Build 9” refers to an external Play or internal codename, status is **Needs verification**.
 
 ---
 
@@ -39,10 +39,10 @@
 
 | Item | Status | Evidence |
 | --- | --- | --- |
-| CI on `main` (full matrix) | **Done** | [Workflow run 40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) **success** on `d7174c9f` (Continuous Integration, 2026-11-09). Prior baseline: [40032582357](https://github.com/DevelopersCoffee/airo/actions/runs/40032582357) on `69f354f8`. |
+| CI on `main` (full matrix) | **Done** | [Workflow run 40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) **success** on `d7174c9f` (Continuous Integration, 2026-10-28). |
 | Phone app compile/analyze (this VM) | **Blocked** | Flutter SDK not on PATH on this Cloud Agent VM (2026-10-24). Use CI or a developer host. |
 | TV / Fire TV compile (this VM) | **Blocked** | Same Flutter SDK gap; rely on CI `build-android` tv + fire-tv jobs above. |
-| `feature_iptv` unit tests (this VM) | **Blocked** | Flutter SDK missing locally; CI `test-app` on run 40032582357 **success**. |
+| `feature_iptv` unit tests (this VM) | **Blocked** | Flutter SDK missing locally; CI `test-app` on [40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) **success** (2026-10-28). |
 | Repository script gates (docs change scope) | **Done** | `scripts/check-docs-completeness.sh --base origin/main --head HEAD` passed (2026-10-24). |
 
 **CI commands reference (for humans re-running):** `.github/workflows/ci.yml` — matrix includes `fire-tv` with description “Fire OS / Amazon Appstore (Aika Stream, GMS-free gates)” (lines ~500–508, ~759).
@@ -95,7 +95,7 @@ Physical retest on this agent: **Blocked** (no physical TV/phone attached). Stat
 | Claim (historical notes) | Current repo truth |
 | --- | --- |
 | Aika Stream TV test target `0.0.1+19` (Sept 2026) | `app/pubspec_tv.yaml` is `0.0.4+30` on `main`. |
-| `main_coins.dart` is a zero-module stub (phase-1 SSOT notes) | Real standalone shell with groups + vault ([#2091](https://github.com/DevelopersCoffee/airo/pull/2091), `app/test/main_coins_shell_test.dart`). |
+| `main_coins.dart` is a zero-module stub (phase-1 SSOT notes) | Real standalone shell ([#2091](https://github.com/DevelopersCoffee/airo/pull/2091)); shell test from [#1108](https://github.com/DevelopersCoffee/airo/pull/1108) (`app/test/main_coins_shell_test.dart`). |
 | `airo_haptics` 1.1.0 “not on `origin/main`” (Sept 2026 design spec) | Haptics integrated on `main` with pub.dev `airo_haptics` **1.2.0**. |
 | Settings work only on branch `agent/iptv/aika-stream-settings-slice-1` | Slice 1 landed via #2042 / #2054; branch not merge-ancestor of `main` but features present. |
 | QA package id `io.airo.app.tv` (Jul 2026 Pixel 9 evidence) | TV Android `applicationId` for tv/fireTv flavors: `com.developerscoffee.tv.midas` (`app/android/app/build.gradle.kts`). Rebrand/consistency: **Needs verification** on old APKs vs current builds. |

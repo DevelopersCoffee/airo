@@ -12,9 +12,9 @@ Priority is top-down within each section; cross-track items name their release l
 
 | ID | Item | Status | Evidence / next step |
 | --- | --- | --- | --- |
-| B-001 | Keep `main` CI green on all Android variants (full, tv, fire-tv, coins) | **Done** | [CI run 40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) success on `d7174c9f` (2026-11-09). |
+| B-001 | Keep `main` CI green on all Android variants (full, tv, fire-tv, coins) | **Done** | [CI run 40635930540](https://github.com/DevelopersCoffee/airo/actions/runs/40635930540) success on `d7174c9f` (2026-10-28). |
 | B-002 | Re-run `feature_iptv` + TV shell tests on developer host | **Needs verification** | Commands from Sept 2026 test plan: `cd packages/feature_iptv && flutter test`; `cd app && flutter test test/core/app/tv_shell_test.dart`. CI passed; local Flutter missing on Cloud Agent VM. |
-| B-003 | Close Dependabot Android bumps or merge when vetted | **Pending** | Open: [#2144](https://github.com/DevelopersCoffee/airo/pull/2144)–[#2146](https://github.com/DevelopersCoffee/airo/pull/2146) (2026-11-09). |
+| B-003 | Close Dependabot Android bumps or merge when vetted | **Pending** | Open: draft [#2147](https://github.com/DevelopersCoffee/airo/pull/2147); [#2144](https://github.com/DevelopersCoffee/airo/pull/2144)–[#2146](https://github.com/DevelopersCoffee/airo/pull/2146) (2026-11-09). |
 
 ---
 
