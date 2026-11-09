@@ -171,8 +171,14 @@ To test a non-debug build directly on a car head unit before Google Play Store r
 
 ## 6. Google Play Console Opt-In & Release Steps
 
+> **TV listing (`com.developerscoffee.tv.midas`):** The `tv` product flavor ships
+> `app/android/app/src/tv/AndroidManifest.xml` (see `app/android/app/build.gradle.kts`)
+> and does **not** declare Android Auto after
+> [#2135](https://github.com/DevelopersCoffee/airo/pull/2135) (`d65146c1`). Do **not**
+> add an Android Auto release type for that Play app.
+
 1. **Opt In to Android Auto**:
-   - Google Play Console > Select App (`io.airo.app` or `com.developerscoffee.tv.midas`) > **Setup** > **Advanced settings**.
+   - Google Play Console > Select App (`io.airo.app`) > **Setup** > **Advanced settings**.
    - Select **Release types** > **Add release type** > Select **Android Auto**.
    - Complete the Driver Distraction Guidelines checklist.
 
