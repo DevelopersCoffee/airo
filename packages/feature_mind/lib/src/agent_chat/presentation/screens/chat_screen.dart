@@ -3301,12 +3301,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ('Model', metadata.title),
             ('Runtime', metadata.runtime),
             ('Execution', metadata.executionMode),
-            ('Total duration', _formatDuration(metadata.totalDurationMs)),
+            (
+              'Total duration',
+              formatChatTurnDuration(metadata.totalDurationMs),
+            ),
             ('Timestamp', _formatTimestamp(metadata.recordedAt)),
             if (metadata.timeToFirstTokenMs != null)
               (
                 'Time to first token',
-                _formatDuration(metadata.timeToFirstTokenMs!),
+                formatChatTurnDuration(metadata.timeToFirstTokenMs!),
               ),
             if (metadata.promptTokens != null)
               ('Prompt tokens', '${metadata.promptTokens}'),
@@ -3383,7 +3386,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           label: trace.detail,
                           value: trace.durationMs == null
                               ? (trace.success ? 'Completed' : 'Failed')
-                              : _formatDuration(trace.durationMs!),
+                              : formatChatTurnDuration(trace.durationMs!),
                         ),
                       ),
                   ],
@@ -3944,8 +3947,6 @@ class _MetadataRow extends StatelessWidget {
     );
   }
 }
-
-String _formatDuration(int durationMs) => formatChatTurnDuration(durationMs);
 
 String _formatTimestamp(DateTime value) {
   final local = value.toLocal();
