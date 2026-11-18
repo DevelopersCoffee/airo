@@ -425,7 +425,7 @@ dependencies {
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
     if (!isLeanStandaloneVariant && !isFireTvVariant) {
-        implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
+        implementation("com.google.mlkit:genai-prompt:1.0.0-beta5")
     }
 
     // LiteRT-LM for local on-device LLM inference. The artifact is published
@@ -440,7 +440,7 @@ dependencies {
     // ExperimentalFlags.enableSpeculativeDecoding) per
     // developers.google.com/edge/litert-lm.
     if (!isLeanStandaloneVariant && rootProject.extra.get("liteRtLmAvailable") as Boolean) {
-        implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.1")
+        implementation("com.google.ai.edge.litertlm:litertlm-android:0.19.1")
     }
 
     // AI Edge RAG SDK, for the older EmbeddingGemma 300M .tflite file.
