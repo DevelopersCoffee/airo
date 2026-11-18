@@ -58,9 +58,11 @@ otherwise it belongs to the module that owns its state.
    image_picker/url_launcher) which together form a standalone bug-report
    feature, not shared shell infrastructure. Extract that feature as its own
    package first if ever needed.
-4. **Airo Coins real UI** — `main_coins.dart` stub only. Blocked on creating
-   the clean core-coin package per ADR-0010 (must not fork the three legacy
-   divergent coin codebases). Product/design decision needed before build.
+4. **Airo Coins real UI** — **Done** for standalone shell scope ([#2091](https://github.com/DevelopersCoffee/airo/pull/2091)):
+   hub + groups list in `app/lib/core/coins/*`; group detail/settle-up via legacy
+   `app/lib/features/coins` screens wired from `main_coins.dart`; vault via `feature_coin`.
+   Package-first migration of legacy `app/lib/features/coins` into `feature_coin` /
+   `feature_coins_core` remains **Pending** (ADR-0010, #938–#942).
 
 ## Known pre-existing failures (not from this work)
 
